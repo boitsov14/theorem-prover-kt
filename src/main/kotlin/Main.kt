@@ -40,7 +40,7 @@ data class Formula(val left: Formula?, val right: Formula?, val connective: Conn
             return "${Connective.NOT.chr}${left.toString0()}"
         if (left != null && right != null && connective != null)
             return "(${left.toString0()} ${connective.chr} ${right.toString0()})"
-        return "ahoo" //エラー処理
+        return "Something is wrong." //エラー処理
     }
     override fun toString(): String = this.toString0().removeSurrounding("(", ")")
 }
