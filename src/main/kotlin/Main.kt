@@ -64,7 +64,7 @@ enum class Connective(val chr: Char, val precedence: Int){
     OR('∨', 2),
     IFF('↔', 0),
     NOT('¬', 4);
-    override fun toString(): String = chr.toString()
+    override fun toString(): String = "$chr"
 }
 
 fun isConnective(chr: Char): Boolean = Connective.values().map{it.chr}.contains(chr)
