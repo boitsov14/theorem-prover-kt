@@ -67,7 +67,7 @@ enum class Connective(val chr: Char, val precedence: Int){
     override fun toString(): String = "$chr"
 }
 
-fun isConnective(chr: Char): Boolean = Connective.values().map{it.chr}.contains(chr)
+fun isConnective(chr: Char): Boolean = chr in Connective.values().map{it.chr}
 
 fun getConnective(chr: Char) : Connective? = Connective.values().find{it.chr == chr}
 
