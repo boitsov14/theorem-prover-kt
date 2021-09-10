@@ -1,6 +1,6 @@
 fun main() {
-    val fml1 = Atom("P")
-    val fml11 = Atom("P")
+    val fml1 = Prop('P')
+    val fml11 = Prop('P')
     println(fml1 == fml11)
     println(fml1)
     println(UnaryConnectiveType.NOT)
@@ -13,17 +13,86 @@ fun main() {
     println(BinaryConnectiveType.values().map{it.chr})
     val goal1 = Goal(mutableListOf(fml3,fml2), fml1)
     println(goal1)
+    println(BinaryConnectiveType.IFF.ordinal)
+
+    val propOfP = Predicate("P", listOf(Type.UNIVERSE, Type.UNIVERSE))
+    val varOfx = Var('x', Type.UNIVERSE)
+    val varOfy = Var('y', Type.UNIVERSE)
+    val propOfPxy = PredicateFml(propOfP, listOf(varOfx,varOfy))
+    println(propOfPxy)
+    println(propOfP)
+    println(varOfx.toStringWithExplicitType())
+}
+
+enum class Type(private val id: String) {
+    PROP("Prop"),
+    UNIVERSE("U"),
+    NAT("nat");
+    override fun toString(): String = id
+}
+
+interface IType {
+    val type: Type
 }
 
 interface Formula {
     override fun toString(): String
 }
 
-data class Atom(val name: String): Formula {
-    override fun toString(): String = name
+interface AtomFml: Formula {}
+
+data class Prop(val chr: Char): AtomFml {
+    override fun toString() = "$chr"
 }
 
-val falseFormula = Atom("false")
+enum class PreDefinedAtomFml: AtomFml {
+    FALSE
+}
+
+val falseFormula = PreDefinedAtomFml.FALSE
+
+interface Term: IType {
+    override fun toString(): String
+}
+
+data class Var(val chr: Char, override val type: Type): Term {
+    override fun toString() = "$chr"
+    fun toStringWithExplicitType() = "$chr : $type"
+}
+
+fun canSubstitute(inputTypes : List<Type>, inputTerms: List<Term>): Boolean {
+    if (inputTypes.size != inputTerms.size) {
+        return false
+    }
+    return inputTypes.zip(inputTerms).all { (type, term) -> type == term.type }
+}
+
+data class Function(val id: String, val inputTypes: List<Type>, val outputType: Type) {
+    override fun toString(): String = id
+}
+
+data class FunctionTerm(val function: Function, val inputTerms: List<Term>): Term {
+    override fun toString(): String {
+        var str = "$function "
+        inputTerms.forEach { str += "$it " }
+        str = str.trimEnd()
+        return str
+    }
+    override val type = function.outputType
+}
+
+data class Predicate(val id: String, val inputTypes: List<Type>) {
+    override fun toString(): String = id
+}
+
+data class PredicateFml(val predicate: Predicate, val terms: List<Term>): AtomFml {
+    override fun toString(): String {
+        var str = "$predicate "
+        terms.forEach { str += "$it " }
+        str = str.trimEnd()
+        return str
+    }
+}
 
 interface ConnectiveType {
     val chr: Char
@@ -86,7 +155,7 @@ enum class Tactic0(override val id: String): TacticType0 {
     RIGHT("right"),
     EXFALSO("exfalso"),
     BY_CONTRA("by_contra");
-    override fun toString(): String = name
+    override fun toString(): String = id
     override fun canApply(goal: Goal): Boolean = when(this) {
         ASSUMPTION			-> goal.conclusion in goal.assumptions
         INTRO				-> (goal.conclusion as? Connective)?.connective in setOf(BinaryConnectiveType.IMPLY, UnaryConnectiveType.NOT)
@@ -110,22 +179,22 @@ enum class Tactic0(override val id: String): TacticType0 {
             }
             SPLIT -> when((goal.conclusion as Connective).connective) {
                 BinaryConnectiveType.AND    -> {
-                    val left = Goal(goal.assumptions.toMutableList(), (goal.conclusion as BinaryConnective).left)
+                    val left  = Goal(goal.assumptions.toMutableList(), (goal.conclusion as BinaryConnective).left)
                     val right = Goal(goal.assumptions.toMutableList(), (goal.conclusion as BinaryConnective).right)
                     goals.removeAt(0)
                     goals.add(0, left)
                     goals.add(1, right)
                 }
                 BinaryConnectiveType.IFF    -> {
-                    val toLeft = Goal(goal.assumptions.toMutableList(), BinaryConnective(BinaryConnectiveType.IMPLY, (goal.conclusion as BinaryConnective).left, (goal.conclusion as BinaryConnective).right))
+                    val toLeft  = Goal(goal.assumptions.toMutableList(), BinaryConnective(BinaryConnectiveType.IMPLY, (goal.conclusion as BinaryConnective).left, (goal.conclusion as BinaryConnective).right))
                     val toRight = Goal(goal.assumptions.toMutableList(), BinaryConnective(BinaryConnectiveType.IMPLY, (goal.conclusion as BinaryConnective).right, (goal.conclusion as BinaryConnective).left))
                     goals.removeAt(0)
                     goals.add(0, toLeft)
                     goals.add(1, toRight)
                 }
             }
-            LEFT -> goal.conclusion = (goal.conclusion as BinaryConnective).left
-            RIGHT -> goal.conclusion = (goal.conclusion as BinaryConnective).right
+            LEFT    -> goal.conclusion = (goal.conclusion as BinaryConnective).left
+            RIGHT   -> goal.conclusion = (goal.conclusion as BinaryConnective).right
             EXFALSO -> goal.conclusion = falseFormula
             BY_CONTRA -> {
                 goal.assumptions.add(UnaryConnective(UnaryConnectiveType.NOT, goal.conclusion))
