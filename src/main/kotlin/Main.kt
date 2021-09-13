@@ -1,15 +1,32 @@
 fun main() {
-    val predicateOfP = Predicate('P',2)
+    val predicateOfP2 = Predicate('P',2)
     val varOfX = Var('x')
     val varOfY = Var('y')
-    val predicateFmlOfPxy = PredicateFml(predicateOfP, listOf(varOfX, varOfY))
+    val predicateFmlOfPxy = PredicateFml(predicateOfP2, listOf(varOfX, varOfY))
     val allyPredicateFmlOfPxy = QuantifiedFml(Quantifier.FOR_ALL, varOfY, predicateFmlOfPxy)
     val allxAllyPredicateFmlOfPxy = QuantifiedFml(Quantifier.FOR_ALL, varOfX, allyPredicateFmlOfPxy)
     val goalOfAllxAllyPredicateFmlOfPxy = Goal(allxAllyPredicateFmlOfPxy)
-    val goals = mutableListOf(goalOfAllxAllyPredicateFmlOfPxy)
+    val goals0 = mutableListOf(goalOfAllxAllyPredicateFmlOfPxy)
+
+    val predicateOfP = Predicate('P')
+    val predicateOfQ = Predicate('Q')
+    val propP = PredicateFml(predicateOfP)
+    val propQ = PredicateFml(predicateOfQ)
+    val propPAndQ = BinaryConnectiveFml(BinaryConnective.AND, propP, propQ)
+    val propQAndP = BinaryConnectiveFml(BinaryConnective.AND, propQ, propP)
+    val propOfAnd = BinaryConnectiveFml(BinaryConnective.IMPLY, propPAndQ, propQAndP)
+    val goalOfPropOfAnd = Goal(propOfAnd)
+    val goalOfPropOfAnd0 = Goal(mutableListOf(propP, propQ), propPAndQ)
+    val goals = mutableListOf(goalOfPropOfAnd0)
+
+    val propPAOrQ = BinaryConnectiveFml(BinaryConnective.OR, propP, propQ)
+    val propQOrP = BinaryConnectiveFml(BinaryConnective.OR, propQ, propP)
+    val propOfOr = BinaryConnectiveFml(BinaryConnective.IMPLY, propPAOrQ, propQOrP)
+    val goalOfPropOfOr = Goal(propOfOr)
+    val goals2 = mutableListOf(goalOfPropOfOr)
 
     while (goals.isNotEmpty()) {
-        println("------------------------")
+        println("--------------------------------------")
         printGoals(goals)
         val goal = goals[0]
         print("Possible tactics are >>> ")
@@ -20,6 +37,8 @@ fun main() {
         val tactic = goal.possibleTactics()[readLine()!!.toInt()]
         tactic.apply(goals)
     }
+    println("--------------------------------------")
+
     println("Proof complete!")
 
 
@@ -43,11 +62,13 @@ data class Var(val chr: Char) {
 }
 
 data class Predicate(val id: Char, val arity: Int) {
+    constructor(id: Char) : this(id, 0)
     override fun toString(): String = "$id"
     fun canSubstitute(inputVars: List<Var>): Boolean = inputVars.size == arity
 }
 
 data class PredicateFml(val predicate: Predicate, val vars: List<Var>): AtomFml {
+    constructor(predicate: Predicate) : this(predicate, listOf())
     override fun toString(): String {
         var str = "$predicate "
         vars.forEach { str += "$it " }
@@ -237,64 +258,3 @@ enum class Tactic2(override val id: String): ITactic {
 fun isConnective(chr: Char): Boolean = chr in Connective.values().map{it.chr}
 fun getConnective(chr: Char) : Connective? = Connective.values().find{it.chr == chr}
 */
-
-/*
-fun main() {
-    val fml1 = Prop('P')
-    val fml11 = Prop('P')
-    println(fml1 == fml11)
-    println(fml1)
-    println(UnaryConnective.NOT)
-    val fml2 = UnaryConnectiveFml(UnaryConnective.NOT, fml1)
-    val fml21 = UnaryConnectiveFml(UnaryConnective.NOT, fml11)
-    println(fml2 == fml21)
-    println(fml2)
-    val fml3 = BinaryConnectiveFml(BinaryConnective.AND, fml1, fml2)
-    println(fml3)
-    println(BinaryConnective.values().map{it.id})
-    val goal1 = Goal(mutableListOf(fml3,fml2), fml1)
-    println(goal1)
-    println(BinaryConnective.IFF.ordinal)
-
-    val propOfP = Predicate("P", listOf(Type.UNIVERSE, Type.UNIVERSE))
-    val varOfx = Var('x', Type.UNIVERSE)
-    val varOfy = Var('y', Type.UNIVERSE)
-    val propOfPxy = PredicateFml(propOfP, listOf(varOfx,varOfy))
-    println(propOfPxy)
-    println(propOfP)
-    println(varOfx.toStringWithExplicitType())
-}
-*/
-
-/*
-fun main() {
-    val formula0 = Formula(Formula('P'), Formula('Q'), Connective.IMPLY)
-    val formula1 = Formula(Formula('P'), Formula('Q'), Connective.IMPLY)
-    println(formula0 == formula1)
-    println(formula0)
-    val formula2 = Formula(Formula('P'),null,Connective.NOT)
-    println(formula2)
-    //var formula2 = formula1
-    //var formula3 = formula1.copy() //プロパティがすべてval（読み取り専用）なのでcopyの意味はここでは特にない
-    val formula4 = Formula('P')
-    val goal0 = Goal(mutableListOf(formula4), formula4)
-    println(goal0)
-    val goal1 = Goal(mutableListOf(formula0), formula0)
-    val goal2 = goal0.copy()
-    goal0.assumptions.clear()
-    println(goal1)
-    println(goal2)
-    println(Connective.IMPLY)
-    println(Connective.IMPLY.precedence)
-    println(Connective.IMPLY.chr)
-    val imply0 = Connective.valueOf("IMPLY")
-    println(imply0.precedence)
-    println(isConnective('→'))
-    println(isConnective('a'))
-    val imp = getConnective('→')
-    println(imp?.precedence)
-    println(Tactic.LEFT.canApply(goal0))
-    val str = "bc)"
-    println(str.removeSurrounding("(", ")"))
-}
- */
