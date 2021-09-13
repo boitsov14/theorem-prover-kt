@@ -1,5 +1,20 @@
 fun main() {
     println("Hello.")
+    val predicateOfP = Predicate('P',2)
+    val varOfX = Var('x')
+    val varOfY = Var('y')
+    val predicateFmlOfPxy = PredicateFml(predicateOfP, listOf(varOfX, varOfY))
+    val allyPredicateFmlOfPxy = QuantifiedFml(Quantifier.FOR_ALL, varOfY, predicateFmlOfPxy)
+    val allxAllyPredicateFmlOfPxy = QuantifiedFml(Quantifier.FOR_ALL, varOfX, allyPredicateFmlOfPxy)
+    val goalOfAllxAllyPredicateFmlOfPxy = Goal(allxAllyPredicateFmlOfPxy)
+    val goalsOfGoalOfAllxAllyPredicateFmlOfPxy = mutableListOf(goalOfAllxAllyPredicateFmlOfPxy)
+
+    printGoals(goalsOfGoalOfAllxAllyPredicateFmlOfPxy)
+    //println(Tactic0.INTRO.canApply(goalOfAllxAllyPredicateFmlOfPxy))
+    Tactic0.INTRO.apply(goalsOfGoalOfAllxAllyPredicateFmlOfPxy)
+    printGoals(goalsOfGoalOfAllxAllyPredicateFmlOfPxy)
+    Tactic0.INTRO.apply(goalsOfGoalOfAllxAllyPredicateFmlOfPxy)
+    printGoals(goalsOfGoalOfAllxAllyPredicateFmlOfPxy)
 }
 
 interface Formula {
@@ -69,14 +84,8 @@ enum class Quantifier(private val id: Char) {
     override fun toString(): String = "$id"
 }
 
-data class QuantifiedFml(val quantifier: Quantifier, val bddVars: List<Var>, val formula: Formula): Formula {
-    override fun toString(): String {
-        var str = "$quantifier"
-        bddVars.forEach { str += " $it" }
-        str += ", "
-        str += "$formula"
-        return str
-    }
+data class QuantifiedFml(val quantifier: Quantifier, val bddVar: Var, val formula: Formula): Formula {
+    override fun toString() = "$quantifier $bddVar, $formula"
 }
 
 data class Goal(var freeVars: MutableList<Var>, var assumptions: MutableList<Formula>, var conclusion: Formula) {
@@ -92,6 +101,19 @@ data class Goal(var freeVars: MutableList<Var>, var assumptions: MutableList<For
 }
 
 typealias Goals = MutableList<Goal>
+
+fun printGoals(goals: Goals) {
+    for (goal in goals) {
+        if (goal.freeVars.isNotEmpty()) {
+            goal.freeVars.forEach { print("$it, ") }
+            print("\b\b")
+            println(" : Fixed")
+        }
+        goal.assumptions.forEach { println("$it".removeSurrounding("(", ")")) }
+        println("⊢ ${goal.conclusion}")
+        println()
+    }
+}
 
 interface ITactic {
     val id: String
@@ -113,6 +135,7 @@ enum class Tactic0(override val id: String): ITactic {
     override fun canApply(goal: Goal): Boolean = when(this) {
         ASSUMPTION			-> goal.conclusion in goal.assumptions
         INTRO				-> (goal.conclusion as? ConnectiveFml)?.connective in setOf(BinaryConnective.IMPLY, UnaryConnective.NOT)
+                            || (goal.conclusion as? QuantifiedFml)?.quantifier == Quantifier.FOR_ALL
         SPLIT				-> (goal.conclusion as? ConnectiveFml)?.connective in setOf(BinaryConnective.AND, BinaryConnective.IFF)
         LEFT, RIGHT			-> (goal.conclusion as? ConnectiveFml)?.connective == BinaryConnective.OR
         EXFALSO, BY_CONTRA	-> goal.conclusion != falseFormula
@@ -121,7 +144,7 @@ enum class Tactic0(override val id: String): ITactic {
         val goal = goals[0]
         when(this) {
             ASSUMPTION -> goals.removeAt(0)
-            INTRO -> when((goal.conclusion as ConnectiveFml).connective) {
+            INTRO -> when((goal.conclusion as? ConnectiveFml)?.connective) {
                 BinaryConnective.IMPLY  -> {
                     goal.assumptions.add((goal.conclusion as BinaryConnectiveFml).leftFml)
                     goal.conclusion = (goal.conclusion as BinaryConnectiveFml).rightFml
@@ -129,6 +152,10 @@ enum class Tactic0(override val id: String): ITactic {
                 UnaryConnective.NOT -> {
                     goal.assumptions.add((goal.conclusion as UnaryConnectiveFml).formula)
                     goal.conclusion = falseFormula
+                }
+                else -> {
+                    goal.freeVars.add((goal.conclusion as QuantifiedFml).bddVar)
+                    goal.conclusion = (goal.conclusion as QuantifiedFml).formula
                 }
             }
             SPLIT -> when((goal.conclusion as ConnectiveFml).connective) {
@@ -160,13 +187,14 @@ enum class Tactic0(override val id: String): ITactic {
 
 // Tactic with arity 1.
 enum class Tactic1(override val id: String): ITactic {
+    REVERT("revert"),
     APPLY("apply"),
     CASES("cases"),
     CLEAR("clear");
     override fun toString(): String = id
     override fun canApply(goal: Goal): Boolean = when(this) {
-        CLEAR   -> goal.assumptions.isNotEmpty()
-        else    -> possibleAssumptions(goal).isNotEmpty()
+        APPLY, CASES    -> possibleAssumptions(goal).isNotEmpty()
+        REVERT, CLEAR   -> goal.assumptions.isNotEmpty()
     }
     override fun apply(goals: Goals) {
         TODO("Not yet implemented")
