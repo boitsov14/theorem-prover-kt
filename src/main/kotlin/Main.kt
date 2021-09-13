@@ -1,5 +1,4 @@
 fun main() {
-    println("Hello.")
     val predicateOfP = Predicate('P',2)
     val varOfX = Var('x')
     val varOfY = Var('y')
@@ -7,14 +6,24 @@ fun main() {
     val allyPredicateFmlOfPxy = QuantifiedFml(Quantifier.FOR_ALL, varOfY, predicateFmlOfPxy)
     val allxAllyPredicateFmlOfPxy = QuantifiedFml(Quantifier.FOR_ALL, varOfX, allyPredicateFmlOfPxy)
     val goalOfAllxAllyPredicateFmlOfPxy = Goal(allxAllyPredicateFmlOfPxy)
-    val goalsOfGoalOfAllxAllyPredicateFmlOfPxy = mutableListOf(goalOfAllxAllyPredicateFmlOfPxy)
+    val goals = mutableListOf(goalOfAllxAllyPredicateFmlOfPxy)
 
-    printGoals(goalsOfGoalOfAllxAllyPredicateFmlOfPxy)
-    //println(Tactic0.INTRO.canApply(goalOfAllxAllyPredicateFmlOfPxy))
-    Tactic0.INTRO.apply(goalsOfGoalOfAllxAllyPredicateFmlOfPxy)
-    printGoals(goalsOfGoalOfAllxAllyPredicateFmlOfPxy)
-    Tactic0.INTRO.apply(goalsOfGoalOfAllxAllyPredicateFmlOfPxy)
-    printGoals(goalsOfGoalOfAllxAllyPredicateFmlOfPxy)
+    while (goals.isNotEmpty()) {
+        println("------------------------")
+        printGoals(goals)
+        val goal = goals[0]
+        print("Possible tactics are >>> ")
+        goal.possibleTactics().forEach { print("$it, ") }
+        print("\b\b")
+        println()
+        print("Select a tactic >>> ")
+        val tactic = goal.possibleTactics()[readLine()!!.toInt()]
+        tactic.apply(goals)
+    }
+    println("Proof complete!")
+
+
+
 }
 
 interface Formula {
@@ -98,6 +107,7 @@ data class Goal(var freeVars: MutableList<Var>, var assumptions: MutableList<For
         if (str.isNotEmpty()) { str += " " }
         return "$str⊢ $conclusion"
     }
+    fun possibleTactics() = Tactic0.values().filter { it.canApply(this) }
 }
 
 typealias Goals = MutableList<Goal>
@@ -111,7 +121,6 @@ fun printGoals(goals: Goals) {
         }
         goal.assumptions.forEach { println("$it".removeSurrounding("(", ")")) }
         println("⊢ ${goal.conclusion}")
-        println()
     }
 }
 
