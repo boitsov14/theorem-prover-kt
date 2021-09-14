@@ -17,13 +17,17 @@ fun main() {
     val propOfAnd = BinaryConnectiveFml(BinaryConnective.IMPLY, propPAndQ, propQAndP)
     val goalOfPropOfAnd = Goal(propOfAnd)
     val goalOfPropOfAnd0 = Goal(mutableListOf(propP, propQ), propPAndQ)
-    val goals = mutableListOf(goalOfPropOfAnd0)
+    val goals1 = mutableListOf(goalOfPropOfAnd0)
 
     val propPAOrQ = BinaryConnectiveFml(BinaryConnective.OR, propP, propQ)
     val propQOrP = BinaryConnectiveFml(BinaryConnective.OR, propQ, propP)
     val propOfOr = BinaryConnectiveFml(BinaryConnective.IMPLY, propPAOrQ, propQOrP)
     val goalOfPropOfOr = Goal(propOfOr)
     val goals2 = mutableListOf(goalOfPropOfOr)
+
+    val goals = goals1
+
+    println(goalOfPropOfAnd0)
 
     while (goals.isNotEmpty()) {
         println("--------------------------------------")
@@ -63,18 +67,13 @@ data class Var(val chr: Char) {
 
 data class Predicate(val id: Char, val arity: Int) {
     constructor(id: Char) : this(id, 0)
-    override fun toString(): String = "$id"
+    override fun toString() = "$id"
     fun canSubstitute(inputVars: List<Var>): Boolean = inputVars.size == arity
 }
 
 data class PredicateFml(val predicate: Predicate, val vars: List<Var>): AtomFml {
     constructor(predicate: Predicate) : this(predicate, listOf())
-    override fun toString(): String {
-        var str = "$predicate "
-        vars.forEach { str += "$it " }
-        str = str.trimEnd()
-        return str
-    }
+    override fun toString() = "$predicate" + if (vars.isEmpty()) "" else vars.joinToString(prefix = " ")
 }
 
 interface Connective {
@@ -93,7 +92,7 @@ enum class UnaryConnective(override val id: Char, override val precedence: Int):
 }
 
 data class UnaryConnectiveFml(override val connective: UnaryConnective, val formula: Formula): ConnectiveFml {
-    override fun toString(): String = "($connective$formula)"
+    override fun toString() = "($connective$formula)"
 }
 
 enum class BinaryConnective(override val id: Char, override val precedence: Int): Connective {
@@ -101,17 +100,17 @@ enum class BinaryConnective(override val id: Char, override val precedence: Int)
     AND('∧', 3),
     OR('∨', 2),
     IFF('↔', 0);
-    override fun toString(): String = "$id"
+    override fun toString() = "$id"
 }
 
 data class BinaryConnectiveFml(override val connective: BinaryConnective, val leftFml: Formula, val rightFml: Formula): ConnectiveFml {
-    override fun toString(): String = "($leftFml $connective $rightFml)"
+    override fun toString() = "($leftFml $connective $rightFml)"
 }
 
 enum class Quantifier(private val id: Char) {
     FOR_ALL('∀'),
     THERE_EXISTS('∃');
-    override fun toString(): String = "$id"
+    override fun toString() = "$id"
 }
 
 data class QuantifiedFml(val quantifier: Quantifier, val bddVar: Var, val formula: Formula): Formula {
@@ -121,13 +120,10 @@ data class QuantifiedFml(val quantifier: Quantifier, val bddVar: Var, val formul
 data class Goal(var freeVars: MutableList<Var>, var assumptions: MutableList<Formula>, var conclusion: Formula) {
     constructor(assumptions: MutableList<Formula>, conclusion: Formula) : this(mutableListOf(), assumptions, conclusion)
     constructor(conclusion: Formula) : this(mutableListOf(), conclusion)
-    override fun toString(): String {
-        var str = ""
-        assumptions.forEach { str += "$it".removeSurrounding("(", ")") + ", "}
-        str = str.removeSuffix(", ")
-        if (str.isNotEmpty()) { str += " " }
-        return "$str⊢ $conclusion"
-    }
+    override fun toString() = (assumptions.joinToString { "$it".removeSurrounding("(", ")") }
+            + (if (assumptions.isNotEmpty()) " " else "")
+            + "⊢ "
+            + "$conclusion".removeSurrounding("(", ")"))
     fun possibleTactics() = Tactic0.values().filter { it.canApply(this) }
 }
 
@@ -135,13 +131,9 @@ typealias Goals = MutableList<Goal>
 
 fun printGoals(goals: Goals) {
     for (goal in goals) {
-        if (goal.freeVars.isNotEmpty()) {
-            goal.freeVars.forEach { print("$it, ") }
-            print("\b\b")
-            println(" : Fixed")
-        }
+        if (goal.freeVars.isNotEmpty()) print(goal.freeVars.joinToString(postfix = " : Fixed"))
         goal.assumptions.forEach { println("$it".removeSurrounding("(", ")")) }
-        println("⊢ ${goal.conclusion}")
+        println("⊢ " + "${goal.conclusion}".removeSurrounding("(", ")"))
     }
 }
 
