@@ -80,6 +80,7 @@ fun main() {
 interface Formula {
     override fun toString(): String
     fun freeVariables(): Set<Var>
+    fun replace(old: Var, new: Var): Formula
 }
 
 interface AtomFml: Formula {}
@@ -87,6 +88,7 @@ interface AtomFml: Formula {}
 enum class PreDefinedAtomFml: AtomFml {
     FALSE;
     override fun freeVariables(): Set<Var> = setOf()
+    override fun replace(old: Var, new: Var) = this
 }
 
 val falseFormula = PreDefinedAtomFml.FALSE
@@ -105,6 +107,7 @@ data class PredicateFml(val predicate: Predicate, val vars: List<Var>): AtomFml 
     constructor(predicate: Predicate) : this(predicate, listOf())
     override fun toString() = "$predicate" + if (vars.isEmpty()) "" else vars.joinToString(prefix = " ")
     override fun freeVariables() = vars.toSet()
+    override fun replace(old: Var, new: Var) = PredicateFml(predicate, vars.map { if (it == old) new else it })
 }
 
 interface Connective {
@@ -125,6 +128,7 @@ enum class UnaryConnective(override val id: Char, override val precedence: Int):
 data class UnaryConnectiveFml(override val connective: UnaryConnective, val formula: Formula): ConnectiveFml {
     override fun toString() = "($connective$formula)"
     override fun freeVariables() = formula.freeVariables()
+    override fun replace(old: Var, new: Var) = UnaryConnectiveFml(connective, formula.replace(old, new))
 }
 
 enum class BinaryConnective(override val id: Char, override val precedence: Int): Connective {
@@ -138,6 +142,7 @@ enum class BinaryConnective(override val id: Char, override val precedence: Int)
 data class BinaryConnectiveFml(override val connective: BinaryConnective, val leftFml: Formula, val rightFml: Formula): ConnectiveFml {
     override fun toString() = "($leftFml $connective $rightFml)"
     override fun freeVariables() = leftFml.freeVariables().union(rightFml.freeVariables()).toSet()
+    override fun replace(old: Var, new: Var) = BinaryConnectiveFml(connective, leftFml.replace(old, new), rightFml.replace(old, new))
 }
 
 enum class Quantifier(private val id: Char) {
@@ -149,6 +154,7 @@ enum class Quantifier(private val id: Char) {
 data class QuantifiedFml(val quantifier: Quantifier, val bddVar: Var, val formula: Formula): Formula {
     override fun toString() = "$quantifier $bddVar, $formula"
     override fun freeVariables() = formula.freeVariables().filterNot { it == bddVar }.toSet()
+    override fun replace(old: Var, new: Var) = QuantifiedFml(quantifier, bddVar, formula.replace(old, new))
 }
 
 data class Goal(var fixedVars: MutableList<Var>, var assumptions: MutableList<Formula>, var conclusion: Formula) {
@@ -179,7 +185,6 @@ interface ITactic {
     val id: String
     override fun toString(): String
     fun canApply(goal: Goal): Boolean
-    //fun apply(goals: Goals, assumption: Formula)
 }
 
 // Tactic with arity 0.
