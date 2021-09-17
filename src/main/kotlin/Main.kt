@@ -25,11 +25,9 @@ fun main() {
     val goalOfPropOfOr = Goal(propOfOr)
     val goals2 = mutableListOf(goalOfPropOfOr)
 
-    val goals = goals0
-
+    val goals = goals1
+    
     allTactic.forEach { println(it) }
-
-    //println(goalOfPropOfAnd0)
 
     while (goals.isNotEmpty()) {
         println("--------------------------------------")
@@ -167,6 +165,7 @@ data class Goal(var fixedVars: MutableList<Var>, var assumptions: MutableList<Fo
             + "⊢ "
             + "$conclusion".removeSurrounding("(", ")"))
     fun possibleTactics() = allTactic.filter { it.canApply(this) }
+    fun deepCopy(fixedVars: MutableList<Var> = this.fixedVars.toMutableList(), assumptions: MutableList<Formula> = this.assumptions.toMutableList(), conclusion: Formula = this.conclusion): Goal = Goal(fixedVars, assumptions, conclusion)
 }
 
 val allTactic: List<ITactic> = Tactic0.values().union(Tactic1.values().union(Tactic1WithVar.values().toList())).toList()
@@ -197,47 +196,51 @@ enum class Tactic0(override val id: String): ITactic {
     EXFALSO     ("exfalso"),
     BY_CONTRA   ("by_contra");
     override fun toString(): String = id
-    override fun canApply(goal: Goal): Boolean = when(this) {
-        ASSUMPTION			-> goal.conclusion in goal.assumptions
-        INTRO				-> (goal.conclusion as? ConnectiveFml)?.connective in setOf(BinaryConnective.IMPLY, UnaryConnective.NOT)
-                            || (goal.conclusion as? QuantifiedFml)?.quantifier == Quantifier.FOR_ALL
-        SPLIT				-> (goal.conclusion as? ConnectiveFml)?.connective in setOf(BinaryConnective.AND, BinaryConnective.IFF)
-        LEFT, RIGHT			-> (goal.conclusion as? ConnectiveFml)?.connective == BinaryConnective.OR
-        EXFALSO, BY_CONTRA	-> goal.conclusion != falseFormula
+    override fun canApply(goal: Goal): Boolean {
+        val conclusion = goal.conclusion
+        return when(this) {
+            ASSUMPTION			-> conclusion in goal.assumptions
+            INTRO				-> conclusion is ConnectiveFml && conclusion.connective in setOf(BinaryConnective.IMPLY, UnaryConnective.NOT)
+                                || conclusion is QuantifiedFml && conclusion.quantifier == Quantifier.FOR_ALL
+            SPLIT				-> conclusion is ConnectiveFml && conclusion.connective in setOf(BinaryConnective.AND, BinaryConnective.IFF)
+            LEFT, RIGHT			-> conclusion is ConnectiveFml && conclusion.connective == BinaryConnective.OR
+            EXFALSO, BY_CONTRA	-> conclusion != falseFormula
+        }
     }
     fun apply(goals: Goals) {
         val goal = goals[0]
+        val conclusion = goal.conclusion
         when(this) {
             ASSUMPTION -> goals.removeAt(0)
-            INTRO -> when((goal.conclusion as? ConnectiveFml)?.connective) {
-                BinaryConnective.IMPLY  -> {
-                    goal.assumptions.add((goal.conclusion as BinaryConnectiveFml).leftFml)
-                    goal.conclusion = (goal.conclusion as BinaryConnectiveFml).rightFml
+            INTRO -> when(conclusion) {
+                // IMPLY
+                is BinaryConnectiveFml -> {
+                    goal.assumptions.add(conclusion.leftFml)
+                    goal.conclusion = conclusion.rightFml
                 }
-                UnaryConnective.NOT -> {
-                    goal.assumptions.add((goal.conclusion as UnaryConnectiveFml).formula)
+                // NOT
+                is UnaryConnectiveFml -> {
+                    goal.assumptions.add(conclusion.formula)
                     goal.conclusion = falseFormula
                 }
-                else -> {
-                    goal.fixedVars.add((goal.conclusion as QuantifiedFml).bddVar)
-                    goal.conclusion = (goal.conclusion as QuantifiedFml).formula
+                // FOR_ALL
+                is QuantifiedFml -> {
+                    goal.fixedVars.add(conclusion.bddVar)
+                    goal.conclusion = conclusion.formula
                 }
             }
-            SPLIT -> when((goal.conclusion as ConnectiveFml).connective) {
-                BinaryConnective.AND    -> {
-                    val left  = Goal(goal.assumptions.toMutableList(), (goal.conclusion as BinaryConnectiveFml).leftFml)
-                    val right = Goal(goal.assumptions.toMutableList(), (goal.conclusion as BinaryConnectiveFml).rightFml)
-                    goals.removeAt(0)
-                    goals.add(0, left)
-                    goals.add(1, right)
-                }
-                BinaryConnective.IFF    -> {
-                    val toLeft  = Goal(goal.assumptions.toMutableList(), BinaryConnectiveFml(BinaryConnective.IMPLY, (goal.conclusion as BinaryConnectiveFml).leftFml, (goal.conclusion as BinaryConnectiveFml).rightFml))
-                    val toRight = Goal(goal.assumptions.toMutableList(), BinaryConnectiveFml(BinaryConnective.IMPLY, (goal.conclusion as BinaryConnectiveFml).rightFml, (goal.conclusion as BinaryConnectiveFml).leftFml))
-                    goals.removeAt(0)
-                    goals.add(0, toLeft)
-                    goals.add(1, toRight)
-                }
+            SPLIT -> if (conclusion is BinaryConnectiveFml && conclusion.connective == BinaryConnective.AND) {
+                val left    = goal.deepCopy(conclusion = conclusion.leftFml)
+                val right   = goal.deepCopy(conclusion = conclusion.rightFml)
+                goals.removeAt(0)
+                goals.add(0, left)
+                goals.add(1, right)
+            } else if   (conclusion is BinaryConnectiveFml && conclusion.connective == BinaryConnective.IFF) {
+                val toRight = goal.deepCopy(conclusion = BinaryConnectiveFml(BinaryConnective.IMPLY, conclusion.leftFml, conclusion.rightFml))
+                val toLeft  = goal.deepCopy(conclusion = BinaryConnectiveFml(BinaryConnective.IMPLY, conclusion.rightFml, conclusion.leftFml))
+                goals.removeAt(0)
+                goals.add(0, toLeft)
+                goals.add(1, toRight)
             }
             LEFT    -> goal.conclusion = (goal.conclusion as BinaryConnectiveFml).leftFml
             RIGHT   -> goal.conclusion = (goal.conclusion as BinaryConnectiveFml).rightFml
@@ -259,44 +262,39 @@ enum class Tactic1(override val id: String): ITactic {
     fun apply(goals: Goals, assumption: Formula) {
         val goal = goals[0]
         when(this) {
-            APPLY -> when((assumption as ConnectiveFml).connective) {
-                BinaryConnective.IMPLY  -> goal.conclusion = (assumption as BinaryConnectiveFml).leftFml
-                UnaryConnective.NOT     -> goal.conclusion = (assumption as UnaryConnectiveFml).formula
+            APPLY -> if (assumption is BinaryConnectiveFml  && assumption.connective == BinaryConnective.IMPLY) {
+                goal.conclusion = assumption.leftFml
+            } else if   (assumption is UnaryConnectiveFml   && assumption.connective == UnaryConnective.NOT) {
+                goal.conclusion = assumption.formula
             }
             CASES -> {
                 goal.assumptions.removeAll { it == assumption }
-                when((assumption as ConnectiveFml).connective) {
-                    BinaryConnective.AND -> {
-                        goal.assumptions.add((assumption as BinaryConnectiveFml).leftFml)
-                        goal.assumptions.add(assumption                         .rightFml)
-                    }
-                    BinaryConnective.OR -> {
-                        var leftAssumptions     = goal.assumptions.toMutableList()
-                        var rightAssumptions    = goal.assumptions.toMutableList()
-                        leftAssumptions .add((assumption as BinaryConnectiveFml).leftFml)
-                        rightAssumptions.add(assumption                         .rightFml)
-                        val leftGoal    = goal.copy(assumptions = leftAssumptions)
-                        val rightGoal   = goal.copy(assumptions = rightAssumptions)
-                        goals.removeAt(0)
-                        goals.add(0,leftGoal)
-                        goals.add(1,rightGoal)
-                    }
-                    BinaryConnective.IFF -> {
-                        val toRight = BinaryConnectiveFml(BinaryConnective.IMPLY, (assumption as BinaryConnectiveFml).leftFml,  assumption.rightFml)
-                        val toLeft  = BinaryConnectiveFml(BinaryConnective.IMPLY, assumption.rightFml,                          assumption.leftFml)
-                        goal.assumptions.add(toRight)
-                        goal.assumptions.add(toLeft)
-                    }
+                if (assumption is BinaryConnectiveFml && assumption.connective == BinaryConnective.AND) {
+                    goal.assumptions.add(assumption.leftFml)
+                    goal.assumptions.add(assumption.rightFml)
+                } else if (assumption is BinaryConnectiveFml && assumption.connective == BinaryConnective.OR) {
+                    val leftGoal    = goal.deepCopy()
+                    val rightGoal   = goal.deepCopy()
+                    leftGoal.assumptions.add(assumption.leftFml)
+                    rightGoal.assumptions.add(assumption.rightFml)
+                    goals.removeAt(0)
+                    goals.add(0,leftGoal)
+                    goals.add(1,rightGoal)
+                } else if (assumption is BinaryConnectiveFml && assumption.connective == BinaryConnective.IFF) {
+                    val toRight = BinaryConnectiveFml(BinaryConnective.IMPLY, assumption.leftFml,  assumption.rightFml)
+                    val toLeft  = BinaryConnectiveFml(BinaryConnective.IMPLY, assumption.rightFml, assumption.leftFml)
+                    goal.assumptions.add(toRight)
+                    goal.assumptions.add(toLeft)
                 }
             }
         }
     }
     fun possibleAssumptions(goal: Goal): List<Formula> = when(this) {
         APPLY   -> goal.assumptions
-            .filter {   ((it as? ConnectiveFml)?.connective == BinaryConnective.IMPLY   && (it as BinaryConnectiveFml).rightFml == goal.conclusion)
-                    ||  ((it as? ConnectiveFml)?.connective == UnaryConnective.NOT      && goal.conclusion == falseFormula) }
+            .filter {   (it is BinaryConnectiveFml  && it.connective == BinaryConnective.IMPLY  && it.rightFml  == goal.conclusion)
+                    ||  (it is UnaryConnectiveFml   && it.connective == UnaryConnective.NOT     && goal.conclusion == falseFormula) }
         CASES   -> goal.assumptions
-            .filter { (it as? ConnectiveFml)?.connective in setOf(BinaryConnective.AND, BinaryConnective.OR, BinaryConnective.IFF) }
+            .filter { it is BinaryConnectiveFml && it.connective in setOf(BinaryConnective.AND, BinaryConnective.OR, BinaryConnective.IFF) }
         else    -> listOf()
     }
 }
