@@ -27,8 +27,6 @@ fun main() {
 
 	val goals = goals1
 
-	allTactic.forEach { println(it) }
-
 	while (goals.isNotEmpty()) {
 		println("--------------------------------------")
 		printGoals(goals)
@@ -39,23 +37,15 @@ fun main() {
 		when (val tactic = goal.possibleTactics()[readLine()!!.toInt()]) {
 			is Tactic0 -> tactic.apply(goals)
 			is Tactic1 -> {
-				print("Possible formulas are >>> ")
+				print("Possible variables are >>> ")
+				println(tactic.possibleFixedVars(goal).joinToString())
+				print("Possible formulas are  >>> ")
 				println(tactic.possibleAssumptions(goal).joinToString())
-				print("Select an assumption >>> ")
-				val assumption = tactic.possibleAssumptions(goal)[readLine()!!.toInt()]
-				tactic.apply(goals, assumption)
-			}
-			is Tactic1WithVar -> {
-				print("Possible variables and formulas are >>> ")
-				if (tactic.possibleFixedVars(goal).isNotEmpty()) {
-					print(tactic.possibleFixedVars(goal).joinToString(postfix = " : Fixed, "))
-				}
-				println(goal.assumptions.joinToString())
 				print("Select an assumption? (y/n) >>> ")
 				when (readLine()) {
 					"y" -> {
 						print("Select an assumption >>> ")
-						val assumption = goal.assumptions[readLine()!!.toInt()]
+						val assumption = tactic.possibleAssumptions(goal)[readLine()!!.toInt()]
 						tactic.apply(goals, assumption)
 					}
 					"n" -> {
@@ -70,8 +60,6 @@ fun main() {
 	println("--------------------------------------")
 
 	println("Proof complete!")
-
-
 
 }
 
@@ -168,7 +156,7 @@ data class Goal(var fixedVars: MutableList<Var>, var assumptions: MutableList<Fo
 	fun deepCopy(fixedVars: MutableList<Var> = this.fixedVars.toMutableList(), assumptions: MutableList<Formula> = this.assumptions.toMutableList(), conclusion: Formula = this.conclusion): Goal = Goal(fixedVars, assumptions, conclusion)
 }
 
-val allTactic: List<ITactic> = Tactic0.values().union(Tactic1.values().union(Tactic1WithVar.values().toList())).toList()
+val allTactic: List<ITactic> = Tactic0.values().union(Tactic1.values().toList()).toList()
 
 typealias Goals = MutableList<Goal>
 
@@ -256,9 +244,21 @@ enum class Tactic0(override val id: String): ITactic {
 // Tactic with arity 1.
 enum class Tactic1(override val id: String): ITactic {
 	APPLY("apply"),
-	CASES("cases");
+	CASES("cases"),
+	REVERT("revert"),
+	USE("use");
 	override fun toString(): String = id
-	override fun canApply(goal: Goal): Boolean = possibleAssumptions(goal).isNotEmpty()
+	override fun canApply(goal: Goal): Boolean {
+		val conclusion = goal.conclusion
+		return when(this) {
+			APPLY, CASES	-> possibleAssumptions(goal).isNotEmpty()
+			REVERT	-> goal.assumptions.isNotEmpty()
+					|| possibleFixedVars(goal).isNotEmpty()
+			USE	->	conclusion is QuantifiedFml
+					&& conclusion.quantifier == Quantifier.THERE_EXISTS
+					&& possibleFixedVars(goal).isNotEmpty()
+		}
+	}
 	fun apply(goals: Goals, assumption: Formula) {
 		val goal = goals[0]
 		when(this) {
@@ -287,7 +287,30 @@ enum class Tactic1(override val id: String): ITactic {
 					goal.assumptions.add(toLeft)
 				}
 			}
+			REVERT -> {
+				goal.conclusion = BinaryConnectiveFml(BinaryConnective.IMPLY, assumption, goal.conclusion)
+				goal.assumptions.removeAll { it == assumption }
+			}
+			else -> {}
 		}
+	}
+	fun apply(goals: Goals, fixedVar: Var) {
+		val goal = goals[0]
+		val conclusion = goal.conclusion
+		when(this) {
+			REVERT -> {
+				goal.conclusion = QuantifiedFml(Quantifier.FOR_ALL, fixedVar, goal.conclusion)
+				goal.fixedVars.remove(fixedVar)
+			}
+			USE -> {
+				if (conclusion is QuantifiedFml && conclusion.quantifier == Quantifier.THERE_EXISTS) {
+					goal.conclusion = conclusion.formula.replace(conclusion.bddVar, fixedVar)
+					goal.fixedVars.remove(fixedVar)
+				}
+			}
+			else -> {}
+		}
+
 	}
 	fun possibleAssumptions(goal: Goal): List<Formula> = when(this) {
 		APPLY   -> goal.assumptions
@@ -295,28 +318,16 @@ enum class Tactic1(override val id: String): ITactic {
 					||  (it is UnaryConnectiveFml   && it.connective == UnaryConnective.NOT     && goal.conclusion == falseFormula) }
 		CASES   -> goal.assumptions
 			.filter { it is BinaryConnectiveFml && it.connective in setOf(BinaryConnective.AND, BinaryConnective.OR, BinaryConnective.IFF) }
-		else    -> listOf()
+		REVERT -> goal.assumptions
+		USE -> listOf()
 	}
-}
-
-// Tactic with arity 1 which is related to quantification.
-enum class Tactic1WithVar(override val id: String): ITactic {
-	REVERT("revert");
-	override fun toString(): String = id
-	override fun canApply(goal: Goal): Boolean = goal.assumptions.isNotEmpty() || possibleFixedVars(goal).isNotEmpty()
-	fun apply(goals: Goals, assumption: Formula) {
-		val goal = goals[0]
-		goal.conclusion = BinaryConnectiveFml(BinaryConnective.IMPLY, assumption, goal.conclusion)
-		goal.assumptions.removeAll { it == assumption }
-	}
-	fun apply(goals: Goals, fixedVar: Var) {
-		val goal = goals[0]
-		goal.conclusion = QuantifiedFml(Quantifier.FOR_ALL, fixedVar, goal.conclusion)
-		goal.fixedVars.remove(fixedVar)
-	}
-	fun possibleFixedVars(goal: Goal): List<Var> {
-		val fixedVarsInAssumptions = goal.assumptions.map { it.freeVariables() }.flatten().toSet()
-		return goal.fixedVars.filterNot { fixedVarsInAssumptions.contains(it) }
+	fun possibleFixedVars(goal: Goal): List<Var> = when(this) {
+		REVERT -> {
+			val fixedVarsInAssumptions = goal.assumptions.map { it.freeVariables() }.flatten().toSet()
+			goal.fixedVars.filterNot { fixedVarsInAssumptions.contains(it) }
+		}
+		USE -> goal.fixedVars
+		else -> listOf()
 	}
 }
 
