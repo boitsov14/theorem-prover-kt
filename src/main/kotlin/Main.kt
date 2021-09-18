@@ -79,8 +79,8 @@ enum class PreDefinedAtomFml: AtomFml {
 
 val falseFormula = PreDefinedAtomFml.FALSE
 
-data class Var(val chr: Char) {
-	override fun toString() = "$chr"
+data class Var(val id: Char) {
+	override fun toString() = "$id"
 }
 
 data class Predicate(val id: Char, val arity: Int) {
@@ -156,7 +156,7 @@ data class Goal(var fixedVars: MutableList<Var>, var assumptions: MutableList<Fo
 	fun deepCopy(fixedVars: MutableList<Var> = this.fixedVars.toMutableList(), assumptions: MutableList<Formula> = this.assumptions.toMutableList(), conclusion: Formula = this.conclusion): Goal = Goal(fixedVars, assumptions, conclusion)
 }
 
-val allTactic: List<ITactic> = Tactic0.values().union(Tactic1.values().toList()).toList()
+val allTactic: List<ITactic> = listOf(Tactic0.values().toList(), Tactic1.values().toList()).flatten()
 
 typealias Goals = MutableList<Goal>
 
@@ -345,8 +345,3 @@ enum class Tactic2(override val id: String): ITactic {
 		TODO("Not yet implemented")
 	}
 }
-
-/*
-fun isConnective(chr: Char): Boolean = chr in Connective.values().map{it.chr}
-fun getConnective(chr: Char) : Connective? = Connective.values().find{it.chr == chr}
-*/
