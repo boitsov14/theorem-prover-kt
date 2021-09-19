@@ -1,17 +1,14 @@
 fun main() {
-	val predicateOfP2 = Predicate('P',2)
 	val varOfX = Var('x')
 	val varOfY = Var('y')
-	val predicateFmlOfPxy = PredicateFml(predicateOfP2, listOf(varOfX, varOfY))
+	val predicateFmlOfPxy = PredicateFml('P', listOf(varOfX, varOfY))
 	val allyPredicateFmlOfPxy = QuantifiedFml(Quantifier.FOR_ALL, varOfY, predicateFmlOfPxy)
 	val allxAllyPredicateFmlOfPxy = QuantifiedFml(Quantifier.FOR_ALL, varOfX, allyPredicateFmlOfPxy)
 	val goalOfAllxAllyPredicateFmlOfPxy = Goal(allxAllyPredicateFmlOfPxy)
 	val goals0 = mutableListOf(goalOfAllxAllyPredicateFmlOfPxy)
 
-	val predicateOfP = Predicate('P')
-	val predicateOfQ = Predicate('Q')
-	val propP = PredicateFml(predicateOfP)
-	val propQ = PredicateFml(predicateOfQ)
+	val propP = PredicateFml('P', listOf())
+	val propQ = PredicateFml('Q', listOf())
 	val propPAndQ = BinaryConnectiveFml(BinaryConnective.AND, propP, propQ)
 	val propQAndP = BinaryConnectiveFml(BinaryConnective.AND, propQ, propP)
 	val propOfAnd = BinaryConnectiveFml(BinaryConnective.IMPLY, propPAndQ, propQAndP)
@@ -26,6 +23,10 @@ fun main() {
 	val goals2 = mutableListOf(goalOfPropOfOr)
 
 	val goals = goals1
+
+	val fmlStr = "P and all x, Q x"
+	fmlStr.parse().forEach { print(it) }
+	println()
 
 	while (goals.isNotEmpty()) {
 		println("--------------------------------------")
@@ -69,36 +70,29 @@ interface Formula {
 	fun replace(old: Var, new: Var): Formula
 }
 
-interface AtomFml: Formula {}
+interface AtomFml: Formula, Token {}
 
-enum class PreDefinedAtomFml: AtomFml {
-	FALSE;
+enum class PreDefinedAtomFml(private val str: String, val id: Char): AtomFml {
+	FALSE("false", '⊥');
+	override fun toString() = str
 	override fun freeVariables(): Set<Var> = setOf()
 	override fun replace(old: Var, new: Var) = this
 }
 
 val falseFormula = PreDefinedAtomFml.FALSE
 
-data class Var(val id: Char) {
+data class Var(val id: Char): SemiToken {
 	override fun toString() = "$id"
 }
 
-data class Predicate(val id: Char, val arity: Int) {
-	constructor(id: Char) : this(id, 0)
-	override fun toString() = "$id"
-	fun canSubstitute(inputVars: List<Var>): Boolean = inputVars.size == arity
-}
-
-data class PredicateFml(val predicate: Predicate, val vars: List<Var>): AtomFml {
-	constructor(predicate: Predicate) : this(predicate, listOf())
+data class PredicateFml(val predicate: Char, val vars: List<Var>): AtomFml {
 	override fun toString() = "$predicate" + if (vars.isEmpty()) "" else vars.joinToString(prefix = " ")
 	override fun freeVariables() = vars.toSet()
 	override fun replace(old: Var, new: Var) = PredicateFml(predicate, vars.map { if (it == old) new else it })
 }
 
-interface Connective {
+interface Connective: OperatorToken {
 	val id: Char
-	val precedence: Int
 	override fun toString(): String
 }
 
@@ -131,7 +125,7 @@ data class BinaryConnectiveFml(override val connective: BinaryConnective, val le
 	override fun replace(old: Var, new: Var) = BinaryConnectiveFml(connective, leftFml.replace(old, new), rightFml.replace(old, new))
 }
 
-enum class Quantifier(private val id: Char) {
+enum class Quantifier(val id: Char): SemiToken {
 	FOR_ALL('∀'),
 	THERE_EXISTS('∃');
 	override fun toString() = "$id"

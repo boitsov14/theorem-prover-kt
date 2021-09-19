@@ -1,4 +1,13 @@
-interface Token {}
+// SemiToken = Token | Quantifier | Var | Predicate
+interface  SemiToken {}
+
+// Token = AtomFml | OperatorToken | SymbolToken
+interface Token: SemiToken {}
+
+// OperatorToken = Connective | QuantifierWithVar
+interface OperatorToken: Token {
+	val precedence: Int
+}
 
 enum class SymbolToken(val id: Char): Token {
 	LEFT_PARENTHESIS('('),
@@ -7,48 +16,93 @@ enum class SymbolToken(val id: Char): Token {
 	WHITESPACE(' '),
 }
 
-enum class ConnectiveToken(val id: Char, val precedence: Int): Token {
-	NOT('¬',4),
-	IMPLY('→', 1),
-	AND('∧', 3),
-	OR('∨', 2),
-	IFF('↔', 0)
+data class Predicate(val id: Char): SemiToken {
 }
 
-enum class PreDefinedAtomToken(val id: Char): Token {
-	FALSE('⊥')
+data class QuantifierWithVar(val quantifier: Quantifier, val bddVar: Var): OperatorToken {
+	override val precedence = -1
 }
 
-data class VarToken(val id: Char): Token {}
-
-data class PredicateToken(val id: Char, var arity: Int? = null): Token {}
-
-enum class QuantifierToken(val id: Char): Token {
-	FOR_ALL('∀'),
-	THERE_EXISTS('∃')
+// TODO: 2021/09/20
+fun String.parse(): List<Token> {
+	val semiTokens = this.toUnicode().toCharArray().map { parseCharacter(it) }.filterNot { it == SymbolToken.WHITESPACE }
+	val tokens = toReversePolishNotation(ArrayDeque(semiTokens))
+	return tokens
 }
 
-data class PredicateFmlToken(val predicate: PredicateToken, val vars: List<VarToken>): Token {
-	constructor(predicate: PredicateToken) : this(predicate, listOf())
+fun toReversePolishNotation(tokens: ArrayDeque<SemiToken>): List<Token> {
+	val output: MutableList<Token> = mutableListOf()
+	val stack = ArrayDeque<Token>()
+	while (tokens.isNotEmpty()) {
+		when (tokens[0]) {
+			is PreDefinedAtomFml			-> output.add		(tokens.removeFirst() as Token)
+			is PredicateFml					-> output.add 		(tokens.removeFirst() as Token)
+			SymbolToken.LEFT_PARENTHESIS	-> stack.addFirst	(tokens.removeFirst() as Token)
+			SymbolToken.RIGHT_PARENTHESIS -> {
+				while (stack.isNotEmpty()) {
+					if (stack.first() != SymbolToken.LEFT_PARENTHESIS) {
+						output.add(stack.removeFirst())
+					} else {
+						stack.removeFirst()
+						tokens.removeFirst()
+						break
+					}
+				}
+				// need error with parenthesis
+			}
+			is Quantifier -> {
+				if (tokens.size >= 3 && tokens[1] is Var && tokens[2] == SymbolToken.COMMA) {
+					val quantifierWithVar = QuantifierWithVar(tokens.removeFirst() as Quantifier, tokens.removeFirst() as Var)
+					tokens.removeFirst() // COMMA
+					tokens.addFirst(quantifierWithVar)
+				} else {
+					println("量化子の後には変数とコンマが必要です")
+					break
+				}
+			}
+			is Predicate -> {
+				val predicate = tokens.removeFirst() as Predicate
+				val vars = mutableListOf<Var>()
+				while (tokens.isNotEmpty() && tokens[0] is Var) {
+					vars.add(tokens.removeFirst() as Var)
+				}
+				tokens.addFirst(PredicateFml(predicate.id, vars))
+			}
+			is OperatorToken -> {
+				while (stack.isNotEmpty()
+					&& stack[0] is OperatorToken
+					&& (tokens[0] as OperatorToken).precedence < (stack[0] as OperatorToken).precedence) {
+					output.add(stack.removeFirst())
+				}
+				stack.addFirst(tokens.removeFirst() as Token)
+			}
+			else -> {
+				println("わいのミス") /* そのうち消す */
+				println(tokens[0])
+				tokens.removeFirst()
+			}
+		}
+	}
+	output.addAll(stack)
+	return output
 }
 
-// TODO: 2021/09/19
-/*
-fun getPredicates(tokens: List<Token>): List<PredicateToken> {
-
-}
-
-fun parse(str: String): Formula {
-	val tokens = str.toCharArray().map { parseCharacter(it) }
-}
-*/
-
-fun parseCharacter(chr: Char): Token = when {
+fun parseCharacter(chr: Char): SemiToken = when {
 	chr in SymbolToken			.values().map{it.id} -> SymbolToken			.values().find{it.id == chr}!!
-	chr in ConnectiveToken		.values().map{it.id} -> ConnectiveToken		.values().find{it.id == chr}!!
-	chr in PreDefinedAtomToken	.values().map{it.id} -> PreDefinedAtomToken	.values().find{it.id == chr}!!
-	chr in QuantifierToken		.values().map{it.id} -> QuantifierToken		.values().find{it.id == chr}!!
-	chr.isLowerCase()								 -> VarToken(chr)
-	chr.isUpperCase() 								 -> PredicateToken(chr)
+	chr in UnaryConnective		.values().map{it.id} -> UnaryConnective		.values().find{it.id == chr}!!
+	chr in BinaryConnective		.values().map{it.id} -> BinaryConnective	.values().find{it.id == chr}!!
+	chr in PreDefinedAtomFml	.values().map{it.id} -> PreDefinedAtomFml	.values().find{it.id == chr}!!
+	chr in Quantifier			.values().map{it.id} -> Quantifier			.values().find{it.id == chr}!!
+	chr.isLowerCase()								 -> Var(chr)
+	chr.isUpperCase() 								 -> Predicate(chr)
 	else 											 -> SymbolToken.WHITESPACE
 }
+
+fun String.toUnicode(): String = this
+	.replace("not", "¬")
+	.replace("imply", "→")
+	.replace("and", "∧")
+	.replace("or", "∨")
+	.replace("iff", "↔")
+	.replace("all", "∀")
+	.replace("exists", "∃")
