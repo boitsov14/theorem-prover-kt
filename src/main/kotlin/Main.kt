@@ -24,8 +24,8 @@ fun main() {
 
 	val goals = goals1
 
-	val fmlStr = "P and all x, Q x"
-	fmlStr.parse().forEach { print(it) }
+	val fmlStrings = listOf("P and all x, Q x", "all x, Q x and P", "(all x, Q x) and P", "false", "not false")
+	fmlStrings.forEach { println(Goal(it.parse()!!)) }
 	println()
 
 	while (goals.isNotEmpty()) {
@@ -64,12 +64,14 @@ fun main() {
 
 }
 
+// Formula = AtomFml | ConnectiveFml | QuantifiedFml
 interface Formula {
 	override fun toString(): String
 	fun freeVariables(): Set<Var>
 	fun replace(old: Var, new: Var): Formula
 }
 
+// AtomFml = PreDefinedAtomFml | PredicateFml
 interface AtomFml: Formula, Token {}
 
 enum class PreDefinedAtomFml(private val str: String, val id: Char): AtomFml {
@@ -91,11 +93,13 @@ data class PredicateFml(val predicate: Char, val vars: List<Var>): AtomFml {
 	override fun replace(old: Var, new: Var) = PredicateFml(predicate, vars.map { if (it == old) new else it })
 }
 
+// Connective = BinaryConnective | UnaryConnective
 interface Connective: OperatorToken {
 	val id: Char
 	override fun toString(): String
 }
 
+// ConnectiveFml = BinaryConnectiveFml | UnaryConnectiveFml
 interface ConnectiveFml: Formula {
 	val connective: Connective
 }
@@ -132,7 +136,7 @@ enum class Quantifier(val id: Char): SemiToken {
 }
 
 data class QuantifiedFml(val quantifier: Quantifier, val bddVar: Var, val formula: Formula): Formula {
-	override fun toString() = "$quantifier $bddVar, $formula"
+	override fun toString() = "($quantifier $bddVar, $formula)"
 	override fun freeVariables() = formula.freeVariables().filterNot { it == bddVar }.toSet()
 	override fun replace(old: Var, new: Var) = QuantifiedFml(quantifier, bddVar, formula.replace(old, new))
 }
@@ -162,6 +166,7 @@ fun printGoals(goals: Goals) {
 	}
 }
 
+// ITactic = Tactic0 | Tactic1 | Tactic2
 interface ITactic {
 	val id: String
 	override fun toString(): String

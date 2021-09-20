@@ -1,4 +1,4 @@
-// SemiToken = Token | Quantifier | Var | Predicate
+// SemiToken = Token | Var | Quantifier | Predicate
 interface  SemiToken {}
 
 // Token = AtomFml | OperatorToken | SymbolToken
@@ -23,11 +23,10 @@ data class QuantifierWithVar(val quantifier: Quantifier, val bddVar: Var): Opera
 	override val precedence = -1
 }
 
-// TODO: 2021/09/20
-fun String.parse(): List<Token> {
+fun String.parse(): Formula? {
 	val semiTokens = this.toUnicode().toCharArray().map { parseCharacter(it) }.filterNot { it == SymbolToken.WHITESPACE }
 	val tokens = toReversePolishNotation(ArrayDeque(semiTokens))
-	return tokens
+	return toFormula(tokens)
 }
 
 fun toReversePolishNotation(tokens: ArrayDeque<SemiToken>): List<Token> {
@@ -48,7 +47,8 @@ fun toReversePolishNotation(tokens: ArrayDeque<SemiToken>): List<Token> {
 						break
 					}
 				}
-				// need error with parenthesis
+				// TODO: 2021/09/20
+				// need error with parenthesis?
 			}
 			is Quantifier -> {
 				if (tokens.size >= 3 && tokens[1] is Var && tokens[2] == SymbolToken.COMMA) {
@@ -58,6 +58,8 @@ fun toReversePolishNotation(tokens: ArrayDeque<SemiToken>): List<Token> {
 				} else {
 					println("量化子の後には変数とコンマが必要です")
 					break
+					// TODO: 2021/09/20
+					// need test
 				}
 			}
 			is Predicate -> {
@@ -68,7 +70,7 @@ fun toReversePolishNotation(tokens: ArrayDeque<SemiToken>): List<Token> {
 				}
 				tokens.addFirst(PredicateFml(predicate.id, vars))
 			}
-			is OperatorToken -> {
+			is BinaryConnective -> {
 				while (stack.isNotEmpty()
 					&& stack[0] is OperatorToken
 					&& (tokens[0] as OperatorToken).precedence < (stack[0] as OperatorToken).precedence) {
@@ -76,8 +78,12 @@ fun toReversePolishNotation(tokens: ArrayDeque<SemiToken>): List<Token> {
 				}
 				stack.addFirst(tokens.removeFirst() as Token)
 			}
+			is UnaryConnective		-> stack.addFirst(tokens.removeFirst() as Token)
+			is QuantifierWithVar	-> stack.addFirst(tokens.removeFirst() as Token)
 			else -> {
-				println("わいのミス") /* そのうち消す */
+				// TODO: 2021/09/20
+				// そのうち消す
+				println("わいのミス")
 				println(tokens[0])
 				tokens.removeFirst()
 			}
@@ -85,6 +91,61 @@ fun toReversePolishNotation(tokens: ArrayDeque<SemiToken>): List<Token> {
 	}
 	output.addAll(stack)
 	return output
+}
+
+fun toFormula(tokens: List<Token>): Formula? {
+	val output = mutableListOf<Formula>()
+	for (token in tokens) {
+		when(token) {
+			is AtomFml -> output.add(token)
+			is UnaryConnective -> {
+				if (output.isEmpty()) {
+					println("syntax error in UnaryConnective")
+					break
+					// TODO: 2021/09/20
+					// need test
+				}
+				val newFml = UnaryConnectiveFml(token, output.removeLast())
+				output.add(newFml)
+			}
+			is QuantifierWithVar -> {
+				if (output.isEmpty()) {
+					println("syntax error with QuantifierWithVar")
+					break
+					// TODO: 2021/09/20
+					// need test
+				}
+				val newFml = QuantifiedFml(token.quantifier, token.bddVar, output.removeLast())
+				output.add(newFml)
+			}
+			is BinaryConnective -> {
+				if (output.size < 2){
+					println("syntax error with BinaryConnective")
+					break
+					// TODO: 2021/09/20
+					// need test
+				}
+				val rightFml	= output.removeLast()
+				val leftFml		= output.removeLast()
+				val newFml = BinaryConnectiveFml(token, leftFml, rightFml)
+				output.add(newFml)
+			}
+			else -> {
+				println("syntax error with parenthesis")
+				break
+				// TODO: 2021/09/20
+				// need test
+			}
+		}
+	}
+	return if (output.size == 1) {
+		output[0]
+	} else {
+		println("syntax error ???")
+		null
+		// TODO: 2021/09/20
+		// need test
+	}
 }
 
 fun parseCharacter(chr: Char): SemiToken = when {
@@ -99,6 +160,7 @@ fun parseCharacter(chr: Char): SemiToken = when {
 }
 
 fun String.toUnicode(): String = this
+	.replace("false", "⊥")
 	.replace("not", "¬")
 	.replace("imply", "→")
 	.replace("and", "∧")
