@@ -1,28 +1,13 @@
 fun main() {
-	val varOfX = Var('x')
-	val varOfY = Var('y')
-	val predicateFmlOfPxy = PredicateFml('P', listOf(varOfX, varOfY))
-	val allyPredicateFmlOfPxy = QuantifiedFml(Quantifier.FOR_ALL, varOfY, predicateFmlOfPxy)
-	val allxAllyPredicateFmlOfPxy = QuantifiedFml(Quantifier.FOR_ALL, varOfX, allyPredicateFmlOfPxy)
-	val goalOfAllxAllyPredicateFmlOfPxy = Goal(allxAllyPredicateFmlOfPxy)
-	val goals0 = mutableListOf(goalOfAllxAllyPredicateFmlOfPxy)
+	val goals0 = mutableListOf(Goal("all x, all y, P x y".parse()!!))
 
-	val propP = PredicateFml('P', listOf())
-	val propQ = PredicateFml('Q', listOf())
-	val propPAndQ = BinaryConnectiveFml(BinaryConnective.AND, propP, propQ)
-	val propQAndP = BinaryConnectiveFml(BinaryConnective.AND, propQ, propP)
-	val propOfAnd = BinaryConnectiveFml(BinaryConnective.IMPLY, propPAndQ, propQAndP)
-	val goalOfPropOfAnd = Goal(propOfAnd)
-	val goalOfPropOfAnd0 = Goal(mutableListOf(propP, propQ), propPAndQ)
-	val goals1 = mutableListOf(goalOfPropOfAnd)
+	val goals1 = mutableListOf(Goal("P and Q to Q and P".parse()!!))
 
-	val propPAOrQ = BinaryConnectiveFml(BinaryConnective.OR, propP, propQ)
-	val propQOrP = BinaryConnectiveFml(BinaryConnective.OR, propQ, propP)
-	val propOfOr = BinaryConnectiveFml(BinaryConnective.IMPLY, propPAOrQ, propQOrP)
-	val goalOfPropOfOr = Goal(propOfOr)
-	val goals2 = mutableListOf(goalOfPropOfOr)
+	val goals2 = mutableListOf(Goal("P or Q to Q or P".parse()!!))
 
-	val goals = goals1
+	val goals3 = mutableListOf(Goal("(ex x, P x) to ex y, P y".parse()!!))
+
+	val goals = goals3
 
 	val fmlStrings = listOf("P and all x, Q x", "all x, Q x and P", "(all x, Q x) and P", "false", "not false")
 	fmlStrings.forEach { println(Goal(it.parse()!!)) }
@@ -69,6 +54,8 @@ interface Formula {
 	override fun toString(): String
 	fun freeVariables(): Set<Var>
 	fun replace(old: Var, new: Var): Formula
+	// fun bddVariables(): List<Var>
+	// TODO: 2021/09/21
 }
 
 // AtomFml = PreDefinedAtomFml | PredicateFml
@@ -139,6 +126,15 @@ data class QuantifiedFml(val quantifier: Quantifier, val bddVar: Var, val formul
 	override fun toString() = "($quantifier $bddVar, $formula)"
 	override fun freeVariables() = formula.freeVariables().filterNot { it == bddVar }.toSet()
 	override fun replace(old: Var, new: Var) = QuantifiedFml(quantifier, bddVar, formula.replace(old, new))
+	override fun equals(other: Any?): Boolean {
+		if (this === other) return true
+		if (javaClass != other?.javaClass) return false
+		other as QuantifiedFml
+		if (quantifier != other.quantifier) return false
+		if (formula == other.formula.replace(other.bddVar, bddVar)) return true
+		return false
+	}
+	override fun hashCode(): Int = quantifier.hashCode()
 }
 
 data class Goal(var fixedVars: MutableList<Var>, var assumptions: MutableList<Formula>, var conclusion: Formula) {
@@ -284,6 +280,9 @@ enum class Tactic1(override val id: String): ITactic {
 					val toLeft  = BinaryConnectiveFml(BinaryConnective.IMPLY, assumption.rightFml, assumption.leftFml)
 					goal.assumptions.add(toRight)
 					goal.assumptions.add(toLeft)
+				} else if (assumption is QuantifiedFml && assumption.quantifier == Quantifier.THERE_EXISTS) {
+					goal.assumptions.add(assumption.formula)
+					goal.fixedVars.add(assumption.bddVar)
 				}
 			}
 			REVERT -> {
@@ -315,8 +314,12 @@ enum class Tactic1(override val id: String): ITactic {
 		APPLY   -> goal.assumptions
 			.filter {   (it is BinaryConnectiveFml  && it.connective == BinaryConnective.IMPLY  && it.rightFml  == goal.conclusion)
 					||  (it is UnaryConnectiveFml   && it.connective == UnaryConnective.NOT     && goal.conclusion == falseFormula) }
-		CASES   -> goal.assumptions
-			.filter { it is BinaryConnectiveFml && it.connective in setOf(BinaryConnective.AND, BinaryConnective.OR, BinaryConnective.IFF) }
+		CASES   -> listOf(
+			goal.assumptions
+				.filter { it is BinaryConnectiveFml && it.connective in setOf(BinaryConnective.AND, BinaryConnective.OR, BinaryConnective.IFF) }
+			, goal.assumptions
+				.filter { it is QuantifiedFml && it.quantifier == Quantifier.THERE_EXISTS })
+			.flatten()
 		REVERT -> goal.assumptions
 		USE -> listOf()
 	}

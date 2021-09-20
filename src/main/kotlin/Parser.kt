@@ -162,9 +162,9 @@ fun parseCharacter(chr: Char): SemiToken = when {
 fun String.toUnicode(): String = this
 	.replace("false", "⊥")
 	.replace("not", "¬")
-	.replace("imply", "→")
+	.replace("to", "→")
 	.replace("and", "∧")
 	.replace("or", "∨")
 	.replace("iff", "↔")
 	.replace("all", "∀")
-	.replace("exists", "∃")
+	.replace("ex", "∃")
