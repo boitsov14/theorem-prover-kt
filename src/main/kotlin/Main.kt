@@ -41,6 +41,9 @@ fun main() {
 					}
 				}
 			}
+			is Tactic2 -> {
+				// TODO: 2021/09/21
+			}
 		}
 	}
 	println("--------------------------------------")
@@ -141,7 +144,7 @@ data class Goal(var fixedVars: MutableList<Var>, var assumptions: MutableList<Fo
 	constructor(assumptions: MutableList<Formula>, conclusion: Formula) : this(mutableListOf(), assumptions, conclusion)
 	constructor(conclusion: Formula) : this(mutableListOf(), conclusion)
 	override fun toString() =
-		((if (fixedVars.isNotEmpty()) fixedVars.joinToString(postfix = " : Fixed, ") else "")
+		((if (fixedVars.isNotEmpty()) fixedVars.joinToString(separator = " ", postfix = " : Fixed, ") else "")
 			+ assumptions.joinToString { "$it".removeSurrounding("(", ")") }
 			+ (if (assumptions.isNotEmpty()) " " else "")
 			+ "⊢ "
@@ -156,7 +159,7 @@ typealias Goals = MutableList<Goal>
 
 fun printGoals(goals: Goals) {
 	for (goal in goals) {
-		if (goal.fixedVars.isNotEmpty()) println(goal.fixedVars.joinToString(postfix = " : Fixed"))
+		if (goal.fixedVars.isNotEmpty()) println(goal.fixedVars.joinToString(separator = " ", postfix = " : Fixed"))
 		goal.assumptions.forEach { println("$it".removeSurrounding("(", ")")) }
 		println("⊢ " + "${goal.conclusion}".removeSurrounding("(", ")"))
 	}
@@ -337,13 +340,40 @@ enum class Tactic1(override val id: String): ITactic {
 enum class Tactic2(override val id: String): ITactic {
 	HAVE("have");
 	override fun toString(): String = id
-	override fun canApply(goal: Goal): Boolean {
-		TODO("Not yet implemented")
+	override fun canApply(goal: Goal): Boolean = possibleAssumptionsPairs(goal).isNotEmpty() || possibleAssumptionsWithFixedVar(goal).isNotEmpty()
+	fun apply(goals: Goals, assumptionApply: Formula, assumptionApplied: Formula) {
+		val goal = goals[0]
+		when(assumptionApply) {
+			// IMPLY
+			is BinaryConnectiveFml -> goal.assumptions.add(assumptionApply.rightFml)
+			// NOT
+			is UnaryConnectiveFml -> goal.assumptions.add(assumptionApply.formula)
+		}
 	}
-	fun apply(goals: Goals, assumption: Formula) {
-		TODO("Not yet implemented")
+	fun apply(goals: Goals, assumption: Formula, fixedVar: Var) {
+		val goal = goals[0]
+		if (assumption is QuantifiedFml) {
+			goal.assumptions.add(assumption.formula.replace(assumption.bddVar, fixedVar))
+		}
 	}
-	fun possibleAssumptions(goal: Goal): Set<Formula> {
-		TODO("Not yet implemented")
+	fun possibleAssumptionsPairs(goal: Goal): Set<Pair<Formula, Formula>> {
+		val result = mutableSetOf<Pair<Formula, Formula>>()
+		for (assumptionApply in goal.assumptions) {
+			for (assumptionApplied in goal.assumptions) {
+				if (assumptionApply is BinaryConnectiveFml
+					&& assumptionApply.connective == BinaryConnective.IMPLY
+					&& assumptionApply.leftFml == assumptionApplied) {
+					result.add(Pair(assumptionApply, assumptionApplied))
+				} else if (assumptionApply is UnaryConnectiveFml
+					&& assumptionApply.connective == UnaryConnective.NOT
+					&& assumptionApply.formula == assumptionApplied) {
+					result.add(Pair(assumptionApply, assumptionApplied))
+				}
+			}
+		}
+		return result
 	}
+	fun possibleAssumptionsWithFixedVar(goal: Goal): Set<Formula> = goal.assumptions
+		.filter { it is QuantifiedFml && it.quantifier == Quantifier.FOR_ALL }
+		.toSet()
 }
