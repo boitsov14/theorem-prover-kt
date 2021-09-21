@@ -7,7 +7,11 @@ fun main() {
 
 	val goals3 = mutableListOf(Goal("(ex x, P x) to ex y, P y".parse()!!))
 
-	val goals = goals3
+	val goals4 = mutableListOf(Goal("(ex x, P x) to all x, P x".parse()!!))
+
+	val goals5 = mutableListOf(Goal("(ex x, P x) to (ex x, Q x) to (all x, R x)".parse()!!))
+
+	val goals = goals5
 
 	val fmlStrings = listOf("P and all x, Q x", "all x, Q x and P", "(all x, Q x) and P", "false", "not false")
 	fmlStrings.forEach { println(Goal(it.parse()!!)) }
@@ -220,8 +224,24 @@ enum class Tactic0(override val id: String): ITactic {
 				}
 				// FOR_ALL
 				is QuantifiedFml -> {
-					goal.fixedVars.add(conclusion.bddVar)
-					goal.conclusion = conclusion.formula
+					if (conclusion.bddVar !in goal.fixedVars) {
+						goal.fixedVars.add(conclusion.bddVar)
+						goal.conclusion = conclusion.formula
+					} else {
+						// Suppose that the goal is the form of "all x, P x" but "x" is already in bddVars.
+						// "x" must be arbitrary, so change "x" to "x_1" and "P x" to "P x_1".
+						var n = 1
+						while (true) {
+							val newFixedVar = Var(conclusion.bddVar.id + "_$n")
+							if (newFixedVar !in goal.fixedVars) {
+								goal.fixedVars.add(newFixedVar)
+								goal.conclusion = conclusion.formula.replace(conclusion.bddVar, newFixedVar)
+								break
+							} else {
+								n++
+							}
+						}
+					}
 				}
 			}
 			SPLIT -> if (conclusion is BinaryConnectiveFml && conclusion.connective == BinaryConnective.AND) {
@@ -293,8 +313,24 @@ enum class Tactic1(override val id: String): ITactic {
 					goal.assumptions.add(toRight)
 					goal.assumptions.add(toLeft)
 				} else if (assumption is QuantifiedFml && assumption.quantifier == Quantifier.THERE_EXISTS) {
-					goal.assumptions.add(assumption.formula)
-					goal.fixedVars.add(assumption.bddVar)
+					if (assumption.bddVar !in goal.fixedVars) {
+						goal.assumptions.add(assumption.formula)
+						goal.fixedVars.add(assumption.bddVar)
+					} else {
+						// Suppose that the given assumption is the form of "ex x, P x" but "x" is already in bddVars.
+						// "x" must be arbitrary, so change "x" to "x_1" and "P x" to "P x_1".
+						var n = 1
+						while (true) {
+							val newFixedVar = Var(assumption.bddVar.id + "_$n")
+							if (newFixedVar !in goal.fixedVars) {
+								goal.assumptions.add(assumption.formula.replace(assumption.bddVar, newFixedVar))
+								goal.fixedVars.add(newFixedVar)
+								break
+							} else {
+								n++
+							}
+						}
+					}
 				}
 			}
 			REVERT -> {
