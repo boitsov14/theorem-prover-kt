@@ -27,17 +27,17 @@ fun main() {
 				println(tactic.possibleFixedVars(goal).joinToString())
 				print("Possible formulas are  >>> ")
 				println(tactic.possibleAssumptions(goal).joinToString())
-				print("Select an assumption? (y/n) >>> ")
-				when (readLine()) {
-					"y" -> {
-						print("Select an assumption >>> ")
-						val assumption = tactic.possibleAssumptions(goal)[readLine()!!.toInt()]
-						tactic.apply(goals, assumption)
-					}
-					"n" -> {
-						print("Select a variable >>> ")
-						val fixedVar = tactic.possibleFixedVars(goal)[readLine()!!.toInt()]
+				print("Select an variable or an assumption >>> ")
+				val inputList = readLine()!!.split(" ").map(String::toInt)
+				val input = inputList[1]
+				when (inputList[0]) {
+					0 -> {
+						val fixedVar = tactic.possibleFixedVars(goal)[input]
 						tactic.apply(goals, fixedVar)
+					}
+					1 -> {
+						val assumption = tactic.possibleAssumptions(goal)[input]
+						tactic.apply(goals, assumption)
 					}
 				}
 			}
