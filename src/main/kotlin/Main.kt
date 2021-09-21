@@ -1,19 +1,17 @@
 fun main() {
 	val goals0 = mutableListOf(Goal("all x, all y, P x y".parse()!!))
-
 	val goals1 = mutableListOf(Goal("P and Q to Q and P".parse()!!))
-
 	val goals2 = mutableListOf(Goal("P or Q to Q or P".parse()!!))
-
 	val goals3 = mutableListOf(Goal("(ex x, P x) to ex y, P y".parse()!!))
-
 	val goals4 = mutableListOf(Goal("(ex x, P x) to all x, P x".parse()!!))
-
 	val goals5 = mutableListOf(Goal("(ex x, P x) to (ex x, Q x) to (all x, R x)".parse()!!))
+	val goals6 = mutableListOf(Goal("(all x, P x) to (ex x, P x)".parse()!!))
+	val goals7 = mutableListOf(Goal("P to (P to Q) to Q".parse()!!))
+	val goals8 = mutableListOf(Goal("P to not P to false".parse()!!))
 
-	val goals = goals5
+	val goals = goals8
 
-	val fmlStrings = listOf("P and all x, Q x", "all x, Q x and P", "(all x, Q x) and P", "false", "not false")
+	val fmlStrings = listOf("P and all x, Q x", "all x, Q x and P", "(all x, Q x) and P", "false", "not false", "all x, ex x, P x")
 	fmlStrings.forEach { println(Goal(it.parse()!!)) }
 	println()
 
@@ -31,7 +29,7 @@ fun main() {
 				println(tactic.possibleFixedVars(goal).joinToString())
 				print("Possible formulas are  >>> ")
 				println(tactic.possibleAssumptions(goal).joinToString())
-				print("Select an variable or an assumption >>> ")
+				print("Select an variable or an formula >>> ")
 				val inputList = readLine()!!.split(" ").map(String::toInt)
 				val input = inputList[1]
 				when (inputList[0]) {
@@ -46,7 +44,37 @@ fun main() {
 				}
 			}
 			is Tactic2 -> {
-				// TODO: 2021/09/21
+				print("Possible formulas are >>> ")
+				println(tactic.possibleAssumptionsPairs(goal).map { it.first }.distinct().joinToString()) // don't need distinct() in an app
+				print("Possible formulas are >>> ")
+				println(tactic.possibleAssumptionsWithFixedVar(goal).joinToString())
+				print("Select a formula >>> ")
+				val inputList = readLine()!!.split(" ").map(String::toInt)
+				val input = inputList[1]
+				when (inputList[0]) {
+					0 -> {
+						val assumptionApply = tactic.possibleAssumptionsPairs(goal).map { it.first }.distinct()[input]
+						print("Possible formulas are >>> ")
+						println(tactic.possibleAssumptionsPairs(goal).filter { it.first == assumptionApply }.map { it.second }.joinToString())
+						print("Select a formula >>> ")
+						val assumptionApplied = tactic.possibleAssumptionsPairs(goal).filter { it.first == assumptionApply }.map { it.second }[readLine()!!.toInt()]
+						tactic.apply(goals, assumptionApply, assumptionApplied)
+					}
+					1 -> {
+						val assumption = tactic.possibleAssumptionsWithFixedVar(goal)[input]
+						if (assumption !is QuantifiedFml) {break}
+						if (goal.fixedVars.isNotEmpty()) {
+							print("Possible fixed variables are >>> ")
+							println(goal.fixedVars.joinToString())
+							print("Select a fixed variable >>> ")
+							val fixedVar = goal.fixedVars[readLine()!!.toInt()]
+							tactic.apply(goals, assumption, fixedVar)
+						} else {
+							tactic.apply(goals, assumption, assumption.bddVar)
+							goals[0].fixedVars.add(assumption.bddVar)
+						}
+					}
+				}
 			}
 		}
 	}
@@ -162,11 +190,11 @@ data class Goal(var fixedVars: MutableList<Var>, var assumptions: MutableList<Fo
 			+ (if (assumptions.isNotEmpty()) " " else "")
 			+ "⊢ "
 			+ "$conclusion".removeSurrounding("(", ")"))
-	fun possibleTactics() = allTactic.filter { it.canApply(this) }
+	fun possibleTactics() = allTactics.filter { it.canApply(this) }
 	fun deepCopy(fixedVars: MutableList<Var> = this.fixedVars.toMutableList(), assumptions: MutableList<Formula> = this.assumptions.toMutableList(), conclusion: Formula = this.conclusion): Goal = Goal(fixedVars, assumptions, conclusion)
 }
 
-val allTactic: List<ITactic> = listOf(Tactic0.values().toList(), Tactic1.values().toList()).flatten()
+val allTactics: List<ITactic> = listOf(Tactic0.values().toList(), Tactic1.values().toList(), Tactic2.values().toList()).flatten()
 
 typealias Goals = MutableList<Goal>
 
@@ -358,6 +386,9 @@ enum class Tactic1(override val id: String): ITactic {
 		}
 
 	}
+
+	// TODO: 2021/09/22
+	// don't need to be a list but a set in an app.
 	fun possibleAssumptions(goal: Goal): List<Formula> = when(this) {
 		APPLY   -> goal.assumptions
 			.filter {   (it is BinaryConnectiveFml  && it.connective == BinaryConnective.IMPLY  && it.rightFml  == goal.conclusion)
@@ -392,7 +423,7 @@ enum class Tactic2(override val id: String): ITactic {
 			// IMPLY
 			is BinaryConnectiveFml -> goal.assumptions.add(assumptionApply.rightFml)
 			// NOT
-			is UnaryConnectiveFml -> goal.assumptions.add(assumptionApply.formula)
+			is UnaryConnectiveFml -> goal.assumptions.add(falseFormula)
 		}
 	}
 	fun apply(goals: Goals, assumption: Formula, fixedVar: Var) {
@@ -401,8 +432,8 @@ enum class Tactic2(override val id: String): ITactic {
 			goal.assumptions.add(assumption.formula.replace(assumption.bddVar, fixedVar))
 		}
 	}
-	fun possibleAssumptionsPairs(goal: Goal): Set<Pair<Formula, Formula>> {
-		val result = mutableSetOf<Pair<Formula, Formula>>()
+	fun possibleAssumptionsPairs(goal: Goal): List<Pair<Formula, Formula>> {
+		val result = mutableListOf<Pair<Formula, Formula>>()
 		for (assumptionApply in goal.assumptions) {
 			for (assumptionApplied in goal.assumptions) {
 				if (assumptionApply is BinaryConnectiveFml
@@ -418,7 +449,6 @@ enum class Tactic2(override val id: String): ITactic {
 		}
 		return result
 	}
-	fun possibleAssumptionsWithFixedVar(goal: Goal): Set<Formula> = goal.assumptions
+	fun possibleAssumptionsWithFixedVar(goal: Goal): List<Formula> = goal.assumptions
 		.filter { it is QuantifiedFml && it.quantifier == Quantifier.FOR_ALL }
-		.toSet()
 }
