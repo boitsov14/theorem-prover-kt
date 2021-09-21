@@ -55,10 +55,9 @@ fun main() {
 // Formula = AtomFml | ConnectiveFml | QuantifiedFml
 interface Formula {
 	override fun toString(): String
-	fun freeVariables(): Set<Var>
+	fun freeVars(): Set<Var>
+	fun bddVars() : Set<Var>
 	fun replace(old: Var, new: Var): Formula
-	// fun bddVariables(): List<Var>
-	// TODO: 2021/09/21
 }
 
 // AtomFml = PreDefinedAtomFml | PredicateFml
@@ -67,19 +66,21 @@ interface AtomFml: Formula, Token {}
 enum class PreDefinedAtomFml(private val str: String, val id: Char): AtomFml {
 	FALSE("false", '⊥');
 	override fun toString() = str
-	override fun freeVariables(): Set<Var> = setOf()
+	override fun freeVars() = setOf<Var>()
+	override fun bddVars()  = setOf<Var>()
 	override fun replace(old: Var, new: Var) = this
 }
 
 val falseFormula = PreDefinedAtomFml.FALSE
 
-data class Var(val id: Char): SemiToken {
-	override fun toString() = "$id"
+data class Var(val id: String): SemiToken {
+	override fun toString() = id
 }
 
 data class PredicateFml(val predicate: Char, val vars: List<Var>): AtomFml {
 	override fun toString() = "$predicate" + if (vars.isEmpty()) "" else vars.joinToString(prefix = " ")
-	override fun freeVariables() = vars.toSet()
+	override fun freeVars() = vars.toSet()
+	override fun bddVars()  = setOf<Var>()
 	override fun replace(old: Var, new: Var) = PredicateFml(predicate, vars.map { if (it == old) new else it })
 }
 
@@ -101,7 +102,8 @@ enum class UnaryConnective(override val id: Char, override val precedence: Int):
 
 data class UnaryConnectiveFml(override val connective: UnaryConnective, val formula: Formula): ConnectiveFml {
 	override fun toString() = "($connective$formula)"
-	override fun freeVariables() = formula.freeVariables()
+	override fun freeVars() = formula.freeVars()
+	override fun bddVars() = formula.bddVars()
 	override fun replace(old: Var, new: Var) = UnaryConnectiveFml(connective, formula.replace(old, new))
 }
 
@@ -115,7 +117,8 @@ enum class BinaryConnective(override val id: Char, override val precedence: Int)
 
 data class BinaryConnectiveFml(override val connective: BinaryConnective, val leftFml: Formula, val rightFml: Formula): ConnectiveFml {
 	override fun toString() = "($leftFml $connective $rightFml)"
-	override fun freeVariables() = leftFml.freeVariables().union(rightFml.freeVariables()).toSet()
+	override fun freeVars() = leftFml.freeVars() + rightFml.freeVars()
+	override fun bddVars()  = leftFml.bddVars()  + leftFml.bddVars()
 	override fun replace(old: Var, new: Var) = BinaryConnectiveFml(connective, leftFml.replace(old, new), rightFml.replace(old, new))
 }
 
@@ -126,8 +129,14 @@ enum class Quantifier(val id: Char): SemiToken {
 }
 
 data class QuantifiedFml(val quantifier: Quantifier, val bddVar: Var, val formula: Formula): Formula {
+	init {
+		if (bddVar in formula.bddVars()) {
+			println("束縛変数がかぶっています．")
+		}
+	}
 	override fun toString() = "($quantifier $bddVar, $formula)"
-	override fun freeVariables() = formula.freeVariables().filterNot { it == bddVar }.toSet()
+	override fun freeVars() = formula.freeVars().filterNot { it == bddVar }.toSet()
+	override fun bddVars()  = formula.bddVars() + setOf(bddVar)
 	override fun replace(old: Var, new: Var) = QuantifiedFml(quantifier, bddVar, formula.replace(old, new))
 	override fun equals(other: Any?): Boolean {
 		if (this === other) return true
@@ -328,7 +337,7 @@ enum class Tactic1(override val id: String): ITactic {
 	}
 	fun possibleFixedVars(goal: Goal): List<Var> = when(this) {
 		REVERT -> {
-			val fixedVarsInAssumptions = goal.assumptions.map { it.freeVariables() }.flatten().toSet()
+			val fixedVarsInAssumptions = goal.assumptions.map { it.freeVars() }.flatten().toSet()
 			goal.fixedVars.filterNot { fixedVarsInAssumptions.contains(it) }
 		}
 		USE -> goal.fixedVars

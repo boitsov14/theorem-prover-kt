@@ -154,7 +154,7 @@ fun parseCharacter(chr: Char): SemiToken = when {
 	chr in BinaryConnective		.values().map{it.id} -> BinaryConnective	.values().find{it.id == chr}!!
 	chr in PreDefinedAtomFml	.values().map{it.id} -> PreDefinedAtomFml	.values().find{it.id == chr}!!
 	chr in Quantifier			.values().map{it.id} -> Quantifier			.values().find{it.id == chr}!!
-	chr.isLowerCase()								 -> Var(chr)
+	chr.isLowerCase()								 -> Var("$chr")
 	chr.isUpperCase() 								 -> Predicate(chr)
 	else 											 -> SymbolToken.WHITESPACE
 }
