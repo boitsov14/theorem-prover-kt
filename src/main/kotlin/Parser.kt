@@ -4,7 +4,7 @@ interface  SemiToken {}
 // Token = AtomFml | OperatorToken | SymbolToken
 interface Token: SemiToken {}
 
-// OperatorToken = Connective | QuantifierWithVar
+// OperatorToken = UnaryConnective | BinaryConnective | QuantifierWithVar
 interface OperatorToken: Token {
 	val precedence: Int
 }

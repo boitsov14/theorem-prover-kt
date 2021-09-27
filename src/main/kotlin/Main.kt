@@ -1,15 +1,17 @@
 fun main() {
-	val goals0 = listOf(Goal("all x, all y, P x y".parse()!!))
-	val goals1 = listOf(Goal("P and Q to Q and P".parse()!!))
-	val goals2 = listOf(Goal("P or Q to Q or P".parse()!!))
-	val goals3 = listOf(Goal("(ex x, P x) to ex y, P y".parse()!!))
-	val goals4 = listOf(Goal("(ex x, P x) to all x, P x".parse()!!))
-	val goals5 = listOf(Goal("(ex x, P x) to (ex x, Q x) to (all x, R x)".parse()!!))
-	val goals6 = listOf(Goal("(all x, P x) to (ex x, P x)".parse()!!))
-	val goals7 = listOf(Goal("P to (P to Q) to Q".parse()!!))
-	val goals8 = listOf(Goal("P to not P to false".parse()!!))
+	val variousGoals = listOf(
+	listOf(Goal("all x, all y, P x y".parse()!!)),
+	listOf(Goal("P and Q to Q and P".parse()!!)),
+	listOf(Goal("P or Q to Q or P".parse()!!)),
+	listOf(Goal("(ex x, P x) to ex y, P y".parse()!!)),
+	listOf(Goal("(ex x, P x) to all x, P x".parse()!!)),
+	listOf(Goal("(ex x, P x) to (ex x, Q x) to (all x, R x)".parse()!!)),
+	listOf(Goal("(all x, P x) to (ex x, P x)".parse()!!)),
+	listOf(Goal("P to (P to Q) to Q".parse()!!)),
+	listOf(Goal("P to not P to false".parse()!!))
+	)
 
-	var currentGoals = goals5
+	var currentGoals = variousGoals[5]
 
 	while (currentGoals.isNotEmpty()) {
 		println("--------------------------------------")
@@ -80,7 +82,7 @@ fun main() {
 
 }
 
-// Formula = AtomFml | ConnectiveFml | QuantifiedFml
+// Formula = AtomFml | BinaryConnectiveFml | UnaryConnectiveFml | QuantifiedFml
 interface Formula {
 	override fun toString(): String
 	fun freeVars(): Set<Var>
@@ -89,7 +91,7 @@ interface Formula {
 }
 
 // AtomFml = PreDefinedAtomFml | PredicateFml
-interface AtomFml: Formula, Token {}
+interface AtomFml: Formula, Token
 
 enum class PreDefinedAtomFml(private val str: String, val id: Char): AtomFml {
 	FALSE("false", '⊥');
@@ -112,30 +114,19 @@ data class PredicateFml(val predicate: Char, val vars: List<Var>): AtomFml {
 	override fun replace(old: Var, new: Var) = PredicateFml(predicate, vars.map { if (it == old) new else it })
 }
 
-// Connective = BinaryConnective | UnaryConnective
-interface Connective: OperatorToken {
-	val id: Char
-	override fun toString(): String
-}
-
-// ConnectiveFml = BinaryConnectiveFml | UnaryConnectiveFml
-interface ConnectiveFml: Formula {
-	val connective: Connective
-}
-
-enum class UnaryConnective(override val id: Char, override val precedence: Int): Connective {
+enum class UnaryConnective(val id: Char, override val precedence: Int): OperatorToken {
 	NOT('¬',4);
 	override fun toString() = "$id"
 }
 
-data class UnaryConnectiveFml(override val connective: UnaryConnective, val formula: Formula): ConnectiveFml {
+data class UnaryConnectiveFml(val connective: UnaryConnective, val formula: Formula): Formula {
 	override fun toString() = "($connective$formula)"
 	override fun freeVars() = formula.freeVars()
 	override fun bddVars() = formula.bddVars()
 	override fun replace(old: Var, new: Var) = UnaryConnectiveFml(connective, formula.replace(old, new))
 }
 
-enum class BinaryConnective(override val id: Char, override val precedence: Int): Connective {
+enum class BinaryConnective(val id: Char, override val precedence: Int): OperatorToken {
 	IMPLY('→', 1),
 	AND('∧', 3),
 	OR('∨', 2),
@@ -143,7 +134,7 @@ enum class BinaryConnective(override val id: Char, override val precedence: Int)
 	override fun toString() = "$id"
 }
 
-data class BinaryConnectiveFml(override val connective: BinaryConnective, val leftFml: Formula, val rightFml: Formula): ConnectiveFml {
+data class BinaryConnectiveFml(val connective: BinaryConnective, val leftFml: Formula, val rightFml: Formula): Formula {
 	override fun toString() = "($leftFml $connective $rightFml)"
 	override fun freeVars() = leftFml.freeVars() + rightFml.freeVars()
 	override fun bddVars()  = leftFml.bddVars()  + leftFml.bddVars()
@@ -224,10 +215,11 @@ enum class Tactic0(override val id: String): ITactic {
 		val conclusion = goal.conclusion
 		return when(this) {
 			ASSUMPTION			-> conclusion in goal.assumptions
-			INTRO				-> conclusion is ConnectiveFml && conclusion.connective in setOf(BinaryConnective.IMPLY, UnaryConnective.NOT)
+			INTRO				-> conclusion is BinaryConnectiveFml && conclusion.connective == BinaryConnective.IMPLY
+								|| conclusion is UnaryConnectiveFml && conclusion.connective == UnaryConnective.NOT
 								|| conclusion is QuantifiedFml && conclusion.quantifier == Quantifier.FOR_ALL
-			SPLIT				-> conclusion is ConnectiveFml && conclusion.connective in setOf(BinaryConnective.AND, BinaryConnective.IFF)
-			LEFT, RIGHT			-> conclusion is ConnectiveFml && conclusion.connective == BinaryConnective.OR
+			SPLIT				-> conclusion is BinaryConnectiveFml && conclusion.connective in setOf(BinaryConnective.AND, BinaryConnective.IFF)
+			LEFT, RIGHT			-> conclusion is BinaryConnectiveFml && conclusion.connective == BinaryConnective.OR
 			EXFALSO, BY_CONTRA	-> conclusion != falseFormula
 		}
 	}
