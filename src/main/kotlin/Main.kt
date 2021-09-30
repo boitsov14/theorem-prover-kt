@@ -11,7 +11,8 @@ fun main() {
 	listOf(Goal("P to not P to false".parse()!!))
 	)
 
-	var currentGoals = variousGoals[5]
+	print("Input a formula you want to prove >>> ")
+	var currentGoals = listOf(Goal(readLine()!!.parse()!!))
 
 	while (currentGoals.isNotEmpty()) {
 		println("--------------------------------------")
@@ -82,7 +83,7 @@ fun main() {
 
 }
 
-// Formula = AtomFml | BinaryConnectiveFml | UnaryConnectiveFml | QuantifiedFml
+// Formula = PreDefinedAtomFml | PredicateFml | BinaryConnectiveFml | UnaryConnectiveFml | QuantifiedFml
 interface Formula {
 	override fun toString(): String
 	fun freeVars(): Set<Var>
@@ -90,10 +91,7 @@ interface Formula {
 	fun replace(old: Var, new: Var): Formula
 }
 
-// AtomFml = PreDefinedAtomFml | PredicateFml
-interface AtomFml: Formula, Token
-
-enum class PreDefinedAtomFml(private val str: String, val id: Char): AtomFml {
+enum class PreDefinedAtomFml(private val str: String, val id: Char): Formula, Token {
 	FALSE("false", '⊥');
 	override fun toString() = str
 	override fun freeVars() = setOf<Var>()
@@ -107,7 +105,7 @@ data class Var(val id: String): SemiToken {
 	override fun toString() = id
 }
 
-data class PredicateFml(val predicate: Char, val vars: List<Var>): AtomFml {
+data class PredicateFml(val predicate: Char, val vars: List<Var>): Formula, Token {
 	override fun toString() = "$predicate" + if (vars.isEmpty()) "" else vars.joinToString(prefix = " ")
 	override fun freeVars() = vars.toSet()
 	override fun bddVars()  = setOf<Var>()

@@ -1,7 +1,7 @@
 // SemiToken = Token | Var | Quantifier | Predicate
 interface  SemiToken {}
 
-// Token = AtomFml | OperatorToken | SymbolToken
+// Token = PreDefinedAtomFml | PredicateFml | OperatorToken | SymbolToken
 interface Token: SemiToken {}
 
 // OperatorToken = UnaryConnective | BinaryConnective | QuantifierWithVar
@@ -97,7 +97,8 @@ fun toFormula(tokens: List<Token>): Formula? {
 	val output = mutableListOf<Formula>()
 	for (token in tokens) {
 		when(token) {
-			is AtomFml -> output.add(token)
+			is PreDefinedAtomFml -> output.add(token)
+			is PredicateFml -> output.add(token)
 			is UnaryConnective -> {
 				if (output.isEmpty()) {
 					println("syntax error in UnaryConnective")
