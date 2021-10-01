@@ -17,60 +17,69 @@ fun main() {
 	while (currentGoals.isNotEmpty()) {
 		println("--------------------------------------")
 		printGoals(currentGoals)
-		val goal = currentGoals[0]
+		val currentGoal = currentGoals[0]
 		print("Possible tactics are >>> ")
-		println(goal.possibleTactics().joinToString())
+		println(currentGoal.possibleTactics().joinToString())
 		print("Select a tactic >>> ")
-		when (val tactic = goal.possibleTactics()[readLine()!!.toInt()]) {
+		when (val tactic = currentGoal.possibleTactics()[readLine()!!.toInt()]) {
 			is Tactic0 -> currentGoals = tactic.apply(currentGoals)
 			is Tactic1 -> {
 				print("Possible variables are >>> ")
-				println(tactic.possibleFixedVars(goal).joinToString())
+				println(tactic.possibleFixedVars(currentGoal).joinToString())
 				print("Possible formulas are  >>> ")
-				println(tactic.possibleAssumptions(goal).joinToString())
+				println(tactic.possibleAssumptions(currentGoal).joinToString())
 				print("Select an variable or an formula >>> ")
 				val inputList = readLine()!!.split(" ").map(String::toInt)
 				val input = inputList[1]
 				when (inputList[0]) {
 					0 -> {
-						val fixedVar = tactic.possibleFixedVars(goal)[input]
+						val fixedVar = tactic.possibleFixedVars(currentGoal)[input]
 						currentGoals = tactic.apply(currentGoals, fixedVar)
 					}
 					1 -> {
-						val assumption = tactic.possibleAssumptions(goal)[input]
+						val assumption = tactic.possibleAssumptions(currentGoal)[input]
 						currentGoals = tactic.apply(currentGoals, assumption)
 					}
 				}
 			}
 			is Tactic2 -> {
 				print("Possible formulas are >>> ")
-				println(tactic.possibleAssumptionsPairs(goal).map { it.first }.distinct().joinToString()) // don't need distinct() in an app
+				println(tactic.possibleAssumptionsPairs(currentGoal).map { it.first }.distinct().joinToString()) // don't need distinct() in an app
 				print("Possible formulas are >>> ")
-				println(tactic.possibleAssumptionsWithFixedVar(goal).joinToString())
+				println(tactic.possibleAssumptionsWithFixedVar(currentGoal).joinToString())
 				print("Select a formula >>> ")
 				val inputList = readLine()!!.split(" ").map(String::toInt)
 				val input = inputList[1]
 				when (inputList[0]) {
 					0 -> {
-						val assumptionApply = tactic.possibleAssumptionsPairs(goal).map { it.first }.distinct()[input]
+						val assumptionApply = tactic.possibleAssumptionsPairs(currentGoal).map { it.first }.distinct()[input]
 						print("Possible formulas are >>> ")
-						println(tactic.possibleAssumptionsPairs(goal).filter { it.first == assumptionApply }.map { it.second }.joinToString())
+						println(tactic.possibleAssumptionsPairs(currentGoal).filter { it.first == assumptionApply }.map { it.second }.joinToString())
 						print("Select a formula >>> ")
-						val assumptionApplied = tactic.possibleAssumptionsPairs(goal).filter { it.first == assumptionApply }.map { it.second }[readLine()!!.toInt()]
+						val assumptionApplied = tactic.possibleAssumptionsPairs(currentGoal).filter { it.first == assumptionApply }.map { it.second }[readLine()!!.toInt()]
 						currentGoals = tactic.apply(currentGoals, assumptionApply, assumptionApplied)
 					}
 					1 -> {
-						val assumption = tactic.possibleAssumptionsWithFixedVar(goal)[input]
+						val assumption = tactic.possibleAssumptionsWithFixedVar(currentGoal)[input]
 						if (assumption !is Formula.QuantifiedFml) {break}
-						if (goal.fixedVars.isNotEmpty()) {
+						if (assumption.bddVar !in currentGoal.fixedVars) {
+							val tempCurrentGoals = currentGoals.replaceFirstGoal(currentGoal.copy(fixedVars = currentGoal.fixedVars + assumption.bddVar))
+							val tempCurrentGoal = tempCurrentGoals[0]
 							print("Possible fixed variables are >>> ")
-							println(goal.fixedVars.joinToString())
+							println(tempCurrentGoal.fixedVars.joinToString())
 							print("Select a fixed variable >>> ")
-							val fixedVar = goal.fixedVars[readLine()!!.toInt()]
-							currentGoals = tactic.apply(currentGoals, assumption, fixedVar)
+							val fixedVar = tempCurrentGoal.fixedVars[readLine()!!.toInt()]
+							currentGoals = if (fixedVar != assumption.bddVar) {
+								tactic.apply(currentGoals, assumption, fixedVar)
+							} else {
+								tactic.apply(tempCurrentGoals, assumption, fixedVar)
+							}
 						} else {
-							currentGoals = tactic.apply(currentGoals, assumption, assumption.bddVar)
-							currentGoals = currentGoals.replaceFirstGoal(currentGoals[0].copy(fixedVars = currentGoals[0].fixedVars + assumption.bddVar))
+							print("Possible fixed variables are >>> ")
+							println(currentGoal.fixedVars.joinToString())
+							print("Select a fixed variable >>> ")
+							val fixedVar = currentGoal.fixedVars[readLine()!!.toInt()]
+							currentGoals = tactic.apply(currentGoals, assumption, fixedVar)
 						}
 					}
 				}
