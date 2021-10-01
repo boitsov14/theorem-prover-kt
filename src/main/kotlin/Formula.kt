@@ -97,4 +97,4 @@ val allTactics: List<ITactic> = listOf(Tactic0.values().toList(), Tactic1.values
 
 typealias Goals = List<Goal>
 
-fun Goals.getNewGoals(vararg newGoals: Goal): Goals = newGoals.toList() + this.drop(1)
+fun Goals.replaceFirstGoal(vararg newFirstGoals: Goal): Goals = newFirstGoals.toList() + this.drop(1)

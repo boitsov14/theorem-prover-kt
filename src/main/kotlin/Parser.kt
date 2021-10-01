@@ -116,6 +116,8 @@ fun toFormula(tokens: List<Token>): Formula? {
 					// TODO: 2021/09/20
 					// need test
 				}
+				// TODO: 2021/10/01 ここで束縛変数に被りがないかどうかチェック
+				// if (bddVar in formula.bddVars()) { println("束縛変数がかぶっています．") }
 				val newFml = QuantifiedFml(token.quantifier, token.bddVar, output.removeLast())
 				output.add(newFml)
 			}

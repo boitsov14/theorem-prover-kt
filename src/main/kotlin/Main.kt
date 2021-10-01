@@ -70,7 +70,7 @@ fun main() {
 							currentGoals = tactic.apply(currentGoals, assumption, fixedVar)
 						} else {
 							currentGoals = tactic.apply(currentGoals, assumption, assumption.bddVar)
-							currentGoals = currentGoals.getNewGoals(currentGoals[0].copy(fixedVars = currentGoals[0].fixedVars + assumption.bddVar))
+							currentGoals = currentGoals.replaceFirstGoal(currentGoals[0].copy(fixedVars = currentGoals[0].fixedVars + assumption.bddVar))
 						}
 					}
 				}
