@@ -22,21 +22,11 @@ enum class Quantifier(val id: Char): SemiToken {
 }
 
 sealed class Formula {
-	object False: Formula(), Token {
-		override fun toString(): String = "false"
-		const val id = '⊥'
-	}
-	data class PredicateFml(val predicate: Char, val vars: List<Var>): Formula(), Token {
-		override fun toString() = "$predicate" + (if (vars.isNotEmpty()) " " else "") + vars.joinToString()
-	}
-	data class UnaryConnectiveFml(val connective: UnaryConnective, val formula: Formula): Formula() {
-		override fun toString() = "($connective$formula)"
-	}
-	data class BinaryConnectiveFml(val connective: BinaryConnective, val leftFml: Formula, val rightFml: Formula): Formula() {
-		override fun toString() = "($leftFml $connective $rightFml)"
-	}
+	object False: Formula(), Token { const val id = '⊥' }
+	data class PredicateFml(val predicate: Char, val vars: List<Var>): Formula(), Token
+	data class UnaryConnectiveFml(val connective: UnaryConnective, val formula: Formula): Formula()
+	data class BinaryConnectiveFml(val connective: BinaryConnective, val leftFml: Formula, val rightFml: Formula): Formula()
 	data class QuantifiedFml(val quantifier: Quantifier, val bddVar: Var, val formula: Formula): Formula() {
-		override fun toString() = "($quantifier $bddVar, $formula)"
 		override fun equals(other: Any?): Boolean {
 			if (this === other) return true
 			if (javaClass != other?.javaClass) return false
@@ -46,6 +36,13 @@ sealed class Formula {
 			return false
 		}
 		override fun hashCode(): Int = quantifier.hashCode()
+	}
+	final override fun toString(): String = when(this) {
+		False -> "false"
+		is PredicateFml -> "$predicate" + (if (vars.isNotEmpty()) " " else "") + vars.joinToString()
+		is UnaryConnectiveFml -> "($connective$formula)"
+		is BinaryConnectiveFml -> "($leftFml $connective $rightFml)"
+		is QuantifiedFml -> "($quantifier $bddVar, $formula)"
 	}
 	fun freeVars(): Set<Var> = when(this) {
 		False -> setOf()
