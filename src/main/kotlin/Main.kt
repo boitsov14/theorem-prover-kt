@@ -61,7 +61,7 @@ fun main() {
 					}
 					1 -> {
 						val assumption = tactic.possibleAssumptionsWithFixedVar(goal)[input]
-						if (assumption !is QuantifiedFml) {break}
+						if (assumption !is Formula.QuantifiedFml) {break}
 						if (goal.fixedVars.isNotEmpty()) {
 							print("Possible fixed variables are >>> ")
 							println(goal.fixedVars.joinToString())

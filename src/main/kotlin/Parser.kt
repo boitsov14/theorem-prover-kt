@@ -1,10 +1,10 @@
-// SemiToken = Token | Var | Quantifier | Predicate
-interface  SemiToken {}
+// SemiToken = Token | Var | Quantifier | PredicateSemiToken
+interface  SemiToken
 
-// Token = PreDefinedAtomFml | PredicateFml | OperatorToken | SymbolToken
-interface Token: SemiToken {}
+// Token = Formula.False | Formula.PredicateFml | OperatorToken | SymbolToken
+interface Token: SemiToken
 
-// OperatorToken = UnaryConnective | BinaryConnective | QuantifierWithVar
+// OperatorToken = UnaryConnective | BinaryConnective | QuantifierWithVarOperatorToken
 interface OperatorToken: Token {
 	val precedence: Int
 }
@@ -16,10 +16,9 @@ enum class SymbolToken(val id: Char): Token {
 	WHITESPACE(' '),
 }
 
-data class Predicate(val id: Char): SemiToken {
-}
+data class PredicateSemiToken(val id: Char): SemiToken
 
-data class QuantifierWithVar(val quantifier: Quantifier, val bddVar: Var): OperatorToken {
+data class QuantifierWithVarOperatorToken(val quantifier: Quantifier, val bddVar: Var): OperatorToken {
 	override val precedence = -1
 }
 
@@ -34,8 +33,8 @@ fun toReversePolishNotation(tokens: ArrayDeque<SemiToken>): List<Token> {
 	val stack = ArrayDeque<Token>()
 	while (tokens.isNotEmpty()) {
 		when (tokens[0]) {
-			is PreDefinedAtomFml			-> output.add		(tokens.removeFirst() as Token)
-			is PredicateFml					-> output.add 		(tokens.removeFirst() as Token)
+			is Formula.False			-> output.add		(tokens.removeFirst() as Token)
+			is Formula.PredicateFml					-> output.add 		(tokens.removeFirst() as Token)
 			SymbolToken.LEFT_PARENTHESIS	-> stack.addFirst	(tokens.removeFirst() as Token)
 			SymbolToken.RIGHT_PARENTHESIS -> {
 				while (stack.isNotEmpty()) {
@@ -52,9 +51,9 @@ fun toReversePolishNotation(tokens: ArrayDeque<SemiToken>): List<Token> {
 			}
 			is Quantifier -> {
 				if (tokens.size >= 3 && tokens[1] is Var && tokens[2] == SymbolToken.COMMA) {
-					val quantifierWithVar = QuantifierWithVar(tokens.removeFirst() as Quantifier, tokens.removeFirst() as Var)
+					val quantifierWithVarOperatorToken = QuantifierWithVarOperatorToken(tokens.removeFirst() as Quantifier, tokens.removeFirst() as Var)
 					tokens.removeFirst() // COMMA
-					tokens.addFirst(quantifierWithVar)
+					tokens.addFirst(quantifierWithVarOperatorToken)
 				} else {
 					println("量化子の後には変数とコンマが必要です")
 					break
@@ -62,13 +61,13 @@ fun toReversePolishNotation(tokens: ArrayDeque<SemiToken>): List<Token> {
 					// need test
 				}
 			}
-			is Predicate -> {
-				val predicate = tokens.removeFirst() as Predicate
+			is PredicateSemiToken -> {
+				val predicateSemiToken = tokens.removeFirst() as PredicateSemiToken
 				val vars = mutableListOf<Var>()
 				while (tokens.isNotEmpty() && tokens[0] is Var) {
 					vars.add(tokens.removeFirst() as Var)
 				}
-				tokens.addFirst(PredicateFml(predicate.id, vars))
+				tokens.addFirst(Formula.PredicateFml(predicateSemiToken.id, vars))
 			}
 			is BinaryConnective -> {
 				while (stack.isNotEmpty()
@@ -79,7 +78,7 @@ fun toReversePolishNotation(tokens: ArrayDeque<SemiToken>): List<Token> {
 				stack.addFirst(tokens.removeFirst() as Token)
 			}
 			is UnaryConnective		-> stack.addFirst(tokens.removeFirst() as Token)
-			is QuantifierWithVar	-> stack.addFirst(tokens.removeFirst() as Token)
+			is QuantifierWithVarOperatorToken	-> stack.addFirst(tokens.removeFirst() as Token)
 			else -> {
 				// TODO: 2021/09/20
 				// そのうち消す
@@ -97,8 +96,8 @@ fun toFormula(tokens: List<Token>): Formula? {
 	val output = mutableListOf<Formula>()
 	for (token in tokens) {
 		when(token) {
-			is PreDefinedAtomFml -> output.add(token)
-			is PredicateFml -> output.add(token)
+			is Formula.False -> output.add(token)
+			is Formula.PredicateFml -> output.add(token)
 			is UnaryConnective -> {
 				if (output.isEmpty()) {
 					println("syntax error in UnaryConnective")
@@ -106,10 +105,10 @@ fun toFormula(tokens: List<Token>): Formula? {
 					// TODO: 2021/09/20
 					// need test
 				}
-				val newFml = UnaryConnectiveFml(token, output.removeLast())
+				val newFml = Formula.UnaryConnectiveFml(token, output.removeLast())
 				output.add(newFml)
 			}
-			is QuantifierWithVar -> {
+			is QuantifierWithVarOperatorToken -> {
 				if (output.isEmpty()) {
 					println("syntax error with QuantifierWithVar")
 					break
@@ -118,7 +117,7 @@ fun toFormula(tokens: List<Token>): Formula? {
 				}
 				// TODO: 2021/10/01 ここで束縛変数に被りがないかどうかチェック
 				// if (bddVar in formula.bddVars()) { println("束縛変数がかぶっています．") }
-				val newFml = QuantifiedFml(token.quantifier, token.bddVar, output.removeLast())
+				val newFml = Formula.QuantifiedFml(token.quantifier, token.bddVar, output.removeLast())
 				output.add(newFml)
 			}
 			is BinaryConnective -> {
@@ -130,7 +129,7 @@ fun toFormula(tokens: List<Token>): Formula? {
 				}
 				val rightFml	= output.removeLast()
 				val leftFml		= output.removeLast()
-				val newFml = BinaryConnectiveFml(token, leftFml, rightFml)
+				val newFml = Formula.BinaryConnectiveFml(token, leftFml, rightFml)
 				output.add(newFml)
 			}
 			else -> {
@@ -155,10 +154,10 @@ fun parseCharacter(chr: Char): SemiToken = when {
 	chr in SymbolToken			.values().map{it.id} -> SymbolToken			.values().find{it.id == chr}!!
 	chr in UnaryConnective		.values().map{it.id} -> UnaryConnective		.values().find{it.id == chr}!!
 	chr in BinaryConnective		.values().map{it.id} -> BinaryConnective	.values().find{it.id == chr}!!
-	chr in PreDefinedAtomFml	.values().map{it.id} -> PreDefinedAtomFml	.values().find{it.id == chr}!!
+	chr == Formula.False.id							 -> Formula.False
 	chr in Quantifier			.values().map{it.id} -> Quantifier			.values().find{it.id == chr}!!
 	chr.isLowerCase()								 -> Var("$chr")
-	chr.isUpperCase() 								 -> Predicate(chr)
+	chr.isUpperCase() 								 -> PredicateSemiToken(chr)
 	else 											 -> SymbolToken.WHITESPACE
 }
 
