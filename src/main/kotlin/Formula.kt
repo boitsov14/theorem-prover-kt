@@ -89,3 +89,24 @@ fun Goals.isEqual(other: Goals): Boolean {
 	// TODO: 2021/10/01
 	return true
 }
+
+interface IHistory {
+	val previousGoals: Goals
+}
+data class History0(override val previousGoals: Goals, val tactic0: Tactic0): IHistory {
+	override fun toString() = "$tactic0"
+}
+data class History1WithFormula(override val previousGoals: Goals, val tactic1: Tactic1, val assumption: Formula): IHistory {
+	override fun toString() = "$tactic1 $assumption"
+}
+data class History1WithVar(override val previousGoals: Goals, val tactic1: Tactic1, val fixedVar: Var): IHistory {
+	override fun toString() = "$tactic1 ($fixedVar)"
+}
+data class History2WithFormulaAndFormula(override val previousGoals: Goals, val tactic2: Tactic2, val assumptionApply: Formula, val assumptionApplied: Formula): IHistory {
+	override fun toString() = "$tactic2 $assumptionApply $assumptionApplied"
+}
+data class History2WithFormulaAndVar(override val previousGoals: Goals, val tactic2: Tactic2, val assumption: Formula, val fixedVar: Var): IHistory {
+	override fun toString() = "$tactic2 $assumption ($fixedVar)"
+}
+
+typealias Histories = MutableList<IHistory>

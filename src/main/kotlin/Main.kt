@@ -11,6 +11,7 @@ fun main() {
 	listOf(Goal("P to not P to false".parse()!!))
 	)
 
+	val currentHistories: Histories = mutableListOf()
 	print("Input a formula you want to prove >>> ")
 	var currentGoals = listOf(Goal(readLine()!!.parse()!!))
 
@@ -22,7 +23,10 @@ fun main() {
 		println(currentGoal.possibleTactics().joinToString())
 		print("Select a tactic >>> ")
 		when (val tactic = currentGoal.possibleTactics()[readLine()!!.toInt()]) {
-			is Tactic0 -> currentGoals = tactic.apply(currentGoals)
+			is Tactic0 -> {
+				currentHistories.add(History0(currentGoals, tactic))
+				currentGoals = tactic.apply(currentGoals)
+			}
 			is Tactic1 -> {
 				print("Possible variables are >>> ")
 				println(tactic.possibleFixedVars(currentGoal).joinToString())
@@ -34,10 +38,12 @@ fun main() {
 				when (inputList[0]) {
 					0 -> {
 						val fixedVar = tactic.possibleFixedVars(currentGoal)[input]
+						currentHistories.add(History1WithVar(currentGoals, tactic, fixedVar))
 						currentGoals = tactic.apply(currentGoals, fixedVar)
 					}
 					1 -> {
 						val assumption = tactic.possibleAssumptions(currentGoal)[input]
+						currentHistories.add(History1WithFormula(currentGoals, tactic, assumption))
 						currentGoals = tactic.apply(currentGoals, assumption)
 					}
 				}
@@ -57,6 +63,7 @@ fun main() {
 						println(tactic.possibleAssumptionsPairs(currentGoal).filter { it.first == assumptionApply }.map { it.second }.joinToString())
 						print("Select a formula >>> ")
 						val assumptionApplied = tactic.possibleAssumptionsPairs(currentGoal).filter { it.first == assumptionApply }.map { it.second }[readLine()!!.toInt()]
+						currentHistories.add(History2WithFormulaAndFormula(currentGoals, tactic, assumptionApply, assumptionApplied))
 						currentGoals = tactic.apply(currentGoals, assumptionApply, assumptionApplied)
 					}
 					1 -> {
@@ -69,6 +76,7 @@ fun main() {
 							println(tempCurrentGoal.fixedVars.joinToString())
 							print("Select a fixed variable >>> ")
 							val fixedVar = tempCurrentGoal.fixedVars[readLine()!!.toInt()]
+							currentHistories.add(History2WithFormulaAndVar(currentGoals, tactic, assumption, fixedVar))
 							currentGoals = if (fixedVar != assumption.bddVar) {
 								tactic.apply(currentGoals, assumption, fixedVar)
 							} else {
@@ -79,6 +87,7 @@ fun main() {
 							println(currentGoal.fixedVars.joinToString())
 							print("Select a fixed variable >>> ")
 							val fixedVar = currentGoal.fixedVars[readLine()!!.toInt()]
+							currentHistories.add(History2WithFormulaAndVar(currentGoals, tactic, assumption, fixedVar))
 							currentGoals = tactic.apply(currentGoals, assumption, fixedVar)
 						}
 					}
@@ -87,7 +96,10 @@ fun main() {
 		}
 	}
 	println("--------------------------------------")
-
+	println("Proof complete!")
+	println("The following is the histories")
+	printHistories(currentHistories)
+	println("--------------------------------------")
 	println("Proof complete!")
 
 }
@@ -97,5 +109,15 @@ fun printGoals(goals: Goals) {
 		if (goal.fixedVars.isNotEmpty()) println(goal.fixedVars.joinToString(separator = " ", postfix = " : Fixed"))
 		goal.assumptions.forEach { println("$it".removeSurrounding("(", ")")) }
 		println("⊢ " + "${goal.conclusion}".removeSurrounding("(", ")"))
+	}
+}
+
+fun printHistories(histories: Histories) {
+	for (history in histories) {
+		println("--------------------------------------")
+		printGoals(history.previousGoals)
+		println()
+		print(">>> ")
+		println(history)
 	}
 }
