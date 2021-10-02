@@ -1,17 +1,5 @@
 fun main() {
-	val variousGoals = listOf(
-	listOf(Goal("all x, all y, P x y".parse()!!)),
-	listOf(Goal("P and Q to Q and P".parse()!!)),
-	listOf(Goal("P or Q to Q or P".parse()!!)),
-	listOf(Goal("(ex x, P x) to ex y, P y".parse()!!)),
-	listOf(Goal("(ex x, P x) to all x, P x".parse()!!)),
-	listOf(Goal("(ex x, P x) to (ex x, Q x) to (all x, R x)".parse()!!)),
-	listOf(Goal("(all x, P x) to (ex x, P x)".parse()!!)),
-	listOf(Goal("P to (P to Q) to Q".parse()!!)),
-	listOf(Goal("P to not P to false".parse()!!))
-	)
-
-	val currentHistories: Histories = mutableListOf()
+	val currentHistory: History = mutableListOf()
 	print("Input a formula you want to prove >>> ")
 	var currentGoals = listOf(Goal(readLine()!!.parse()!!))
 
@@ -24,8 +12,7 @@ fun main() {
 		print("Select a tactic >>> ")
 		when (val tactic = currentGoal.possibleTactics()[readLine()!!.toInt()]) {
 			is Tactic0 -> {
-				currentHistories.add(History0(currentGoals, tactic))
-				currentGoals = tactic.apply(currentGoals)
+				currentHistory.add(FlowOfGoals0(currentGoals, tactic.apply(currentGoals), tactic))
 			}
 			is Tactic1 -> {
 				print("Possible variables are >>> ")
@@ -38,13 +25,21 @@ fun main() {
 				when (inputList[0]) {
 					0 -> {
 						val fixedVar = tactic.possibleFixedVars(currentGoal)[input]
-						currentHistories.add(History1WithVar(currentGoals, tactic, fixedVar))
-						currentGoals = tactic.apply(currentGoals, fixedVar)
+						currentHistory.add(FlowOfGoals1WithVar(
+							currentGoals,
+							tactic.apply(currentGoals, fixedVar),
+							tactic,
+							fixedVar
+						))
 					}
 					1 -> {
 						val assumption = tactic.possibleAssumptions(currentGoal)[input]
-						currentHistories.add(History1WithFormula(currentGoals, tactic, assumption))
-						currentGoals = tactic.apply(currentGoals, assumption)
+						currentHistory.add(FlowOfGoals1WithFormula(
+							currentGoals,
+							tactic.apply(currentGoals, assumption),
+							tactic,
+							assumption
+						))
 					}
 				}
 			}
@@ -63,8 +58,13 @@ fun main() {
 						println(tactic.possibleAssumptionsPairs(currentGoal).filter { it.first == assumptionApply }.map { it.second }.joinToString())
 						print("Select a formula >>> ")
 						val assumptionApplied = tactic.possibleAssumptionsPairs(currentGoal).filter { it.first == assumptionApply }.map { it.second }[readLine()!!.toInt()]
-						currentHistories.add(History2WithFormulaAndFormula(currentGoals, tactic, assumptionApply, assumptionApplied))
-						currentGoals = tactic.apply(currentGoals, assumptionApply, assumptionApplied)
+						currentHistory.add(FlowOfGoals2WithFormulaAndFormula(
+							currentGoals,
+							tactic.apply(currentGoals, assumptionApply, assumptionApplied),
+							tactic,
+							assumptionApply,
+							assumptionApplied
+						))
 					}
 					1 -> {
 						val assumption = tactic.possibleAssumptionsWithFixedVar(currentGoal)[input]
@@ -76,29 +76,46 @@ fun main() {
 							println(tempCurrentGoal.fixedVars.joinToString())
 							print("Select a fixed variable >>> ")
 							val fixedVar = tempCurrentGoal.fixedVars[readLine()!!.toInt()]
-							currentHistories.add(History2WithFormulaAndVar(currentGoals, tactic, assumption, fixedVar))
-							currentGoals = if (fixedVar != assumption.bddVar) {
-								tactic.apply(currentGoals, assumption, fixedVar)
+							if (fixedVar != assumption.bddVar) {
+								currentHistory.add(FlowOfGoals2WithFormulaAndVar(
+									currentGoals,
+									tactic.apply(currentGoals, assumption, fixedVar),
+									tactic,
+									assumption,
+									fixedVar
+								))
 							} else {
-								tactic.apply(tempCurrentGoals, assumption, fixedVar)
+								currentHistory.add(FlowOfGoals2WithFormulaAndVar(
+									currentGoals,
+									tactic.apply(tempCurrentGoals, assumption, fixedVar),
+									tactic,
+									assumption,
+									fixedVar
+								))
 							}
 						} else {
 							print("Possible fixed variables are >>> ")
 							println(currentGoal.fixedVars.joinToString())
 							print("Select a fixed variable >>> ")
 							val fixedVar = currentGoal.fixedVars[readLine()!!.toInt()]
-							currentHistories.add(History2WithFormulaAndVar(currentGoals, tactic, assumption, fixedVar))
-							currentGoals = tactic.apply(currentGoals, assumption, fixedVar)
+							currentHistory.add(FlowOfGoals2WithFormulaAndVar(
+								currentGoals,
+								tactic.apply(currentGoals, assumption, fixedVar),
+								tactic,
+								assumption,
+								fixedVar
+							))
 						}
 					}
 				}
 			}
 		}
+		currentGoals = currentHistory.last().nextGoals
 	}
 	println("--------------------------------------")
 	println("Proof complete!")
 	println("The following is the histories")
-	printHistories(currentHistories)
+	printHistories(currentHistory)
 	println("--------------------------------------")
 	println("Proof complete!")
 
@@ -112,12 +129,25 @@ fun printGoals(goals: Goals) {
 	}
 }
 
-fun printHistories(histories: Histories) {
-	for (history in histories) {
+fun printHistories(history: History) {
+	for (flow in history) {
 		println("--------------------------------------")
-		printGoals(history.previousGoals)
-		println()
+		printGoals(flow.previousGoals)
 		print(">>> ")
-		println(history)
+		println(flow)
 	}
 }
+
+/*
+	val variousGoals = listOf(
+	listOf(Goal("all x, all y, P x y".parse()!!)),
+	listOf(Goal("P and Q to Q and P".parse()!!)),
+	listOf(Goal("P or Q to Q or P".parse()!!)),
+	listOf(Goal("(ex x, P x) to ex y, P y".parse()!!)),
+	listOf(Goal("(ex x, P x) to all x, P x".parse()!!)),
+	listOf(Goal("(ex x, P x) to (ex x, Q x) to (all x, R x)".parse()!!)),
+	listOf(Goal("(all x, P x) to (ex x, P x)".parse()!!)),
+	listOf(Goal("P to (P to Q) to Q".parse()!!)),
+	listOf(Goal("P to not P to false".parse()!!))
+	)
+	*/
