@@ -63,26 +63,80 @@ data class FlowOfGoals2WithFormulaAndVar(
 
 typealias History = MutableList<IFlowOfGoals>
 
-
-
-
-
-/*
-fun prover(goals: Goals): List<History> {
-	val listOfHistory: MutableList<History> = mutableListOf(mutableListOf(FlowOfGoals0(
-		listOf(),
-		goals,
-		Tactic0.INTRO
-	)))
-	//val currentGoals = goals
-	//val currentGoal = currentGoals[0]
-	for (histories in listOfHistory) {
-		listOfHistory.remove(histories)
-		val history = histories.last()
-		val currentGoals = history.nextGoals
-		for (tactic0 in Tactic0.values().filter { it.canApply(currentGoals[0]) }) {
-			histories.add(FlowOfGoals0(currentGoals, tactic0.apply(currentGoals), tactic0))
+data class TreeNodeOfHistory(
+	val currentGoals: Goals,
+	val parent: Pair<IFlowOfGoals, TreeNodeOfHistory>? = null,
+	val childrenOfGoals: MutableList<Pair<IFlowOfGoals, TreeNodeOfHistory>> = mutableListOf(),
+	var isDead: Boolean = false,
+	var isSolved: Boolean = false
+) {
+	fun getAllDescendants(): List<TreeNodeOfHistory> {
+		val result = mutableListOf(this)
+		for (children in this.childrenOfGoals) {
+			result.addAll(children.second.getAllDescendants())
 		}
+		return result
+	}
+	fun getAllAliveNodes(): List<TreeNodeOfHistory> = getAllDescendants().filterNot { it.isDead }
+
+	fun getAllSolvedNodes(): List<TreeNodeOfHistory> = getAllDescendants().filter { it.isSolved }
+
+	private fun getAllParents(): List<TreeNodeOfHistory> {
+		val result = mutableListOf(this)
+		if (parent != null) {
+			result.addAll(parent.second.getAllParents())
+		}
+		return result
+	}
+
+	fun getHistory(): History = getAllParents().mapNotNull { it.parent?.first }.reversed().toMutableList()
+
+	fun addNewPossibleNode() {
+		if (isDead) { return }
+		val currentGoal = currentGoals[0]
+		val possibleTactic0s = Tactic0.values().filter { it.canApply(currentGoal) }
+		val possibleTactic1s = Tactic1.values().filter { it.canApply(currentGoal) }
+		val possibleTactic2s = Tactic2.values().filter { it.canApply(currentGoal) }
+		for (tactic in possibleTactic0s) {
+			val newGoals = tactic.apply(currentGoals)
+			val newIFlowOfGoals = FlowOfGoals0(currentGoals, newGoals, tactic)
+			val newNode = TreeNodeOfHistory(newGoals, Pair(newIFlowOfGoals, this))
+			childrenOfGoals.add(Pair(newIFlowOfGoals, newNode))
+		}
+		/*
+		for (tactic in possibleTactic1s) {
+			// TODO: 2021/10/03
+		}
+		for (tactic in possibleTactic2s) {
+			// TODO: 2021/10/03
+		}
+		*/
+		for (child in childrenOfGoals) {
+			if (child.second.currentGoals.isEmpty()) {
+				child.second.isSolved = true
+			}
+		}
+		isDead = true
+		for (child in childrenOfGoals) {
+			print("${child.second.currentGoals}, ")
+		}
+		println("\b\b are new children.")
 	}
 }
- */
+
+fun prover(goals: Goals): List<History> {
+	val root = TreeNodeOfHistory(goals)
+	//val solvedNodes = root.getAllSolvedNodes()
+	//val allNodes = root.getAllDescendants()
+	var times = 0
+	while (root.getAllSolvedNodes().isEmpty() && root.getAllAliveNodes().isNotEmpty() && times < 10) {
+		println("This loop is $times th.")
+		root.getAllDescendants().forEach { it.addNewPossibleNode() }
+		times++
+		println("the size of all nodes is ${root.getAllDescendants().size}.")
+		println("the size of all alive nodes is ${root.getAllAliveNodes().size}.")
+		println("the size of all solved nodes is ${root.getAllSolvedNodes().size}.")
+		println("--------------------------------------")
+	}
+	return root.getAllSolvedNodes().map { it.getHistory() }
+}

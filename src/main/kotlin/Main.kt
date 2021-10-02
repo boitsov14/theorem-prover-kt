@@ -1,7 +1,26 @@
 fun main() {
 	val currentHistory: History = mutableListOf()
-	print("Input a formula you want to prove >>> ")
-	var currentGoals = listOf(Goal(readLine()!!.parse()!!))
+	//print("Input a formula you want to prove >>> ")
+	//var currentGoals = listOf(Goal(readLine()!!.parse()!!))
+	var currentGoals = listOf(Goal("P to Q to P and Q".parse()!!))
+	printGoals(currentGoals)
+	println("--------------------------------------")
+
+	val histories = prover(currentGoals)
+
+	for (history in histories) {
+		for (flow in history) {
+			println(flow.previousGoals)
+		}
+		println("--------------------------------------")
+	}
+
+	for (history in histories) {
+		println("The following is the history")
+		printHistory(history)
+		println("--------------------------------------")
+		println("Proof complete!")
+	}
 
 	while (currentGoals.isNotEmpty()) {
 		println("--------------------------------------")
@@ -114,8 +133,8 @@ fun main() {
 	}
 	println("--------------------------------------")
 	println("Proof complete!")
-	println("The following is the histories")
-	printHistories(currentHistory)
+	println("The following is the history")
+	printHistory(currentHistory)
 	println("--------------------------------------")
 	println("Proof complete!")
 
@@ -129,7 +148,7 @@ fun printGoals(goals: Goals) {
 	}
 }
 
-fun printHistories(history: History) {
+fun printHistory(history: History) {
 	for (flow in history) {
 		println("--------------------------------------")
 		printGoals(flow.previousGoals)
