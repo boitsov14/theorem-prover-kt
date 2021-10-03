@@ -1,5 +1,20 @@
 data class Var(val id: String): SemiToken {
 	override fun toString() = id
+	fun getNewVar(vars: Set<Var>): Var {
+		if (this !in vars) {
+			return this
+		} else {
+			var n = 1
+			while (true) {
+				val newVar = Var(this.id + "_$n")
+				if (newVar !in vars) {
+					return newVar
+				} else {
+					n++
+				}
+			}
+		}
+	}
 }
 
 enum class UnaryConnective(val id: Char, override val precedence: Int): OperatorToken {
@@ -39,7 +54,7 @@ sealed class Formula {
 	}
 	final override fun toString(): String = when(this) {
 		False -> "false"
-		is PredicateFml -> "$predicate" + (if (vars.isNotEmpty()) " " else "") + vars.joinToString()
+		is PredicateFml -> "$predicate" + (if (vars.isNotEmpty()) " " else "") + vars.joinToString(separator = " ")
 		is UnaryConnectiveFml -> "($connective$formula)"
 		is BinaryConnectiveFml -> "($leftFml $connective $rightFml)"
 		is QuantifiedFml -> "($quantifier $bddVar, $formula)"
@@ -56,7 +71,7 @@ sealed class Formula {
 		is PredicateFml -> setOf()
 		is UnaryConnectiveFml -> formula.bddVars()
 		is BinaryConnectiveFml -> leftFml.bddVars() + leftFml.bddVars()
-		is QuantifiedFml -> formula.bddVars() + setOf(bddVar)
+		is QuantifiedFml -> formula.bddVars() + bddVar
 	}
 	fun replace(old: Var, new: Var): Formula = when(this) {
 		False -> this
@@ -77,9 +92,10 @@ data class Goal(val fixedVars: List<Var>, val assumptions: List<Formula>, val co
 				+ "⊢ "
 				+ "$conclusion".removeSurrounding("(", ")"))
 	fun possibleTactics() = allTactics.filter { it.canApply(this) }
+	fun getAllBddVars(): Set<Var> = assumptions.map { it.bddVars() }.flatten().toSet() + conclusion.bddVars()
 }
 
-val allTactics: List<ITactic> = listOf(Tactic0.values().toList(), Tactic1.values().toList(), Tactic2.values().toList()).flatten()
+val allTactics: List<ITactic> = Tactic0.values().toList() + Tactic1.values().toList() + Tactic2.values().toList()
 
 typealias Goals = List<Goal>
 

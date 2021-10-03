@@ -2,8 +2,9 @@ import kotlin.system.measureTimeMillis
 
 fun main() {
 	val currentHistory: History = mutableListOf()
-	//print("Input a formula you want to prove >>> ")
-	//var currentGoals = listOf(Goal(readLine()!!.parse()!!))
+	print("Input a formula you want to prove >>> ")
+	var currentGoals = listOf(Goal(readLine()!!.parse()!!))
+	/*
 	var currentGoals = listOf(Goal("P to Q to Q to Q to Q to Q to Q to Q to P".parse()!!))
 	printGoals(currentGoals)
 	println("--------------------------------------")
@@ -41,6 +42,8 @@ fun main() {
 		println("--------------------------------------")
 		println("Proof complete!")
 	}
+
+	 */
 
 	while (currentGoals.isNotEmpty()) {
 		println("--------------------------------------")
@@ -108,41 +111,28 @@ fun main() {
 					1 -> {
 						val assumption = tactic.possibleAssumptionsWithFixedVar(currentGoal)[input]
 						if (assumption !is Formula.QuantifiedFml) {break}
-						if (assumption.bddVar !in currentGoal.fixedVars) {
-							val tempCurrentGoals = currentGoals.replaceFirstGoal(currentGoal.copy(fixedVars = currentGoal.fixedVars + assumption.bddVar))
-							val tempCurrentGoal = tempCurrentGoals[0]
-							print("Possible fixed variables are >>> ")
-							println(tempCurrentGoal.fixedVars.joinToString())
-							print("Select a fixed variable >>> ")
-							val fixedVar = tempCurrentGoal.fixedVars[readLine()!!.toInt()]
-							if (fixedVar != assumption.bddVar) {
-								currentHistory.add(FlowOfGoals2WithFormulaAndVar(
-									currentGoals,
-									tactic.apply(currentGoals, assumption, fixedVar),
-									tactic,
-									assumption,
-									fixedVar
-								))
-							} else {
-								currentHistory.add(FlowOfGoals2WithFormulaAndVar(
-									currentGoals,
-									tactic.apply(tempCurrentGoals, assumption, fixedVar),
-									tactic,
-									assumption,
-									fixedVar
-								))
-							}
-						} else {
-							print("Possible fixed variables are >>> ")
-							println(currentGoal.fixedVars.joinToString())
-							print("Select a fixed variable >>> ")
-							val fixedVar = currentGoal.fixedVars[readLine()!!.toInt()]
+						val newVar = assumption.bddVar.getNewVar(currentGoal.getAllBddVars() + currentGoal.fixedVars)
+						val tempCurrentGoals = currentGoals.replaceFirstGoal(currentGoal.copy(fixedVars = currentGoal.fixedVars + newVar))
+						val tempCurrentGoal = tempCurrentGoals[0]
+						print("Possible fixed variables are >>> ")
+						println(tempCurrentGoal.fixedVars.filterNot { it in assumption.formula.bddVars() }.joinToString())
+						print("Select a fixed variable >>> ")
+						val inputVar = tempCurrentGoal.fixedVars[readLine()!!.toInt()]
+						if (inputVar != newVar) {
 							currentHistory.add(FlowOfGoals2WithFormulaAndVar(
 								currentGoals,
-								tactic.apply(currentGoals, assumption, fixedVar),
+								tactic.apply(currentGoals, assumption, inputVar),
 								tactic,
 								assumption,
-								fixedVar
+								inputVar
+							))
+						} else {
+							currentHistory.add(FlowOfGoals2WithFormulaAndVar(
+								currentGoals,
+								tactic.apply(tempCurrentGoals, assumption, inputVar),
+								tactic,
+								assumption,
+								inputVar
 							))
 						}
 					}

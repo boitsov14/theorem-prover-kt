@@ -38,21 +38,8 @@ enum class Tactic0(override val id: String): ITactic {
 				is Formula.UnaryConnectiveFml -> return goals.replaceFirstGoal(goal.copy(assumptions = goal.assumptions + goal.conclusion.formula, conclusion = Formula.False))
 				// FOR_ALL
 				is Formula.QuantifiedFml -> {
-					if (goal.conclusion.bddVar !in goal.fixedVars) {
-						return goals.replaceFirstGoal(goal.copy(fixedVars = goal.fixedVars + goal.conclusion.bddVar, conclusion = goal.conclusion.formula))
-					} else {
-						// Suppose that the goal is the form of "all x, P x" but "x" is already in bddVars.
-						// "x" must be arbitrary, so change "x" to "x_1" and "P x" to "P x_1".
-						var n = 1
-						while (true) {
-							val newFixedVar = Var(goal.conclusion.bddVar.id + "_$n")
-							if (newFixedVar !in goal.fixedVars) {
-								return goals.replaceFirstGoal(goal.copy(fixedVars = goal.fixedVars + newFixedVar, conclusion = goal.conclusion.formula.replace(goal.conclusion.bddVar, newFixedVar)))
-							} else {
-								n++
-							}
-						}
-					}
+					val newVar = goal.conclusion.bddVar.getNewVar(goal.fixedVars.toSet() + goal.conclusion.formula.bddVars())
+					return goals.replaceFirstGoal(goal.copy(fixedVars = goal.fixedVars + newVar, conclusion = goal.conclusion.formula.replace(goal.conclusion.bddVar, newVar)))
 				}
 				else -> {}
 			}
@@ -89,7 +76,7 @@ enum class Tactic1(override val id: String): ITactic {
 					|| possibleFixedVars(goal).isNotEmpty()
 			USE	->	conclusion is Formula.QuantifiedFml
 					&& conclusion.quantifier == Quantifier.THERE_EXISTS
-					&& possibleFixedVars(goal).isNotEmpty()
+					//&& possibleFixedVars(goal).isNotEmpty()
 		}
 	}
 	fun apply(goals: Goals, assumption: Formula): Goals {
@@ -113,21 +100,8 @@ enum class Tactic1(override val id: String): ITactic {
 					val toLeft  = Formula.BinaryConnectiveFml(BinaryConnective.IMPLY, assumption.rightFml, assumption.leftFml)
 					return goals.replaceFirstGoal(goal.copy(assumptions = removedAssumptions + toRight), goal.copy(assumptions = removedAssumptions + toLeft))
 				} else if (assumption is Formula.QuantifiedFml && assumption.quantifier == Quantifier.THERE_EXISTS) {
-					if (assumption.bddVar !in goal.fixedVars) {
-						return goals.replaceFirstGoal(goal.copy(fixedVars = goal.fixedVars + assumption.bddVar, assumptions = removedAssumptions + assumption.formula))
-					} else {
-						// Suppose that the given assumption is the form of "ex x, P x" but "x" is already in bddVars.
-						// "x" must be arbitrary, so change "x" to "x_1" and "P x" to "P x_1".
-						var n = 1
-						while (true) {
-							val newFixedVar = Var(assumption.bddVar.id + "_$n")
-							if (newFixedVar !in goal.fixedVars) {
-								return goals.replaceFirstGoal(goal.copy(fixedVars = goal.fixedVars + newFixedVar, assumptions = removedAssumptions + assumption.formula.replace(assumption.bddVar, newFixedVar)))
-							} else {
-								n++
-							}
-						}
-					}
+					val newVar = assumption.bddVar.getNewVar(goal.fixedVars.toSet())
+					return goals.replaceFirstGoal(goal.copy(fixedVars = goal.fixedVars + newVar, assumptions = removedAssumptions + assumption.formula.replace(assumption.bddVar, newVar)))
 				}
 			}
 			REVERT -> return goals.replaceFirstGoal(goal.copy(assumptions = goal.assumptions.filterNot { it == assumption }, conclusion = Formula.BinaryConnectiveFml(BinaryConnective.IMPLY, assumption, goal.conclusion)))
@@ -141,7 +115,7 @@ enum class Tactic1(override val id: String): ITactic {
 			REVERT -> return goals.replaceFirstGoal(goal.copy(fixedVars = goal.fixedVars.filterNot { it == fixedVar }, conclusion = Formula.QuantifiedFml(Quantifier.FOR_ALL, fixedVar, goal.conclusion)))
 			USE -> {
 				if (goal.conclusion is Formula.QuantifiedFml) { // THERE_EXISTS
-					return goals.replaceFirstGoal(goal.copy(fixedVars = goal.fixedVars.filterNot { it == fixedVar }, conclusion = goal.conclusion.formula.replace(goal.conclusion.bddVar, fixedVar)))
+					return goals.replaceFirstGoal(goal.copy(conclusion = goal.conclusion.formula.replace(goal.conclusion.bddVar, fixedVar)))
 				}
 			}
 			else -> {}
@@ -167,9 +141,15 @@ enum class Tactic1(override val id: String): ITactic {
 	fun possibleFixedVars(goal: Goal): List<Var> = when(this) {
 		REVERT -> {
 			val fixedVarsInAssumptions = goal.assumptions.map { it.freeVars() }.flatten().toSet()
-			goal.fixedVars.filterNot { fixedVarsInAssumptions.contains(it) }
+			goal.fixedVars.filterNot { it in fixedVarsInAssumptions }.filterNot { it in goal.conclusion.bddVars() }
 		}
-		USE -> goal.fixedVars
+		USE -> {
+			if (goal.conclusion is Formula.QuantifiedFml) {
+				goal.fixedVars.filterNot { it in goal.conclusion.formula.bddVars() }
+			} else {
+				listOf()
+			}
+		}
 		else -> listOf()
 	}
 }
@@ -215,4 +195,22 @@ enum class Tactic2(override val id: String): ITactic {
 	}
 	fun possibleAssumptionsWithFixedVar(goal: Goal): List<Formula> = goal.assumptions
 		.filter { it is Formula.QuantifiedFml && it.quantifier == Quantifier.FOR_ALL }
+	/*
+	fun possibleAssumptionsWithFixedVar(goal: Goal): List<Pair<Formula, List<Var>>> =
+		goal.assumptions
+		.filter { it is Formula.QuantifiedFml && it.quantifier == Quantifier.FOR_ALL }
+			.map { Pair(it, goal.fixedVars.filterNot { it in goal.conclusion.bddVars() }) }
+
+
+	 */
+
+	/*
+	fun possibleAssumptionsWithFixedVar(goal: Goal): List<Pair<Formula, List<Var>>> {
+		for (assumption in goal.assumptions.filter { it is Formula.QuantifiedFml && it.quantifier == Quantifier.FOR_ALL }) {
+			val newVar = assumption.bddVar.getNewVar(currentGoal.getAllBddVars() + currentGoal.fixedVars)
+			val tempCurrentGoals = currentGoals.replaceFirstGoal(currentGoal.copy(fixedVars = currentGoal.fixedVars + newVar))
+		}
+	}
+
+	 */
 }
