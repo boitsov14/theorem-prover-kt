@@ -124,15 +124,17 @@ data class TreeNodeOfHistory(
 	}
 }
 
+const val MAX_STEP = 10
+
 fun prover(goals: Goals): List<History> {
 	val root = TreeNodeOfHistory(goals)
 	//val solvedNodes = root.getAllSolvedNodes()
 	//val allNodes = root.getAllDescendants()
-	var times = 0
-	while (root.getAllSolvedNodes().isEmpty() && root.getAllAliveNodes().isNotEmpty() && times < 10) {
-		println("This loop is $times th.")
+	var steps = 0
+	while (root.getAllSolvedNodes().isEmpty() && root.getAllAliveNodes().isNotEmpty() && steps < MAX_STEP) {
+		println("This is the ${steps}th step.")
 		root.getAllDescendants().forEach { it.addNewPossibleNode() }
-		times++
+		steps++
 		println("the size of all nodes is ${root.getAllDescendants().size}.")
 		println("the size of all alive nodes is ${root.getAllAliveNodes().size}.")
 		println("the size of all solved nodes is ${root.getAllSolvedNodes().size}.")
@@ -140,3 +142,7 @@ fun prover(goals: Goals): List<History> {
 	}
 	return root.getAllSolvedNodes().map { it.getHistory() }
 }
+
+private fun History.isIntuitionistic(): Boolean = this.all { it.tactic != Tactic0.BY_CONTRA }
+
+fun List<History>.getIntuitionisticProofs(): List<History> = this.filter { it.isIntuitionistic() }

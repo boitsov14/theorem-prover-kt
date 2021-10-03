@@ -1,12 +1,32 @@
+import kotlin.system.measureTimeMillis
+
 fun main() {
 	val currentHistory: History = mutableListOf()
 	//print("Input a formula you want to prove >>> ")
 	//var currentGoals = listOf(Goal(readLine()!!.parse()!!))
-	var currentGoals = listOf(Goal("P to Q to P and Q".parse()!!))
+	var currentGoals = listOf(Goal("P to Q to Q to Q to Q to Q to Q to Q to P".parse()!!))
 	printGoals(currentGoals)
 	println("--------------------------------------")
 
-	val histories = prover(currentGoals)
+	val histories0: List<History>
+	val timeInMillis = measureTimeMillis {
+		histories0 = prover(currentGoals)
+	}
+	val histories1 = histories0.getIntuitionisticProofs()
+
+	val histories
+	= if (histories0.isEmpty()) {
+		println("We couldn't find the proof in $MAX_STEP steps.")
+		listOf()
+	} else if (histories1.isEmpty()) {
+		println("We found proofs but couldn't find the intuitionistic proof.")
+		histories0
+	} else {
+		println("We found intuitionistic proofs.")
+		histories1
+	}
+
+	println("The operation took $timeInMillis ms.")
 
 	for (history in histories) {
 		for (flow in history) {
