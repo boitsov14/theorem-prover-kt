@@ -93,6 +93,85 @@ data class TreeNodeOfHistory(
 
 	fun getHistory(): History = getAllParents().mapNotNull { it.parent?.first }.reversed().toMutableList()
 
+	fun addNewNode(tactic: Tactic0) {
+		val newGoals = tactic.apply(currentGoals)
+		val newIFlowOfGoals = FlowOfGoals0(currentGoals, newGoals, tactic)
+		val newNode = TreeNodeOfHistory(newGoals, Pair(newIFlowOfGoals, this))
+		childrenOfGoals.add(Pair(newIFlowOfGoals, newNode))
+	}
+	fun addNewNode(tactic: Tactic1, assumption: Formula) {
+		val newGoals = tactic.apply(currentGoals, assumption)
+		val newIFlowOfGoals = FlowOfGoals1WithFormula(currentGoals, newGoals, tactic, assumption)
+		val newNode = TreeNodeOfHistory(newGoals, Pair(newIFlowOfGoals, this))
+		childrenOfGoals.add(Pair(newIFlowOfGoals, newNode))
+	}
+	fun addNewNode(tactic: Tactic2, assumptionApply: Formula, assumptionApplied: Formula) {
+		val newGoals = tactic.apply(currentGoals, assumptionApply, assumptionApplied)
+		val newIFlowOfGoals = FlowOfGoals2WithFormulaAndFormula(currentGoals, newGoals, tactic, assumptionApply, assumptionApplied)
+		val newNode = TreeNodeOfHistory(newGoals, Pair(newIFlowOfGoals, this))
+		childrenOfGoals.add(Pair(newIFlowOfGoals, newNode))
+	}
+
+	fun smartAddNewPossibleNode(isIntuitionistic: Boolean) {
+		val currentGoal = currentGoals[0]
+		val andIffAssumptions = currentGoal.assumptions
+			.filter { it is Formula.BinaryConnectiveFml && it.connective in setOf(BinaryConnective.AND, BinaryConnective.IFF) }
+		val orAssumptions = currentGoal.assumptions
+			.filter { it is Formula.BinaryConnectiveFml && it.connective == BinaryConnective.OR }
+		if (Tactic0.ASSUMPTION.canApply(currentGoal)) {
+			addNewNode(Tactic0.ASSUMPTION)
+		} else if (Tactic0.INTRO.canApply(currentGoal)) {
+			addNewNode(Tactic0.INTRO)
+		} else if (andIffAssumptions.isNotEmpty()) {
+			for (assumption in andIffAssumptions) {
+				addNewNode(Tactic1.CASES, assumption)
+			}
+		} else if (Tactic2.HAVE.canApply(currentGoal)) {
+			val tactic = Tactic2.HAVE
+			for ((assumptionApply, assumptionApplied) in tactic.possibleAssumptionsPairs(currentGoal)) {
+				addNewNode(tactic, assumptionApply, assumptionApplied)
+			}
+		} else if (Tactic1.APPLY.canApply(currentGoal)) {
+			val tactic = Tactic1.APPLY
+			for (assumption in tactic.possibleAssumptions(currentGoal)) {
+				addNewNode(tactic, assumption)
+			}
+		} else if (Tactic0.SPLIT.canApply(currentGoal)) {
+			addNewNode(Tactic0.SPLIT)
+		} else if (orAssumptions.isNotEmpty()) {
+			for (assumption in orAssumptions) {
+				addNewNode(Tactic1.CASES, assumption)
+			}
+		} else {
+			tryEverything(isIntuitionistic)
+		}
+		/*else if (Tactic0.LEFT.canApply(currentGoal)) {
+			addNewNode(Tactic0.LEFT)
+		} else if (Tactic0.RIGHT.canApply(currentGoal)) {
+			addNewNode(Tactic0.RIGHT)
+		} else if (isIntuitionistic && Tactic0.EXFALSO.canApply(currentGoal)) {
+			addNewNode(Tactic0.EXFALSO)
+		} else if (isIntuitionistic && Tactic0.BY_CONTRA.canApply(currentGoal)) {
+			addNewNode(Tactic0.EXFALSO)
+		}
+		*/
+		for (child in childrenOfGoals) {
+			if (child.second.currentGoals.isEmpty()) {
+				child.second.isSolved = true
+			}
+		}
+		isDead = true
+	}
+	fun tryEverything(isIntuitionistic: Boolean) {
+		val currentGoal = currentGoals[0]
+		val possibleTactics
+		= (listOf(Tactic0.LEFT, Tactic0.RIGHT) + if (isIntuitionistic) { Tactic0.EXFALSO} else { Tactic0.BY_CONTRA})
+			.filter { it.canApply(currentGoal) }
+		for (tactic in possibleTactics) {
+			addNewNode(tactic)
+		}
+	}
+
 	fun addNewPossibleNode(isIntuitionistic: Boolean) {
 		val currentGoal = currentGoals[0]
 		val possibleTactic0s = Tactic0.values()
@@ -138,48 +217,59 @@ data class TreeNodeOfHistory(
 		}
 		isDead = true
 		/*
-		if (childrenOfGoals.isEmpty() && parent != null) {
-			val bool = parent.second.childrenOfGoals.remove(Pair(parent.first, this))
-			print("(creates nothing)")
-		}
-		 */
-
-		/*
 		for (child in childrenOfGoals) {
 			print("${child.second.currentGoals}, ")
 		}
 		println("\b\b are new children.")
-		 */
+		*/
 	}
 }
 
 fun prover(goals: Goals, isIntuitionistic: Boolean, maxStep: Int = 20): List<History> {
 	val root = TreeNodeOfHistory(goals)
-	val experiencedGoals = mutableSetOf(root.currentGoals.getGoalToSet())
-	//val solvedNodes = root.getAllSolvedNodes()
-	//val allNodes = root.getAllDescendants()
+	val experiencedGoals = mutableSetOf<Goals>()
 	var steps = 1
 	while (root.getAllSolvedNodes().isEmpty() && root.getAllAliveNodes().isNotEmpty() && steps < maxStep) {
 		println("STEP : $steps")
-		root.getAllAliveNodes().forEach { it.addNewPossibleNode(isIntuitionistic) }
+		root.getAllAliveNodes().forEach { it.smartAddNewPossibleNode(isIntuitionistic) }
 
-		println("${root.getAllAliveNodes().map { it.currentGoals.getGoalToSet() }.filter { it in experiencedGoals }.size} duplicate goals is deleted.")
+		//println("${root.getAllAliveNodes().map { it.currentGoals }.filter { it in experiencedGoals }.size} duplicate goals is deleted.")
 
-		//val experiencedGoals0 = experiencedGoals.toSet()
+
+		/*
 		for (newNode in root.getAllAliveNodes()) {
-			val newGoalToSet = newNode.currentGoals.getGoalToSet()
+			val newGoals = newNode.currentGoals
+			val newSetGoals = newGoals.getSetGoals()
 			if (newNode.isSolved) {
-				//println("we found a proof.")
-			} else if (newGoalToSet !in experiencedGoals) {
-				experiencedGoals.add(newGoalToSet)
-			} else {
+				//println("FOUND A PROOF!!!")
+			} else if (newSetGoals in experiencedGoals.map { it.getSetGoals() }) {
+				/*
 				newNode.isDead = true
 				if (newNode.parent != null) {
-					val bool = newNode.parent.second.childrenOfGoals.removeAll { it == Pair(newNode.parent.first, newNode)}
-					//println("duplicated goals : ${newNode.currentGoals}")
+					newNode.parent.second.childrenOfGoals.removeAll { it == Pair(newNode.parent.first, newNode)}
 				}
+
+				 */
+			} else if (experiencedGoals
+					.any { newGoals[0].assumptions.containsAll(it[0].assumptions)
+							&& newGoals[0].conclusion == it[0].conclusion
+							&& newGoals.size == it.size }) {
+				newNode.isDead = true
+				if (newNode.parent != null) {
+					newNode.parent.second.childrenOfGoals.removeAll { it == Pair(newNode.parent.first, newNode)}
+				}
+				/*println("WORKS FINE >>> ${newNode.currentGoals} ----- ${experiencedGoals
+					.find { newGoals[0].assumptions.containsAll(it[0].assumptions)
+							&& newGoals[0].conclusion == it[0].conclusion
+							&& newGoals.size == it.size }}")
+
+				 */
+			} else {
+				//experiencedGoals.add(newGoals)
 			}
 		}
+
+		 */
 
 
 		while (true) {
@@ -199,7 +289,6 @@ fun prover(goals: Goals, isIntuitionistic: Boolean, maxStep: Int = 20): List<His
 		//println(root.getAllDescendants().map { it.currentGoals }.distinct().size)
 		//println(root.getAllDeadLeaves().map { it.currentGoals }.size)
 
-
 		/*
 		for (node in root.getAllDescendants()) {
 			print(node.currentGoals)
@@ -213,6 +302,7 @@ fun prover(goals: Goals, isIntuitionistic: Boolean, maxStep: Int = 20): List<His
 		println()
 		 */
 
+
 		println("--------------------------------------")
 	}
 	println("TOTAL STEPS >>> ${steps-1}")
@@ -223,3 +313,7 @@ fun prover(goals: Goals, isIntuitionistic: Boolean, maxStep: Int = 20): List<His
 private fun History.isIntuitionistic(): Boolean = this.all { it.tactic != Tactic0.BY_CONTRA }
 
 fun List<History>.getIntuitionisticProofs(): List<History> = this.filter { it.isIntuitionistic() }
+
+fun smartProver(nodes: List<TreeNodeOfHistory>) {
+
+}

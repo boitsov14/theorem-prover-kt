@@ -98,7 +98,7 @@ enum class Tactic1(override val id: String): ITactic {
 				} else if (assumption is Formula.BinaryConnectiveFml && assumption.connective == BinaryConnective.IFF) {
 					val toRight = Formula.BinaryConnectiveFml(BinaryConnective.IMPLY, assumption.leftFml,  assumption.rightFml)
 					val toLeft  = Formula.BinaryConnectiveFml(BinaryConnective.IMPLY, assumption.rightFml, assumption.leftFml)
-					return goals.replaceFirstGoal(goal.copy(assumptions = removedAssumptions + toRight), goal.copy(assumptions = removedAssumptions + toLeft))
+					return goals.replaceFirstGoal(goal.copy(assumptions = removedAssumptions + toRight + toLeft))
 				} else if (assumption is Formula.QuantifiedFml && assumption.quantifier == Quantifier.THERE_EXISTS) {
 					val newVar = assumption.bddVar.getNewVar(goal.fixedVars.toSet())
 					return goals.replaceFirstGoal(goal.copy(fixedVars = goal.fixedVars + newVar, assumptions = removedAssumptions + assumption.formula.replace(assumption.bddVar, newVar)))

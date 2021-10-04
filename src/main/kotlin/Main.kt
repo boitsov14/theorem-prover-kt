@@ -4,10 +4,13 @@ fun main() {
 	val currentHistory: History = mutableListOf()
 	//print("Input a formula you want to prove >>> ")
 	//var currentGoals = listOf(Goal(readLine()!!.parse()!!))
-	// not (P and Q) to (not P or not Q)
-	// not (P and Q and R) to (not P or not Q or not R)
-	// not (P and Q and R and S) to (not P or not Q or not R or not S)
-	val fml = "not (P and Q and R) to (not P or not Q or not R)"
+	/*
+	not (P and Q) to (not P or not Q)
+	not (P and Q and R) to (not P or not Q or not R)
+	not (P and Q and R and S) to (not P or not Q or not R or not S)
+	not (P and Q and R and S and T) to (not P or not Q or not R or not S or not T)
+	*/
+	val fml = "(P and Q) to (not P or not Q)"
 	println("--------------------------------------")
 	var currentGoals = listOf(Goal(fml.parse()!!))
 	print("INPUT FORMULA : ")
@@ -44,12 +47,12 @@ fun main() {
 
 	 */
 
-	/*
+
 	println("The following is the history")
-	printHistory(histories.last())
+	printHistory(histories.first())
 	println("--------------------------------------")
 	println("Proof complete!")
-	 */
+
 
 
 	while (currentGoals.isNotEmpty()) {

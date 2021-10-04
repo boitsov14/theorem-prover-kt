@@ -101,5 +101,31 @@ typealias Goals = List<Goal>
 
 fun Goals.replaceFirstGoal(vararg newFirstGoals: Goal): Goals = newFirstGoals.toList() + this.drop(1)
 
-data class GoalToSet(val fixedVars: Set<Var>, val assumptions: Set<Formula>, val conclusion: Formula)
-fun Goals.getGoalToSet(): Set<GoalToSet> = this.map { GoalToSet(it.fixedVars.toSet(), it.assumptions.toSet(), it.conclusion) }.toSet()
+data class SetGoal(val fixedVars: Set<Var>, val assumptions: Set<Formula>, val conclusion: Formula)
+fun Goals.getSetGoals(): List<SetGoal> = this.map { SetGoal(it.fixedVars.toSet(), it.assumptions.toSet(), it.conclusion) }
+
+/*
+
+fun Goal.getSubGoals(): List<Goal> {
+	val result = mutableListOf(this)
+	if (assumptions.isEmpty()) { return result }
+	for (i in 0..assumptions.size)
+}
+
+fun SetGoal.isSubGoals(other: SetGoal): Boolean {
+	if (this == other) return true
+	if (fixedVars == other.fixedVars && conclusion == other.conclusion && other.assumptions.containsAll(assumptions)) return true
+	return false
+}
+
+fun isDuplicated(newSetGoals: Set<SetGoal>, listOfExperiencedSetGoals: MutableSet<Set<SetGoal>>): Boolean {
+	for (experiencedSetGoals in listOfExperiencedSetGoals) {
+		for (experiencedSetGoal in experiencedSetGoals) {
+			if (newSetGoals.any { experiencedSetGoal.isSubGoals(it) }) return true
+		}
+	}
+}
+
+fun getSubGoals(newGoals: Goals)
+
+ */
