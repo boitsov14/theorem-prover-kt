@@ -100,3 +100,6 @@ val allTactics: List<ITactic> = Tactic0.values().toList() + Tactic1.values().toL
 typealias Goals = List<Goal>
 
 fun Goals.replaceFirstGoal(vararg newFirstGoals: Goal): Goals = newFirstGoals.toList() + this.drop(1)
+
+data class GoalToSet(val fixedVars: Set<Var>, val assumptions: Set<Formula>, val conclusion: Formula)
+fun Goals.getGoalToSet(): Set<GoalToSet> = this.map { GoalToSet(it.fixedVars.toSet(), it.assumptions.toSet(), it.conclusion) }.toSet()

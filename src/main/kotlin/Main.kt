@@ -2,22 +2,23 @@ import kotlin.system.measureTimeMillis
 
 fun main() {
 	val currentHistory: History = mutableListOf()
-	print("Input a formula you want to prove >>> ")
-	var currentGoals = listOf(Goal(readLine()!!.parse()!!))
-	/*
-	var currentGoals = listOf(Goal("P to Q to Q to Q to Q to Q to Q to Q to P".parse()!!))
+	//print("Input a formula you want to prove >>> ")
+	//var currentGoals = listOf(Goal(readLine()!!.parse()!!))
+	// not (P and Q) to (not P or not Q)
+	// not (P and Q and R) to (not P or not Q or not R)
+	var currentGoals = listOf(Goal("not (P and Q) to (not P or not Q)".parse()!!))
 	printGoals(currentGoals)
 	println("--------------------------------------")
 
 	val histories0: List<History>
 	val timeInMillis = measureTimeMillis {
-		histories0 = prover(currentGoals)
+		histories0 = prover(currentGoals, 15)
 	}
 	val histories1 = histories0.getIntuitionisticProofs()
 
 	val histories
 	= if (histories0.isEmpty()) {
-		println("We couldn't find the proof in $MAX_STEP steps.")
+		println("We couldn't find the proof.")
 		listOf()
 	} else if (histories1.isEmpty()) {
 		println("We found proofs but couldn't find the intuitionistic proof.")
@@ -42,8 +43,6 @@ fun main() {
 		println("--------------------------------------")
 		println("Proof complete!")
 	}
-
-	 */
 
 	while (currentGoals.isNotEmpty()) {
 		println("--------------------------------------")
@@ -162,6 +161,7 @@ fun printHistory(history: History) {
 	for (flow in history) {
 		println("--------------------------------------")
 		printGoals(flow.previousGoals)
+		println("--------------------------------------")
 		print(">>> ")
 		println(flow)
 	}
