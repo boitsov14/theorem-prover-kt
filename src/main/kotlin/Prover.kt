@@ -81,6 +81,8 @@ data class TreeNodeOfHistory(
 
 	fun getAllSolvedNodes(): List<TreeNodeOfHistory> = getAllDescendants().filter { it.isSolved }
 
+	fun getAllDeadLeaves() = getAllDescendants().filter { it.isDead }.filter { it.childrenOfGoals.isEmpty() }
+
 	private fun getAllParents(): List<TreeNodeOfHistory> {
 		val result = mutableListOf(this)
 		if (parent != null) {
@@ -91,11 +93,14 @@ data class TreeNodeOfHistory(
 
 	fun getHistory(): History = getAllParents().mapNotNull { it.parent?.first }.reversed().toMutableList()
 
-	fun addNewPossibleNode(experiencedGoals: MutableSet<Set<GoalToSet>>) {
-		if (isDead) { return }
+	fun addNewPossibleNode(isIntuitionistic: Boolean) {
 		val currentGoal = currentGoals[0]
-		val possibleTactic0s = Tactic0.values().filter { it.canApply(currentGoal) }
-		val possibleTactic1s = Tactic1.values().filter { it.canApply(currentGoal) }
+		val possibleTactic0s = Tactic0.values()
+			.filterNot { it == if (isIntuitionistic) {Tactic0.BY_CONTRA} else {Tactic0.EXFALSO} }
+			.filter { it.canApply(currentGoal) }
+		val possibleTactic1s = Tactic1.values()
+			.filterNot { it == Tactic1.REVERT }
+			.filter { it.canApply(currentGoal) }
 		val possibleTactic2s = Tactic2.values().filter { it.canApply(currentGoal) }
 		for (tactic in possibleTactic0s) {
 			val newGoals = tactic.apply(currentGoals)
@@ -115,7 +120,6 @@ data class TreeNodeOfHistory(
 				val newIFlowOfGoals = FlowOfGoals1WithFormula(currentGoals, newGoals, tactic, assumption)
 				val newNode = TreeNodeOfHistory(newGoals, Pair(newIFlowOfGoals, this))
 				childrenOfGoals.add(Pair(newIFlowOfGoals, newNode))
-				//println("tactic1 did >>> $newGoals")
 			}
 		}
 		for (tactic in possibleTactic2s) {
@@ -134,6 +138,13 @@ data class TreeNodeOfHistory(
 		}
 		isDead = true
 		/*
+		if (childrenOfGoals.isEmpty() && parent != null) {
+			val bool = parent.second.childrenOfGoals.remove(Pair(parent.first, this))
+			print("(creates nothing)")
+		}
+		 */
+
+		/*
 		for (child in childrenOfGoals) {
 			print("${child.second.currentGoals}, ")
 		}
@@ -142,52 +153,70 @@ data class TreeNodeOfHistory(
 	}
 }
 
-//const val maxStep = 15
-
-fun prover(goals: Goals, maxStep: Int = 10, limitSizeOfAssumptions: Int? = null): List<History> {
+fun prover(goals: Goals, isIntuitionistic: Boolean, maxStep: Int = 20): List<History> {
 	val root = TreeNodeOfHistory(goals)
 	val experiencedGoals = mutableSetOf(root.currentGoals.getGoalToSet())
 	//val solvedNodes = root.getAllSolvedNodes()
 	//val allNodes = root.getAllDescendants()
-	var steps = 0
+	var steps = 1
 	while (root.getAllSolvedNodes().isEmpty() && root.getAllAliveNodes().isNotEmpty() && steps < maxStep) {
-		println("This is the ${steps}th step.")
-		root.getAllDescendants().forEach { it.addNewPossibleNode(experiencedGoals) }
+		println("STEP : $steps")
+		root.getAllAliveNodes().forEach { it.addNewPossibleNode(isIntuitionistic) }
+
+		println("${root.getAllAliveNodes().map { it.currentGoals.getGoalToSet() }.filter { it in experiencedGoals }.size} duplicate goals is deleted.")
+
+		//val experiencedGoals0 = experiencedGoals.toSet()
 		for (newNode in root.getAllAliveNodes()) {
 			val newGoalToSet = newNode.currentGoals.getGoalToSet()
-			if (newGoalToSet !in experiencedGoals) {
+			if (newNode.isSolved) {
+				//println("we found a proof.")
+			} else if (newGoalToSet !in experiencedGoals) {
 				experiencedGoals.add(newGoalToSet)
 			} else {
 				newNode.isDead = true
-			}
-		}
-		if (limitSizeOfAssumptions != null) {
-			for (newNode in root.getAllAliveNodes()) {
-				if (newNode.currentGoals.isEmpty()) {break}
-				if (newNode.currentGoals.maxOf { it.assumptions.size } > limitSizeOfAssumptions) {
-					newNode.isDead = true
+				if (newNode.parent != null) {
+					val bool = newNode.parent.second.childrenOfGoals.removeAll { it == Pair(newNode.parent.first, newNode)}
+					//println("duplicated goals : ${newNode.currentGoals}")
 				}
 			}
 		}
 
-		println("${root.getAllAliveNodes().map { it.currentGoals.getGoalToSet() }.filter { it in experiencedGoals }.size} duplicate goals.")
 
-		/*
-
-		println("experiencedGoals = ${experiencedGoals.map { it.size }}")
-		childrenOfGoals.filter { it.second.currentGoals.getGoalToSet() in experiencedGoals }.forEach { print("${it.second.currentGoals}, ") }
-		println("\b\b is duplicated.")
-		childrenOfGoals.removeAll { it.second.currentGoals.getGoalToSet() in experiencedGoals }
-		experiencedGoals.addAll(childrenOfGoals.map { it.second.currentGoals.getGoalToSet() })
-		 */
+		while (true) {
+			for (node in root.getAllDeadLeaves()) {
+				if (node.parent != null) {
+					val bool = node.parent.second.childrenOfGoals.remove(Pair(node.parent.first, node))
+					//print("(dead leaf)")
+				}
+			}
+			if (root.getAllDeadLeaves().isEmpty() || root.getAllDescendants().size == 1) {break}
+		}
 
 		steps++
-		println("the size of all nodes is ${root.getAllDescendants().size}.")
-		println("the size of all alive nodes is ${root.getAllAliveNodes().size}.")
-		println("the size of all solved nodes is ${root.getAllSolvedNodes().size}.")
+		println("NODES >>> ${root.getAllDescendants().size}")
+		println("ALIVE >>> ${root.getAllAliveNodes().size}")
+
+		//println(root.getAllDescendants().map { it.currentGoals }.distinct().size)
+		//println(root.getAllDeadLeaves().map { it.currentGoals }.size)
+
+
+		/*
+		for (node in root.getAllDescendants()) {
+			print(node.currentGoals)
+			print(" : ")
+		}
+		println()
+		for (node in root.getAllAliveNodes()) {
+			print(node.currentGoals)
+			print(" : ")
+		}
+		println()
+		 */
+
 		println("--------------------------------------")
 	}
-	println("steps = $steps")
+	println("TOTAL STEPS >>> ${steps-1}")
+	println("PROOFS >>> ${root.getAllSolvedNodes().size}")
 	return root.getAllSolvedNodes().map { it.getHistory() }
 }
 
