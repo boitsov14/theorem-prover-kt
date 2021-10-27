@@ -3,6 +3,18 @@ interface ITactic {
 	fun canApply(goal: Goal): Boolean
 }
 
+sealed interface IApplyData
+
+fun IApplyData.apply(goals: Goals): Goals = when(this) {
+	is Tactic0.ApplyData 			-> this.tactic0.apply(goals)
+	is Tactic1.ApplyDataWithFormula -> this.tactic1.apply(goals, this.assumption)
+	is Tactic1.ApplyDataWithVar 	-> this.tactic1.apply(goals, this.fixedVar)
+	is Tactic2.ApplyDataWithFormula -> this.tactic2.apply(goals, this.assumptionApply, this.assumptionApplied)
+	is Tactic2.ApplyDataWithVar 	-> this.tactic2.apply(goals, this.assumption, this.fixedVar)
+}
+
+fun List<IApplyData>.apply(goals: Goals): Goals = this.fold(goals){currentGoals, applyData -> applyData.apply(currentGoals)}
+
 // Tactic with arity 0.
 enum class Tactic0(private val id: String): ITactic {
 	ASSUMPTION  ("assumption"),
@@ -57,6 +69,7 @@ enum class Tactic0(private val id: String): ITactic {
 		}
 		return goals
 	}
+	data class ApplyData(val tactic0: Tactic0): IApplyData
 }
 
 // Tactic with arity 1.
@@ -150,6 +163,8 @@ enum class Tactic1(private val id: String): ITactic {
 		}
 		else -> listOf()
 	}
+	data class ApplyDataWithFormula(val tactic1: Tactic1, val assumption: Formula): IApplyData
+	data class ApplyDataWithVar(val tactic1: Tactic1, val fixedVar: Var): IApplyData
 }
 
 // Tactic with arity 2.
@@ -193,6 +208,8 @@ enum class Tactic2(private val id: String): ITactic {
 	}
 	fun possibleAssumptionsWithFixedVar(goal: Goal): List<Formula> = goal.assumptions
 		.filter { it is Formula.QuantifiedFml && it.quantifier == Quantifier.FOR_ALL }
+	data class ApplyDataWithFormula(val tactic2: Tactic2, val assumptionApply: Formula, val assumptionApplied: Formula): IApplyData
+	data class ApplyDataWithVar(val tactic2: Tactic2, val assumption: Formula, val fixedVar: Var): IApplyData
 	/*
 	fun possibleAssumptionsWithFixedVar(goal: Goal): List<Pair<Formula, List<Var>>> =
 		goal.assumptions
