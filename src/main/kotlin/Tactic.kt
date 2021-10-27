@@ -1,12 +1,10 @@
 // ITactic = Tactic0 | Tactic1 | Tactic2
 interface ITactic {
-	val id: String
-	override fun toString(): String
 	fun canApply(goal: Goal): Boolean
 }
 
 // Tactic with arity 0.
-enum class Tactic0(override val id: String): ITactic {
+enum class Tactic0(private val id: String): ITactic {
 	ASSUMPTION  ("assumption"),
 	INTRO       ("intro"),
 	SPLIT       ("split"),
@@ -62,7 +60,7 @@ enum class Tactic0(override val id: String): ITactic {
 }
 
 // Tactic with arity 1.
-enum class Tactic1(override val id: String): ITactic {
+enum class Tactic1(private val id: String): ITactic {
 	APPLY("apply"),
 	CASES("cases"),
 	REVERT("revert"),
@@ -155,7 +153,7 @@ enum class Tactic1(override val id: String): ITactic {
 }
 
 // Tactic with arity 2.
-enum class Tactic2(override val id: String): ITactic {
+enum class Tactic2(private val id: String): ITactic {
 	HAVE("have");
 	override fun toString(): String = id
 	override fun canApply(goal: Goal): Boolean = possibleAssumptionsPairs(goal).isNotEmpty() || possibleAssumptionsWithFixedVar(goal).isNotEmpty()
