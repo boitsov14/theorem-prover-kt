@@ -1,18 +1,12 @@
-data class Var(val id: String): SemiToken {
+data class Var(private val id: String): SemiToken {
 	override fun toString() = id
 	fun getNewVar(vars: Set<Var>): Var {
-		if (this !in vars) {
-			return this
-		} else {
-			var n = 1
-			while (true) {
-				val newVar = Var(this.id + "_$n")
-				if (newVar !in vars) {
-					return newVar
-				} else {
-					n++
-				}
-			}
+		if (this !in vars) { return this }
+		var n = 1
+		while (true) {
+			val newVar = Var(this.id + "_$n")
+			if (newVar !in vars) { return newVar }
+			n++
 		}
 	}
 }
