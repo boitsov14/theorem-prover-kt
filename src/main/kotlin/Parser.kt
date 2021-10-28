@@ -33,8 +33,8 @@ fun toReversePolishNotation(tokens: ArrayDeque<SemiToken>): List<Token> {
 	val stack = ArrayDeque<Token>()
 	while (tokens.isNotEmpty()) {
 		when (tokens[0]) {
-			is Formula.False			-> output.add		(tokens.removeFirst() as Token)
-			is Formula.PredicateFml					-> output.add 		(tokens.removeFirst() as Token)
+			is Formula.FALSE			-> output.add		(tokens.removeFirst() as Token)
+			is Formula.PREDICATE					-> output.add 		(tokens.removeFirst() as Token)
 			SymbolToken.LEFT_PARENTHESIS	-> stack.addFirst	(tokens.removeFirst() as Token)
 			SymbolToken.RIGHT_PARENTHESIS -> {
 				while (stack.isNotEmpty()) {
@@ -67,7 +67,7 @@ fun toReversePolishNotation(tokens: ArrayDeque<SemiToken>): List<Token> {
 				while (tokens.isNotEmpty() && tokens[0] is Var) {
 					vars.add(tokens.removeFirst() as Var)
 				}
-				tokens.addFirst(Formula.PredicateFml(predicateSemiToken.id, vars))
+				tokens.addFirst(Formula.PREDICATE(predicateSemiToken.id, vars))
 			}
 			is BinaryConnective -> {
 				while (stack.isNotEmpty()
@@ -96,8 +96,8 @@ fun toFormula(tokens: List<Token>): Formula? {
 	val output = mutableListOf<Formula>()
 	for (token in tokens) {
 		when(token) {
-			is Formula.False -> output.add(token)
-			is Formula.PredicateFml -> output.add(token)
+			is Formula.FALSE -> output.add(token)
+			is Formula.PREDICATE -> output.add(token)
 			is UnaryConnective -> {
 				if (output.isEmpty()) {
 					println("syntax error in UnaryConnective")
@@ -154,7 +154,7 @@ fun parseCharacter(chr: Char): SemiToken = when {
 	chr in SymbolToken			.values().map{it.id} -> SymbolToken			.values().find{it.id == chr}!!
 	chr in UnaryConnective		.values().map{it.id} -> UnaryConnective		.values().find{it.id == chr}!!
 	chr in BinaryConnective		.values().map{it.id} -> BinaryConnective	.values().find{it.id == chr}!!
-	chr == Formula.False.id							 -> Formula.False
+	chr == Formula.FALSE.id							 -> Formula.FALSE
 	chr in Quantifier			.values().map{it.id} -> Quantifier			.values().find{it.id == chr}!!
 	chr.isLowerCase()								 -> Var("$chr")
 	chr.isUpperCase() 								 -> PredicateSemiToken(chr)

@@ -60,9 +60,9 @@ fun main() {
 		printGoals(currentGoals)
 		val currentGoal = currentGoals[0]
 		print("Possible tactics are >>> ")
-		println(currentGoal.possibleTactics().joinToString())
+		println(currentGoal.applicableTactics().joinToString())
 		print("Select a tactic >>> ")
-		when (val tactic = currentGoal.possibleTactics()[readLine()!!.toInt()]) {
+		when (val tactic = currentGoal.applicableTactics()[readLine()!!.toInt()]) {
 			is Tactic0 -> {
 				currentHistory.add(FlowOfGoals0(currentGoals, tactic.apply(currentGoals), tactic))
 			}
