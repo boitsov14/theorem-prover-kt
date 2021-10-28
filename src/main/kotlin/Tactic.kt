@@ -37,11 +37,9 @@ enum class Tactic0(private val id: String): ITactic {
 		val conclusion = goal.conclusion
 		return when(this) {
 			ASSUMPTION			-> conclusion in goal.assumptions
-			INTRO				-> conclusion is Formula.BinaryConnectiveFml && conclusion.connective == BinaryConnective.IMPLY
-					|| conclusion is Formula.UnaryConnectiveFml && conclusion.connective == UnaryConnective.NOT
-					|| conclusion is Formula.QuantifiedFml && conclusion.quantifier == Quantifier.FOR_ALL
-			SPLIT				-> conclusion is Formula.BinaryConnectiveFml && conclusion.connective in setOf(BinaryConnective.AND, BinaryConnective.IFF)
-			LEFT, RIGHT			-> conclusion is Formula.BinaryConnectiveFml && conclusion.connective == BinaryConnective.OR
+			INTRO				-> conclusion is Formula.IMPLIES || conclusion is Formula.NOT || conclusion is Formula.ALL
+			SPLIT				-> conclusion is Formula.AND || conclusion is Formula.IFF
+			LEFT, RIGHT			-> conclusion is Formula.OR
 			EXFALSO, BY_CONTRA	-> conclusion != Formula.FALSE
 		}
 	}
@@ -49,33 +47,32 @@ enum class Tactic0(private val id: String): ITactic {
 		val goal = goals[0]
 		when(this) {
 			ASSUMPTION -> return goals.replaceFirstGoal()
-			INTRO -> when(goal.conclusion) {
-				// IMPLY
-				is Formula.BinaryConnectiveFml -> return goals.replaceFirstGoal(goal.copy(assumptions = goal.assumptions + goal.conclusion.leftFml, conclusion = goal.conclusion.rightFml))
-				// NOT
-				is Formula.UnaryConnectiveFml -> return goals.replaceFirstGoal(goal.copy(assumptions = goal.assumptions + goal.conclusion.fml, conclusion = Formula.FALSE))
-				// FOR_ALL
-				is Formula.QuantifiedFml -> {
-					val newVar = goal.conclusion.bddVar.getNewVar(goal.fixedVars.toSet() + goal.conclusion.formula.bddVars())
-					return goals.replaceFirstGoal(goal.copy(fixedVars = goal.fixedVars + newVar, conclusion = goal.conclusion.formula.replace(goal.conclusion.bddVar, newVar)))
+			INTRO -> when(val conclusion = goal.conclusion) {
+				is Formula.IMPLIES -> return goals.replaceFirstGoal(goal.copy(assumptions = goal.assumptions + conclusion.leftFml, conclusion = conclusion.rightFml))
+				is Formula.NOT -> return goals.replaceFirstGoal(goal.copy(assumptions = goal.assumptions + conclusion.fml, conclusion = Formula.FALSE))
+				is Formula.ALL -> {
+					val newVar = conclusion.bddVar.getNewVar(goal.fixedVars.toSet() + conclusion.fml.bddVars())
+					return goals.replaceFirstGoal(goal.copy(fixedVars = goal.fixedVars + newVar, conclusion = conclusion.fml.replace(conclusion.bddVar, newVar)))
 				}
-				else -> {}
 			}
-			SPLIT -> if (goal.conclusion is Formula.BinaryConnectiveFml && goal.conclusion.connective == BinaryConnective.AND) {
-				val left    = goal.copy(conclusion = goal.conclusion.leftFml)
-				val right   = goal.copy(conclusion = goal.conclusion.rightFml)
-				return goals.replaceFirstGoal(left, right)
-			} else if   (goal.conclusion is Formula.BinaryConnectiveFml && goal.conclusion.connective == BinaryConnective.IFF) {
-				val toRight = goal.copy(conclusion = Formula.BinaryConnectiveFml(BinaryConnective.IMPLY, goal.conclusion.leftFml, goal.conclusion.rightFml))
-				val toLeft  = goal.copy(conclusion = Formula.BinaryConnectiveFml(BinaryConnective.IMPLY, goal.conclusion.rightFml, goal.conclusion.leftFml))
-				return goals.replaceFirstGoal(toLeft, toRight)
+			SPLIT -> when(val conclusion = goal.conclusion) {
+				is Formula.AND -> {
+					val left    = goal.copy(conclusion = conclusion.leftFml)
+					val right   = goal.copy(conclusion = conclusion.rightFml)
+					return goals.replaceFirstGoal(left, right)
+				}
+				is Formula.IFF -> {
+					val toRight = goal.copy(conclusion = Formula.IMPLIES(conclusion.leftFml, conclusion.rightFml))
+					val toLeft  = goal.copy(conclusion = Formula.IMPLIES(conclusion.rightFml, conclusion.leftFml))
+					return goals.replaceFirstGoal(toLeft, toRight)
+				}
 			}
-			LEFT	-> if (goal.conclusion is Formula.BinaryConnectiveFml) return goals.replaceFirstGoal(goal.copy(conclusion = (goal.conclusion).leftFml))
-			RIGHT   -> if (goal.conclusion is Formula.BinaryConnectiveFml) return goals.replaceFirstGoal(goal.copy(conclusion = goal.conclusion.rightFml))
+			LEFT	-> return goals.replaceFirstGoal(goal.copy(conclusion = (goal.conclusion as Formula.OR).leftFml))
+			RIGHT   -> return goals.replaceFirstGoal(goal.copy(conclusion = (goal.conclusion as Formula.OR).rightFml))
 			EXFALSO -> return goals.replaceFirstGoal(goal.copy(conclusion = Formula.FALSE))
-			BY_CONTRA -> return goals.replaceFirstGoal(goal.copy(assumptions = goal.assumptions + Formula.UnaryConnectiveFml(UnaryConnective.NOT, goal.conclusion), conclusion = Formula.FALSE))
+			BY_CONTRA -> return goals.replaceFirstGoal(goal.copy(assumptions = goal.assumptions + Formula.NOT(goal.conclusion), conclusion = Formula.FALSE))
 		}
-		return goals
+		throw IllegalArgumentException()
 	}
 	data class ApplyData(val tactic0: Tactic0): IApplyData
 }
@@ -91,84 +88,71 @@ enum class Tactic1(private val id: String): ITactic {
 		val conclusion = goal.conclusion
 		return when(this) {
 			APPLY, CASES	-> possibleAssumptions(goal).isNotEmpty()
-			REVERT	-> goal.assumptions.isNotEmpty()
-					|| possibleFixedVars(goal).isNotEmpty()
-			USE	->	conclusion is Formula.QuantifiedFml
-					&& conclusion.quantifier == Quantifier.THERE_EXISTS
-					//&& possibleFixedVars(goal).isNotEmpty()
+			REVERT			-> goal.assumptions.isNotEmpty() || possibleFixedVars(goal).isNotEmpty()
+			USE				-> conclusion is Formula.EXISTS //&& possibleFixedVars(goal).isNotEmpty()
 		}
 	}
 	fun apply(goals: Goals, assumption: Formula): Goals {
 		val goal = goals[0]
 		when(this) {
-			APPLY -> if (assumption is Formula.BinaryConnectiveFml) { // IMPLY
-				return goals.replaceFirstGoal(goal.copy(conclusion = assumption.leftFml))
-			} else if   (assumption is Formula.UnaryConnectiveFml) {  // NOT
-				return goals.replaceFirstGoal(goal.copy(conclusion = assumption.fml))
+			APPLY -> return when(assumption) {
+				is Formula.IMPLIES -> goals.replaceFirstGoal(goal.copy(conclusion = assumption.leftFml))
+				is Formula.NOT -> goals.replaceFirstGoal(goal.copy(conclusion = assumption.fml))
+				else -> throw IllegalArgumentException()
 			}
 			CASES -> {
-				val removedAssumptions = goal.assumptions.filterNot { it == assumption }
-				if (assumption is Formula.BinaryConnectiveFml && assumption.connective == BinaryConnective.AND) {
-					return goals.replaceFirstGoal(goal.copy(assumptions = removedAssumptions + assumption.leftFml + assumption.rightFml))
-				} else if (assumption is Formula.BinaryConnectiveFml && assumption.connective == BinaryConnective.OR) {
-					val leftGoal    = goal.copy(assumptions = removedAssumptions + assumption.leftFml)
-					val rightGoal   = goal.copy(assumptions = removedAssumptions + assumption.rightFml)
-					return goals.replaceFirstGoal(leftGoal, rightGoal)
-				} else if (assumption is Formula.BinaryConnectiveFml && assumption.connective == BinaryConnective.IFF) {
-					val toRight = Formula.BinaryConnectiveFml(BinaryConnective.IMPLY, assumption.leftFml,  assumption.rightFml)
-					val toLeft  = Formula.BinaryConnectiveFml(BinaryConnective.IMPLY, assumption.rightFml, assumption.leftFml)
-					return goals.replaceFirstGoal(goal.copy(assumptions = removedAssumptions + toRight + toLeft))
-				} else if (assumption is Formula.QuantifiedFml && assumption.quantifier == Quantifier.THERE_EXISTS) {
-					val newVar = assumption.bddVar.getNewVar(goal.fixedVars.toSet())
-					return goals.replaceFirstGoal(goal.copy(fixedVars = goal.fixedVars + newVar, assumptions = removedAssumptions + assumption.formula.replace(assumption.bddVar, newVar)))
+				val removedAssumptions = goal.assumptions.minus(assumption)
+				when(assumption) {
+					is Formula.AND -> return goals.replaceFirstGoal(goal.copy(assumptions = removedAssumptions + assumption.leftFml + assumption.rightFml))
+					is Formula.OR -> {
+						val leftGoal    = goal.copy(assumptions = removedAssumptions + assumption.leftFml)
+						val rightGoal   = goal.copy(assumptions = removedAssumptions + assumption.rightFml)
+						return goals.replaceFirstGoal(leftGoal, rightGoal)
+					}
+					is Formula.IFF -> {
+						val toRight = Formula.IMPLIES(assumption.leftFml, assumption.rightFml)
+						val toLeft  = Formula.IMPLIES(assumption.rightFml, assumption.leftFml)
+						return goals.replaceFirstGoal(goal.copy(assumptions = removedAssumptions + toRight + toLeft))
+					}
+					is Formula.EXISTS -> {
+						val newVar = assumption.bddVar.getNewVar(goal.fixedVars.toSet())
+						return goals.replaceFirstGoal(goal.copy(fixedVars = goal.fixedVars + newVar, assumptions = removedAssumptions + assumption.fml.replace(assumption.bddVar, newVar)))
+					}
+					else -> throw IllegalArgumentException()
 				}
 			}
-			REVERT -> return goals.replaceFirstGoal(goal.copy(assumptions = goal.assumptions.filterNot { it == assumption }, conclusion = Formula.BinaryConnectiveFml(BinaryConnective.IMPLY, assumption, goal.conclusion)))
-			else -> {}
+			REVERT -> return goals.replaceFirstGoal(goal.copy(assumptions = goal.assumptions.filterNot { it == assumption }, conclusion = Formula.IMPLIES(assumption, goal.conclusion)))
+			else -> throw IllegalArgumentException()
 		}
-		return goals
 	}
 	fun apply(goals: Goals, fixedVar: Var): Goals {
 		val goal = goals[0]
 		when(this) {
-			REVERT -> return goals.replaceFirstGoal(goal.copy(fixedVars = goal.fixedVars.filterNot { it == fixedVar }, conclusion = Formula.QuantifiedFml(Quantifier.FOR_ALL, fixedVar, goal.conclusion)))
+			REVERT -> return goals.replaceFirstGoal(goal.copy(fixedVars = goal.fixedVars.filterNot { it == fixedVar }, conclusion = Formula.ALL(fixedVar, goal.conclusion)))
 			USE -> {
-				if (goal.conclusion is Formula.QuantifiedFml) { // THERE_EXISTS
-					return goals.replaceFirstGoal(goal.copy(conclusion = goal.conclusion.formula.replace(goal.conclusion.bddVar, fixedVar)))
+				when(val conclusion = goal.conclusion) {
+					is Formula.EXISTS -> return goals.replaceFirstGoal(goal.copy(conclusion = conclusion.fml.replace(conclusion.bddVar, fixedVar)))
 				}
 			}
-			else -> {}
+			else -> throw IllegalArgumentException()
 		}
-		return goals
+		throw IllegalArgumentException()
 	}
 
 	// TODO: 2021/09/22
 	// don't need to be a list but a set in an app.
-	fun possibleAssumptions(goal: Goal): List<Formula> = when(this) {
-		APPLY   -> goal.assumptions
-			.filter {   (it is Formula.BinaryConnectiveFml  && it.connective == BinaryConnective.IMPLY  && it.rightFml  == goal.conclusion)
-					||  (it is Formula.UnaryConnectiveFml   && it.connective == UnaryConnective.NOT     && goal.conclusion == Formula.FALSE) }
-		CASES   -> listOf(
-			goal.assumptions
-				.filter { it is Formula.BinaryConnectiveFml && it.connective in setOf(BinaryConnective.AND, BinaryConnective.OR, BinaryConnective.IFF) }
-			, goal.assumptions
-				.filter { it is Formula.QuantifiedFml && it.quantifier == Quantifier.THERE_EXISTS })
-			.flatten()
+	private fun possibleAssumptions(goal: Goal): List<Formula> = when(this) {
+		APPLY   -> goal.assumptions.filter { (it is Formula.IMPLIES && it.rightFml  == goal.conclusion) ||  (it is Formula.NOT && goal.conclusion == Formula.FALSE) }
+		CASES   -> goal.assumptions.filter { it is Formula.AND || it is Formula.OR || it is Formula.IFF || it is Formula.EXISTS }
 		REVERT -> goal.assumptions
-		USE -> listOf()
+		else -> listOf()
 	}
-	fun possibleFixedVars(goal: Goal): List<Var> = when(this) {
+	private fun possibleFixedVars(goal: Goal): List<Var> = when(this) {
 		REVERT -> {
-			val fixedVarsInAssumptions = goal.assumptions.map { it.freeVars() }.flatten().toSet()
+			val fixedVarsInAssumptions: Set<Var> = goal.assumptions.fold(setOf()){ set, assumption -> set + assumption.freeVars() }
 			goal.fixedVars.filterNot { it in fixedVarsInAssumptions }.filterNot { it in goal.conclusion.bddVars() }
 		}
-		USE -> {
-			if (goal.conclusion is Formula.QuantifiedFml) {
-				goal.fixedVars.filterNot { it in goal.conclusion.formula.bddVars() }
-			} else {
-				listOf()
-			}
-		}
+		USE -> if (goal.conclusion is Formula.EXISTS) goal.fixedVars.filterNot { it in goal.conclusion.fml.bddVars() } else listOf()
 		else -> listOf()
 	}
 	data class ApplyDataWithFormula(val tactic1: Tactic1, val assumption: Formula): IApplyData
@@ -183,30 +167,25 @@ enum class Tactic2(private val id: String): ITactic {
 	fun apply(goals: Goals, assumptionApply: Formula, assumptionApplied: Formula): Goals {
 		val goal = goals[0]
 		return when(assumptionApply) {
-			// IMPLY
-			is Formula.BinaryConnectiveFml -> goals.replaceFirstGoal(goal.copy(assumptions = goal.assumptions + assumptionApply.rightFml))
-			// NOT
-			is Formula.UnaryConnectiveFml -> goals.replaceFirstGoal(goal.copy(assumptions = goal.assumptions + Formula.FALSE))
-			else -> goals
+			is Formula.IMPLIES -> goals.replaceFirstGoal(goal.copy(assumptions = goal.assumptions + assumptionApply.rightFml))
+			is Formula.NOT -> goals.replaceFirstGoal(goal.copy(assumptions = goal.assumptions + Formula.FALSE))
+			else -> throw IllegalArgumentException()
 		}
 	}
 	fun apply(goals: Goals, assumption: Formula, fixedVar: Var): Goals {
 		val goal = goals[0]
-		if (assumption is Formula.QuantifiedFml) {
-			return goals.replaceFirstGoal(goal.copy(assumptions = goal.assumptions + assumption.formula.replace(assumption.bddVar, fixedVar)))
+		return when(assumption) {
+			is Formula.ALL -> goals.replaceFirstGoal(goal.copy(assumptions = goal.assumptions + assumption.fml.replace(assumption.bddVar, fixedVar)))
+			else -> throw IllegalArgumentException()
 		}
-		return goals
 	}
-	fun possibleAssumptionsPairs(goal: Goal): List<Pair<Formula, Formula>> {
+	private fun possibleAssumptionsPairs(goal: Goal): List<Pair<Formula, Formula>> {
 		val result = mutableListOf<Pair<Formula, Formula>>()
 		for (assumptionApply in goal.assumptions) {
 			for (assumptionApplied in goal.assumptions) {
-				if (assumptionApply is Formula.BinaryConnectiveFml
-					&& assumptionApply.connective == BinaryConnective.IMPLY
-					&& assumptionApply.leftFml == assumptionApplied) {
+				if (assumptionApply is Formula.IMPLIES && assumptionApply.leftFml == assumptionApplied) {
 					result.add(Pair(assumptionApply, assumptionApplied))
-				} else if (assumptionApply is Formula.UnaryConnectiveFml
-					&& assumptionApply.connective == UnaryConnective.NOT
+				} else if (assumptionApply is Formula.NOT
 					&& assumptionApply.fml == assumptionApplied) {
 					result.add(Pair(assumptionApply, assumptionApplied))
 				}
@@ -214,8 +193,7 @@ enum class Tactic2(private val id: String): ITactic {
 		}
 		return result
 	}
-	fun possibleAssumptionsWithFixedVar(goal: Goal): List<Formula> = goal.assumptions
-		.filter { it is Formula.QuantifiedFml && it.quantifier == Quantifier.FOR_ALL }
+	private fun possibleAssumptionsWithFixedVar(goal: Goal): List<Formula> = goal.assumptions.filterIsInstance<Formula.ALL>()
 	data class ApplyDataWithFormula(val tactic2: Tactic2, val assumptionApply: Formula, val assumptionApplied: Formula): IApplyData
 	data class ApplyDataWithVar(val tactic2: Tactic2, val assumption: Formula, val fixedVar: Var): IApplyData
 	/*

@@ -83,6 +83,7 @@ data class FlowOfGoals2WithFormulaAndVar(
 	override fun toString() = "$tactic $assumption ($fixedVar)"
 }
  */
+/*
 
 data class SetGoal(val fixedVars: Set<Var>, val assumptions: Set<Formula>, val conclusion: Formula)
 fun Goals.getSetGoals(): List<SetGoal> = this.map { SetGoal(it.fixedVars.toSet(), it.assumptions.toSet(), it.conclusion) }
@@ -341,3 +342,4 @@ fun List<History>.getIntuitionisticProofs(): List<History> = this.filter { it.is
 fun smartProver(nodes: List<TreeNodeOfHistory>) {
 
 }
+ */
