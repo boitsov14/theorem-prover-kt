@@ -36,11 +36,12 @@ enum class Tactic0(private val id: String): ITactic {
 	override fun canApply(goal: Goal): Boolean {
 		val conclusion = goal.conclusion
 		return when(this) {
-			ASSUMPTION			-> conclusion in goal.assumptions
-			INTRO				-> conclusion is Formula.IMPLIES || conclusion is Formula.NOT || conclusion is Formula.ALL
-			SPLIT				-> conclusion is Formula.AND || conclusion is Formula.IFF
-			LEFT, RIGHT			-> conclusion is Formula.OR
-			EXFALSO, BY_CONTRA	-> conclusion != Formula.FALSE
+			ASSUMPTION	-> conclusion in goal.assumptions
+			INTRO		-> conclusion is Formula.IMPLIES || conclusion is Formula.NOT || conclusion is Formula.ALL
+			SPLIT		-> conclusion is Formula.AND || conclusion is Formula.IFF
+			LEFT, RIGHT	-> conclusion is Formula.OR
+			EXFALSO		-> conclusion != Formula.FALSE
+			BY_CONTRA	-> conclusion != Formula.FALSE && Formula.NOT(conclusion) !in goal.assumptions
 		}
 	}
 	fun apply(goals: Goals): Goals {
@@ -233,7 +234,7 @@ enum class Tactic2(private val id: String): ITactic {
 		val goal = goals[0]
 		return when(assumptionApply) {
 			is Formula.IMPLIES -> {
-				val newGoal = goal.copy(assumptions = goal.assumptions.addIfDistinct(assumptionApply.rightFml))
+				val newGoal = goal.copy(assumptions = goal.assumptions.replaceIfDistinct(assumptionApply, assumptionApply.rightFml))
 				goals.replaceFirstGoal(newGoal)
 			}
 			is Formula.NOT -> {
@@ -257,10 +258,15 @@ enum class Tactic2(private val id: String): ITactic {
 		val result = mutableListOf<Pair<Formula, Formula>>()
 		for (assumptionApply in goal.assumptions) {
 			for (assumptionApplied in goal.assumptions) {
-				if (assumptionApply is Formula.IMPLIES && assumptionApply.leftFml == assumptionApplied) {
+				if (assumptionApply is Formula.IMPLIES
+					&& assumptionApply.leftFml == assumptionApplied
+					&& assumptionApply.rightFml !in goal.assumptions
+				) {
 					result.add(Pair(assumptionApply, assumptionApplied))
 				} else if (assumptionApply is Formula.NOT
-					&& assumptionApply.fml == assumptionApplied) {
+					&& assumptionApply.fml == assumptionApplied
+					&& Formula.FALSE !in goal.assumptions
+				) {
 					result.add(Pair(assumptionApply, assumptionApplied))
 				}
 			}

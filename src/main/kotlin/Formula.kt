@@ -1,11 +1,11 @@
 data class Var(private val id: String) {
 	override fun toString() = id
-	fun getNewVar(vars: Set<Var>): Var {
-		if (this !in vars) { return this }
+	fun getNewVar(oldVars: Set<Var>): Var {
+		if (this !in oldVars) { return this }
 		var n = 1
 		while (true) {
 			val newVar = Var(this.id + "_$n")
-			if (newVar !in vars) { return newVar }
+			if (newVar !in oldVars) { return newVar }
 			n++
 		}
 	}
@@ -108,6 +108,7 @@ fun List<Formula>.replaceIfDistinct(removedFml: Formula, vararg newFmls: Formula
 data class Goal(val fixedVars: List<Var>, val assumptions: List<Formula>, val conclusion: Formula) {
 	constructor(assumptions: List<Formula>, conclusion: Formula) : this(listOf(), assumptions, conclusion)
 	constructor(conclusion: Formula) : this(listOf(), conclusion)
+	// TODO: 2021/10/31 Do we need these constructor?
 	override fun toString() = (if (assumptions.isNotEmpty()) assumptions.joinToString(separator = ", ", postfix = " ") else "") + "⊢ " + "$conclusion"
 	//fun getAllBddVars(): Set<Var> = assumptions.map { it.bddVars() }.flatten().toSet() + conclusion.bddVars()
 	// TODO: 2021/10/28 Do we need this?
