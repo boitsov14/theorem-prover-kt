@@ -90,6 +90,21 @@ sealed class Formula {
 	}
 }
 
+fun List<Formula>.addIfDistinct(newFml: Formula): List<Formula> = if (newFml !in this) this + newFml else this
+
+fun List<Formula>.replaceIfDistinct(removedFml: Formula, vararg newFmls: Formula): List<Formula> {
+	val index = this.indexOf(removedFml)
+	val first = this.subList(0, index)
+	val second = this.subList(index + 1, this.size)
+	val newDistinctFmls = mutableListOf<Formula>()
+	for (newFml in newFmls) {
+		if (newFml !in first + newDistinctFmls + second) {
+			newDistinctFmls.add(newFml)
+		}
+	}
+	return first + newDistinctFmls + second
+}
+
 data class Goal(val fixedVars: List<Var>, val assumptions: List<Formula>, val conclusion: Formula) {
 	constructor(assumptions: List<Formula>, conclusion: Formula) : this(listOf(), assumptions, conclusion)
 	constructor(conclusion: Formula) : this(listOf(), conclusion)

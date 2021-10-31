@@ -50,14 +50,14 @@ enum class Tactic0(private val id: String): ITactic {
 			INTRO -> when(val conclusion = goal.conclusion) {
 				is Formula.IMPLIES -> {
 					val newGoal = goal.copy(
-						assumptions = goal.assumptions + conclusion.leftFml,
+						assumptions = goal.assumptions.addIfDistinct(conclusion.leftFml),
 						conclusion = conclusion.rightFml
 					)
 					return goals.replaceFirstGoal(newGoal)
 				}
 				is Formula.NOT -> {
 					val newGoal = goal.copy(
-						assumptions = goal.assumptions + conclusion.fml,
+						assumptions = goal.assumptions.addIfDistinct(conclusion.fml),
 						conclusion = Formula.FALSE
 					)
 					return goals.replaceFirstGoal(newGoal)
@@ -101,7 +101,7 @@ enum class Tactic0(private val id: String): ITactic {
 			}
 			BY_CONTRA -> {
 				val newGoal = goal.copy(
-					assumptions = goal.assumptions + Formula.NOT(goal.conclusion),
+					assumptions = goal.assumptions.addIfDistinct(Formula.NOT(goal.conclusion)),
 					conclusion = Formula.FALSE
 				)
 				return goals.replaceFirstGoal(newGoal)
@@ -142,28 +142,27 @@ enum class Tactic1(private val id: String): ITactic {
 				else -> throw IllegalArgumentException()
 			}
 			CASES -> {
-				val removedAssumptions = goal.assumptions.minus(assumption)
 				when(assumption) {
 					is Formula.AND -> {
-						val newGoal = goal.copy(assumptions = removedAssumptions + assumption.leftFml + assumption.rightFml)
+						val newGoal = goal.copy(assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.leftFml, assumption.rightFml))
 						return goals.replaceFirstGoal(newGoal)
 					}
 					is Formula.OR -> {
-						val leftGoal	= goal.copy(assumptions = removedAssumptions + assumption.leftFml)
-						val rightGoal	= goal.copy(assumptions = removedAssumptions + assumption.rightFml)
+						val leftGoal	= goal.copy(assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.leftFml))
+						val rightGoal	= goal.copy(assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.rightFml))
 						return goals.replaceFirstGoal(leftGoal, rightGoal)
 					}
 					is Formula.IFF -> {
 						val toRight = Formula.IMPLIES(assumption.leftFml, assumption.rightFml)
 						val toLeft  = Formula.IMPLIES(assumption.rightFml, assumption.leftFml)
-						val newGoal = goal.copy(assumptions = removedAssumptions + toRight + toLeft)
+						val newGoal = goal.copy(assumptions = goal.assumptions.replaceIfDistinct(assumption, toRight, toLeft))
 						return goals.replaceFirstGoal(newGoal)
 					}
 					is Formula.EXISTS -> {
 						val newVar = assumption.bddVar.getNewVar(goal.fixedVars.toSet())
 						val newGoal = goal.copy(
 							fixedVars = goal.fixedVars + newVar,
-							assumptions = removedAssumptions + assumption.fml.replace(assumption.bddVar, newVar)
+							assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.fml.replace(assumption.bddVar, newVar))
 						)
 						return goals.replaceFirstGoal(newGoal)
 					}
@@ -183,10 +182,19 @@ enum class Tactic1(private val id: String): ITactic {
 	fun apply(goals: Goals, fixedVar: Var): Goals {
 		val goal = goals[0]
 		when(this) {
-			REVERT -> return goals.replaceFirstGoal(goal.copy(fixedVars = goal.fixedVars.filterNot { it == fixedVar }, conclusion = Formula.ALL(fixedVar, goal.conclusion)))
+			REVERT -> {
+				val newGoal = goal.copy(
+					fixedVars = goal.fixedVars.minus(fixedVar),
+					conclusion = Formula.ALL(fixedVar, goal.conclusion)
+				)
+				return goals.replaceFirstGoal(newGoal)
+			}
 			USE -> {
 				when(val conclusion = goal.conclusion) {
-					is Formula.EXISTS -> return goals.replaceFirstGoal(goal.copy(conclusion = conclusion.fml.replace(conclusion.bddVar, fixedVar)))
+					is Formula.EXISTS -> {
+						val newGoal = goal.copy(conclusion = conclusion.fml.replace(conclusion.bddVar, fixedVar))
+						return goals.replaceFirstGoal(newGoal)
+					}
 				}
 			}
 			else -> throw IllegalArgumentException()
@@ -209,9 +217,7 @@ enum class Tactic1(private val id: String): ITactic {
 		}
 		USE -> if (goal.conclusion is Formula.EXISTS) {
 			goal.fixedVars.filterNot { it in goal.conclusion.fml.bddVars() }
-		} else {
-			listOf()
-		}
+		} else listOf()
 		else -> listOf()
 	}
 	data class ApplyDataWithFormula(val tactic1: Tactic1, val assumption: Formula): IApplyData
@@ -227,11 +233,11 @@ enum class Tactic2(private val id: String): ITactic {
 		val goal = goals[0]
 		return when(assumptionApply) {
 			is Formula.IMPLIES -> {
-				val newGoal = goal.copy(assumptions = goal.assumptions + assumptionApply.rightFml)
+				val newGoal = goal.copy(assumptions = goal.assumptions.addIfDistinct(assumptionApply.rightFml))
 				goals.replaceFirstGoal(newGoal)
 			}
 			is Formula.NOT -> {
-				val newGoal = goal.copy(assumptions = goal.assumptions + Formula.FALSE)
+				val newGoal = goal.copy(assumptions = goal.assumptions.addIfDistinct(Formula.FALSE))
 				goals.replaceFirstGoal(newGoal)
 			}
 			else -> throw IllegalArgumentException()
@@ -241,7 +247,7 @@ enum class Tactic2(private val id: String): ITactic {
 		val goal = goals[0]
 		return when(assumption) {
 			is Formula.ALL -> {
-				val newGoal = goal.copy(assumptions = goal.assumptions + assumption.fml.replace(assumption.bddVar, fixedVar))
+				val newGoal = goal.copy(assumptions = goal.assumptions.addIfDistinct(assumption.fml.replace(assumption.bddVar, fixedVar)))
 				goals.replaceFirstGoal(newGoal)
 			}
 			else -> throw IllegalArgumentException()
