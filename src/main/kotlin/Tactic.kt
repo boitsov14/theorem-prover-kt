@@ -118,15 +118,13 @@ enum class Tactic1(private val id: String): ITactic {
 	APPLY("apply"),
 	CASES("cases"),
 	REVERT("revert"),
-	USE("use");
+	USE("use"),
+	CLEAR("clear");
 	override fun toString(): String = id
-	override fun canApply(goal: Goal): Boolean {
-		val conclusion = goal.conclusion
-		return when(this) {
-			APPLY, CASES	-> possibleAssumptions(goal).isNotEmpty()
-			REVERT			-> goal.assumptions.isNotEmpty() || possibleFixedVars(goal).isNotEmpty()
-			USE				-> conclusion is Formula.EXISTS
-		}
+	override fun canApply(goal: Goal): Boolean = when(this) {
+		APPLY, CASES, CLEAR	-> possibleAssumptions(goal).isNotEmpty()
+		REVERT				-> possibleAssumptions(goal).isNotEmpty() || possibleFixedVars(goal).isNotEmpty()
+		USE					-> goal.conclusion is Formula.EXISTS
 	}
 	fun apply(goals: Goals, assumption: Formula): Goals {
 		val goal = goals[0]
@@ -177,6 +175,10 @@ enum class Tactic1(private val id: String): ITactic {
 				)
 				return goals.replaceFirstGoal(newGoal)
 			}
+			CLEAR -> {
+				val newGoal = goal.copy(assumptions = goal.assumptions.minus(assumption))
+				return goals.replaceFirstGoal(newGoal)
+			}
 			else -> throw IllegalArgumentException()
 		}
 	}
@@ -206,10 +208,10 @@ enum class Tactic1(private val id: String): ITactic {
 	// TODO: 2021/09/22
 	// don't need to be a list but a set in an app.
 	private fun possibleAssumptions(goal: Goal): List<Formula> = when(this) {
-		APPLY   -> goal.assumptions.filter { (it is Formula.IMPLIES && it.rightFml  == goal.conclusion) ||  (it is Formula.NOT && goal.conclusion == Formula.FALSE) }
-		CASES   -> goal.assumptions.filter { it is Formula.AND || it is Formula.OR || it is Formula.IFF || it is Formula.EXISTS }
-		REVERT	-> goal.assumptions
-		else	-> listOf()
+		APPLY   		-> goal.assumptions.filter { (it is Formula.IMPLIES && it.rightFml  == goal.conclusion) ||  (it is Formula.NOT && goal.conclusion == Formula.FALSE) }
+		CASES   		-> goal.assumptions.filter { it is Formula.AND || it is Formula.OR || it is Formula.IFF || it is Formula.EXISTS }
+		REVERT, CLEAR	-> goal.assumptions
+		else			-> listOf()
 	}
 	private fun possibleFixedVars(goal: Goal): List<Var> = when(this) {
 		REVERT -> {
