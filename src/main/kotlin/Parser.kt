@@ -1,3 +1,5 @@
+class FormulaParserException(message:String): Exception(message)
+
 // SemiToken = Token | Var | Quantifier | PredicateSemiToken
 interface  SemiToken
 
