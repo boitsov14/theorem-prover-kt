@@ -1,6 +1,12 @@
 import kotlin.system.measureTimeMillis
 
 fun main() {
+	val tokens = preTokenize("P x, PP xs ")
+	println(tokens)
+}
+
+/*
+fun main() {
 	val currentHistory: History = mutableListOf()
 	//print("Input a formula you want to prove >>> ")
 	//var currentGoals = listOf(Goal(readLine()!!.parse()!!))
@@ -159,15 +165,18 @@ fun main() {
 	println("Proof complete!")
 
 }
+*/
 
 fun printGoals(goals: Goals) {
 	for (goal in goals) {
 		if (goal.fixedVars.isNotEmpty()) println(goal.fixedVars.joinToString(separator = " ", postfix = " : Fixed"))
-		goal.assumptions.forEach { println("$it".removeSurrounding("(", ")")) }
-		println("⊢ " + "${goal.conclusion}".removeSurrounding("(", ")"))
+		goal.assumptions.forEach { println("$it") }
+		println("⊢ " + "${goal.conclusion}")
 	}
 }
 
+// TODO: 2021/11/01 Need to rewrite
+/*
 fun printHistory(history: History) {
 	for (flow in history) {
 		println("--------------------------------------")
@@ -177,6 +186,7 @@ fun printHistory(history: History) {
 		println(flow)
 	}
 }
+ */
 
 /*
 	val variousGoals = listOf(

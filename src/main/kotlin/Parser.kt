@@ -1,5 +1,8 @@
+import PreToken.Binary.*
+
 class FormulaParserException(message:String): Exception(message)
 
+/*
 // SemiToken = Token | Var | Quantifier | PredicateSemiToken
 interface  SemiToken
 
@@ -11,12 +14,7 @@ interface OperatorToken: Token {
 	val precedence: Int
 }
 
-enum class SymbolToken(val id: Char): Token {
-	LEFT_PARENTHESIS('('),
-	RIGHT_PARENTHESIS(')'),
-	COMMA(','),
-	WHITESPACE(' '),
-}
+
 
 data class PredicateSemiToken(val id: Char): SemiToken
 
@@ -25,7 +23,7 @@ data class QuantifierWithVarOperatorToken(val quantifier: Quantifier, val bddVar
 }
 
 fun String.parse(): Formula? {
-	val semiTokens = this.toUnicode().toCharArray().map { parseCharacter(it) }.filterNot { it == SymbolToken.WHITESPACE }
+	val semiTokens = this.toUnicode().toCharArray().map { parseCharacter(it) }.filterNot { it == Symbol.WHITESPACE }
 	val tokens = toReversePolishNotation(ArrayDeque(semiTokens))
 	return toFormula(tokens)
 }
@@ -37,10 +35,10 @@ fun toReversePolishNotation(tokens: ArrayDeque<SemiToken>): List<Token> {
 		when (tokens[0]) {
 			is Formula.FALSE			-> output.add		(tokens.removeFirst() as Token)
 			is Formula.PREDICATE					-> output.add 		(tokens.removeFirst() as Token)
-			SymbolToken.LEFT_PARENTHESIS	-> stack.addFirst	(tokens.removeFirst() as Token)
-			SymbolToken.RIGHT_PARENTHESIS -> {
+			Symbol.LEFT_PARENTHESIS	-> stack.addFirst	(tokens.removeFirst() as Token)
+			Symbol.RIGHT_PARENTHESIS -> {
 				while (stack.isNotEmpty()) {
-					if (stack.first() != SymbolToken.LEFT_PARENTHESIS) {
+					if (stack.first() != Symbol.LEFT_PARENTHESIS) {
 						output.add(stack.removeFirst())
 					} else {
 						stack.removeFirst()
@@ -52,7 +50,7 @@ fun toReversePolishNotation(tokens: ArrayDeque<SemiToken>): List<Token> {
 				// need error with parenthesis?
 			}
 			is Quantifier -> {
-				if (tokens.size >= 3 && tokens[1] is Var && tokens[2] == SymbolToken.COMMA) {
+				if (tokens.size >= 3 && tokens[1] is Var && tokens[2] == Symbol.COMMA) {
 					val quantifierWithVarOperatorToken = QuantifierWithVarOperatorToken(tokens.removeFirst() as Quantifier, tokens.removeFirst() as Var)
 					tokens.removeFirst() // COMMA
 					tokens.addFirst(quantifierWithVarOperatorToken)
@@ -153,15 +151,146 @@ fun toFormula(tokens: List<Token>): Formula? {
 }
 
 fun parseCharacter(chr: Char): SemiToken = when {
-	chr in SymbolToken			.values().map{it.id} -> SymbolToken			.values().find{it.id == chr}!!
+	chr in Symbol			.values().map{it.chr} -> Symbol			.values().find{it.chr == chr}!!
 	chr in UnaryConnective		.values().map{it.id} -> UnaryConnective		.values().find{it.id == chr}!!
 	chr in BinaryConnective		.values().map{it.id} -> BinaryConnective	.values().find{it.id == chr}!!
 	chr == Formula.FALSE.id							 -> Formula.FALSE
 	chr in Quantifier			.values().map{it.id} -> Quantifier			.values().find{it.id == chr}!!
 	chr.isLowerCase()								 -> Var("$chr")
 	chr.isUpperCase() 								 -> PredicateSemiToken(chr)
-	else 											 -> SymbolToken.WHITESPACE
+	else 											 -> Symbol.WHITESPACE
 }
+*/
+
+fun preTokenize(str: String): List<PreToken> {
+	val chrs = str.toCharArray()
+	val preTokens = mutableListOf<PreToken>()
+	var index = 0
+	while (index < chrs.size) {
+		val currentChr = chrs[index]
+		if (currentChr in Symbol.values().map { it.chr }) {
+			preTokens.add(Symbol.values().find { it.chr == currentChr }!!)
+		} else if (currentChr.isUpperCase()) {
+			val predicateId = mutableListOf<Char>()
+			while (chrs[index].isLetter()) {
+				predicateId.add(chrs[index])
+				index++
+				if (index == chrs.size) break
+			}
+			index--
+			preTokens.add(PredicateId(String(predicateId.toCharArray())))
+		} else if (currentChr.isLowerCase()) {
+			val varId = mutableListOf<Char>()
+			while (chrs[index].isLowerCase()) {
+				varId.add(chrs[index])
+				index++
+				if (index == chrs.size) break
+			}
+			index--
+			preTokens.add(VarId(String(varId.toCharArray())))
+		} else {
+			throw FormulaParserException("$currentChr is an illegal character.")
+		}
+		index++
+	}
+	return preTokens
+}
+
+fun tokenize(preTokens: List<PreToken>): List<Token> {
+	val tokens = mutableListOf<Token>()
+	var index = 0
+	while (index < preTokens.size) {
+		when(val currentPreToken = preTokens[index]) {
+			PreToken.Symbol.LEFT_PARENTHESIS 	-> tokens.add(Token.LeftParenthesis)
+			PreToken.Symbol.RIGHT_PARENTHESIS 	-> tokens.add(Token.RightParenthesis)
+			PreToken.Symbol.WHITESPACE 			-> {}
+			PreToken.Unary.NOT 					-> tokens.add(Token.Operator.Unary.NOT)
+			is PreToken.Binary 					-> tokens.add(Token.Operator.Binary(currentPreToken))
+			is PreToken.PredicateId -> {
+				val varIds = mutableListOf<PreToken.VarId>()
+				while (preTokens.elementAtOrNull(index++) is PreToken.VarId) {
+
+
+					varIds.add(chrs[index])
+					index++
+					if (index == chrs.size) break
+				}
+				index--
+				preTokens.add(VarId(String(varIds.toCharArray())))
+			}
+
+		}
+		index++
+	}
+	return tokens
+}
+
+sealed interface PreToken {
+	enum class Symbol(val chr: Char): PreToken {
+		LEFT_PARENTHESIS('('),
+		RIGHT_PARENTHESIS(')'),
+		COMMA(','),
+		WHITESPACE(' ')
+	}
+	enum class Unary(val chr: Char): PreToken {
+		NOT('¬')
+	}
+	enum class Binary(val chr: Char): PreToken {
+		AND('∧'),
+		OR('∨'),
+		IMPLIES('→'),
+		IFF('↔')
+	}
+	enum class Quantifier(val chr: Char): PreToken {
+		ALL('∀'),
+		EXISTS('∃')
+	}
+	data class PredicateId(val id: String): PreToken
+	data class VarId(val id: String): PreToken
+}
+
+sealed interface Token {
+	object LeftParenthesis: Token
+	object RightParenthesis: Token
+	data class PREDICATE(val id: String, val vars: List<PreToken.VarId>): Token
+	sealed interface Operator: Token {
+		val precedence: Int
+		data class Binary(val binary: PreToken.Binary): Operator {
+			override val precedence = when(binary) {
+				AND 	-> 4
+				OR 		-> 3
+				IMPLIES -> 2
+				IFF 	-> 1
+			}
+		}
+		sealed interface Unary: Operator {
+			object NOT: Unary {
+				override val precedence = 5
+			}
+			data class ALL(val bddVar: PreToken.VarId): Unary {
+				override val precedence = 0
+			}
+			data class EXISTS(val bddVar: PreToken.VarId): Unary {
+				override val precedence = 0
+			}
+		}
+	}
+}
+
+
+
+// OperatorToken = UnaryConnective | BinaryConnective | QuantifierWithVarOperatorToken
+interface OperatorToken: Token {
+	val precedence: Int
+}
+data class PredicateSemiToken(val id: Char): SemiToken
+data class QuantifierWithVarOperatorToken(val quantifier: Quantifier, val bddVar: Var): OperatorToken {
+	override val precedence = -1
+}
+
+
+
+
 
 fun String.toUnicode(): String = this
 	.replace("false", "⊥")
