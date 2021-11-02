@@ -1,5 +1,3 @@
-import PreToken.Binary.*
-
 class FormulaParserException(message:String): Exception(message)
 
 /*
@@ -14,7 +12,14 @@ interface OperatorToken: Token {
 	val precedence: Int
 }
 
-
+// OperatorToken = UnaryConnective | BinaryConnective | QuantifierWithVarOperatorToken
+interface OperatorToken: Token {
+	val precedence: Int
+}
+data class PredicateSemiToken(val id: Char): SemiToken
+data class QuantifierWithVarOperatorToken(val quantifier: Quantifier, val bddVar: Var): OperatorToken {
+	override val precedence = -1
+}
 
 data class PredicateSemiToken(val id: Char): SemiToken
 
@@ -162,65 +167,71 @@ fun parseCharacter(chr: Char): SemiToken = when {
 }
 */
 
-fun preTokenize(str: String): List<PreToken> {
-	val chrs = str.toCharArray()
-	val preTokens = mutableListOf<PreToken>()
-	var index = 0
-	while (index < chrs.size) {
-		val currentChr = chrs[index]
-		if (currentChr in Symbol.values().map { it.chr }) {
-			preTokens.add(Symbol.values().find { it.chr == currentChr }!!)
-		} else if (currentChr.isUpperCase()) {
-			val predicateId = mutableListOf<Char>()
-			while (chrs[index].isLetter()) {
-				predicateId.add(chrs[index])
-				index++
-				if (index == chrs.size) break
+fun preTokenize(chrs: ArrayDeque<Char>): ArrayDeque<PreToken> {
+	val preTokens = ArrayDeque<PreToken>()
+	while (chrs.isNotEmpty()) {
+		when (val currentChr = chrs.removeFirst()) {
+			in PreToken.Symbol.values().map { it.chr } -> preTokens.add(PreToken.Symbol.values().find { it.chr == currentChr }!!)
+			' ' -> {}
+			in 'A'..'Z' -> {
+				val predicateId = mutableListOf(currentChr)
+				while (chrs.isNotEmpty() && chrs.first() !in PreToken.Symbol.values().map { it.chr } + ' ') {
+					predicateId.add(chrs.removeFirst())
+				}
+				preTokens.add(PreToken.PREDICATE(String(predicateId.toCharArray())))
 			}
-			index--
-			preTokens.add(PredicateId(String(predicateId.toCharArray())))
-		} else if (currentChr.isLowerCase()) {
-			val varId = mutableListOf<Char>()
-			while (chrs[index].isLowerCase()) {
-				varId.add(chrs[index])
-				index++
-				if (index == chrs.size) break
+			in 'a'..'z' -> {
+				val varId = mutableListOf(currentChr)
+				while (chrs.isNotEmpty() && chrs.first() !in PreToken.Symbol.values().map { it.chr } + ' ') {
+					varId.add(chrs.removeFirst())
+				}
+				preTokens.add(PreToken.VAR(String(varId.toCharArray())))
 			}
-			index--
-			preTokens.add(VarId(String(varId.toCharArray())))
-		} else {
-			throw FormulaParserException("$currentChr is an illegal character.")
+			else -> throw FormulaParserException("Illegal Argument >> $currentChr")
 		}
-		index++
 	}
 	return preTokens
 }
 
-fun tokenize(preTokens: List<PreToken>): List<Token> {
-	val tokens = mutableListOf<Token>()
-	var index = 0
-	while (index < preTokens.size) {
-		when(val currentPreToken = preTokens[index]) {
-			PreToken.Symbol.LEFT_PARENTHESIS 	-> tokens.add(Token.LeftParenthesis)
-			PreToken.Symbol.RIGHT_PARENTHESIS 	-> tokens.add(Token.RightParenthesis)
-			PreToken.Symbol.WHITESPACE 			-> {}
-			PreToken.Unary.NOT 					-> tokens.add(Token.Operator.Unary.NOT)
-			is PreToken.Binary 					-> tokens.add(Token.Operator.Binary(currentPreToken))
-			is PreToken.PredicateId -> {
-				val varIds = mutableListOf<PreToken.VarId>()
-				while (preTokens.elementAtOrNull(index++) is PreToken.VarId) {
-
-
-					varIds.add(chrs[index])
-					index++
-					if (index == chrs.size) break
+fun tokenize(preTokens: ArrayDeque<PreToken>): ArrayDeque<Token> {
+	val tokens = ArrayDeque<Token>()
+	while (preTokens.isNotEmpty()) {
+		when (val preToken = preTokens.removeFirst()) {
+			PreToken.Symbol.LEFT_PARENTHESIS 	-> tokens.add(Token.Symbol.LEFT_PARENTHESIS)
+			PreToken.Symbol.RIGHT_PARENTHESIS 	-> tokens.add(Token.Symbol.RIGHT_PARENTHESIS)
+			PreToken.Symbol.NOT 				-> tokens.add(Token.Operator.Unary.NOT)
+			PreToken.Symbol.AND 				-> tokens.add(Token.Operator.Binary.AND)
+			PreToken.Symbol.OR 					-> tokens.add(Token.Operator.Binary.OR)
+			PreToken.Symbol.IMPLIES 			-> tokens.add(Token.Operator.Binary.IMPLIES)
+			PreToken.Symbol.IFF 				-> tokens.add(Token.Operator.Binary.IFF)
+			PreToken.Symbol.FALSE 				-> tokens.add(Token.FALSE)
+			is PreToken.PREDICATE -> {
+				val vars = mutableListOf<Var>()
+				while (preTokens.firstOrNull() is PreToken.VAR) {
+					val preTokenVar = preTokens.removeFirst() as PreToken.VAR
+					vars.add(Var(preTokenVar.id))
 				}
-				index--
-				preTokens.add(VarId(String(varIds.toCharArray())))
+				val predicate = Token.PREDICATE(preToken.id, vars)
+				tokens.add(predicate)
 			}
-
+			PreToken.Symbol.ALL, PreToken.Symbol.EXISTS -> {
+				try {
+					val preTokenVar = preTokens.removeFirst() as PreToken.VAR
+					val bddVar = Var(preTokenVar.id)
+					if (preTokens.removeFirst() != PreToken.Symbol.COMMA) {
+						throw FormulaParserException("Parse Error with quantifier")
+					}
+					when (preToken) {
+						PreToken.Symbol.ALL 	-> tokens.add(Token.Operator.Unary.ALL(bddVar))
+						PreToken.Symbol.EXISTS 	-> tokens.add(Token.Operator.Unary.EXISTS(bddVar))
+						else -> throw IllegalArgumentException()
+					}
+				} catch (e: Exception) {
+					throw FormulaParserException("Parse Error with quantifier")
+				}
+			}
+			else -> throw FormulaParserException("Parse Error")
 		}
-		index++
 	}
 	return tokens
 }
@@ -230,67 +241,47 @@ sealed interface PreToken {
 		LEFT_PARENTHESIS('('),
 		RIGHT_PARENTHESIS(')'),
 		COMMA(','),
-		WHITESPACE(' ')
-	}
-	enum class Unary(val chr: Char): PreToken {
-		NOT('¬')
-	}
-	enum class Binary(val chr: Char): PreToken {
+		NOT('¬'),
 		AND('∧'),
 		OR('∨'),
 		IMPLIES('→'),
-		IFF('↔')
-	}
-	enum class Quantifier(val chr: Char): PreToken {
+		IFF('↔'),
 		ALL('∀'),
-		EXISTS('∃')
+		EXISTS('∃'),
+		FALSE('⊥')
 	}
-	data class PredicateId(val id: String): PreToken
-	data class VarId(val id: String): PreToken
+	data class PREDICATE(val id: String): PreToken
+	data class VAR(val id: String): PreToken
 }
 
 sealed interface Token {
-	object LeftParenthesis: Token
-	object RightParenthesis: Token
-	data class PREDICATE(val id: String, val vars: List<PreToken.VarId>): Token
+	enum class Symbol: Token {
+		LEFT_PARENTHESIS,
+		RIGHT_PARENTHESIS,
+	}
 	sealed interface Operator: Token {
 		val precedence: Int
-		data class Binary(val binary: PreToken.Binary): Operator {
-			override val precedence = when(binary) {
-				AND 	-> 4
-				OR 		-> 3
-				IMPLIES -> 2
-				IFF 	-> 1
-			}
+		enum class Binary: Operator {
+			AND 	{ override val precedence = 4 },
+			OR		{ override val precedence = 3 },
+			IMPLIES	{ override val precedence = 2 },
+			IFF 	{ override val precedence = 1 }
 		}
 		sealed interface Unary: Operator {
 			object NOT: Unary {
 				override val precedence = 5
 			}
-			data class ALL(val bddVar: PreToken.VarId): Unary {
+			data class ALL(val bddVar: Var): Unary {
 				override val precedence = 0
 			}
-			data class EXISTS(val bddVar: PreToken.VarId): Unary {
+			data class EXISTS(val bddVar: Var): Unary {
 				override val precedence = 0
 			}
 		}
 	}
+	data class PREDICATE(val id: String, val vars: List<Var>): Token
+	object FALSE: Token
 }
-
-
-
-// OperatorToken = UnaryConnective | BinaryConnective | QuantifierWithVarOperatorToken
-interface OperatorToken: Token {
-	val precedence: Int
-}
-data class PredicateSemiToken(val id: Char): SemiToken
-data class QuantifierWithVarOperatorToken(val quantifier: Quantifier, val bddVar: Var): OperatorToken {
-	override val precedence = -1
-}
-
-
-
-
 
 fun String.toUnicode(): String = this
 	.replace("false", "⊥")

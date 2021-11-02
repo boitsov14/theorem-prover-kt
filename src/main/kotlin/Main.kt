@@ -1,8 +1,23 @@
 import kotlin.system.measureTimeMillis
 
 fun main() {
-	val tokens = preTokenize("P x, PP xs ")
-	println(tokens)
+	while (true) {
+		print("INPUT A FORMULA >>> ")
+		val str = readLine()!!
+		try {
+			val timeInMillis = measureTimeMillis {
+				val input = ArrayDeque(str.toUnicode().toCharArray().toList())
+				val preTokens = preTokenize(input)
+				println(preTokens)
+				val tokens = tokenize(preTokens)
+				println(tokens)
+			}
+			println("TIME >>> $timeInMillis ms")
+		} catch (e: FormulaParserException) {
+			println(e.message)
+		}
+		println("--------------------------------------")
+	}
 }
 
 /*
