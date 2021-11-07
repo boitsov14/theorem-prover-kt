@@ -64,7 +64,7 @@ enum class Tactic0(private val id: String): ITactic {
 					return goals.replaceFirstGoal(newGoal)
 				}
 				is Formula.ALL -> {
-					val newVar = conclusion.bddVar.getUniqueVar(goal.fixedVars.toSet() + conclusion.fml.bddVars())
+					val newVar = conclusion.bddVar.getUniqueVar(goal.fixedVars.toSet() + conclusion.fml.bddVars)
 					val newGoal = goal.copy(
 						fixedVars = goal.fixedVars + newVar,
 						conclusion = conclusion.fml.replace(conclusion.bddVar, newVar)
@@ -215,11 +215,11 @@ enum class Tactic1(private val id: String): ITactic {
 	}
 	private fun possibleFixedVars(goal: Goal): List<Var> = when(this) {
 		REVERT -> {
-			val fixedVarsInAssumptions = goal.assumptions.fold(setOf<Var>()){ set, assumption -> set + assumption.freeVars() }
-			goal.fixedVars.filterNot { it in fixedVarsInAssumptions }.filterNot { it in goal.conclusion.bddVars() }
+			val fixedVarsInAssumptions = goal.assumptions.fold(setOf<Var>()){ set, assumption -> set + assumption.freeVars }
+			goal.fixedVars.filterNot { it in fixedVarsInAssumptions }.filterNot { it in goal.conclusion.bddVars }
 		}
 		USE -> if (goal.conclusion is Formula.EXISTS) {
-			goal.fixedVars.filterNot { it in goal.conclusion.fml.bddVars() }
+			goal.fixedVars.filterNot { it in goal.conclusion.fml.bddVars }
 		} else listOf()
 		else -> listOf()
 	}
