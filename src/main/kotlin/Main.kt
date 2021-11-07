@@ -22,6 +22,8 @@ fun main() {
 				println(preTokens)
 				val tokens = tokenize(preTokens)
 				println(tokens)
+				val rpn = toReversePolishNotation(tokens)
+				println(rpn)
 			}
 			println("TIME >>> $timeInMillis ms")
 		} catch (e: FormulaParserException) {

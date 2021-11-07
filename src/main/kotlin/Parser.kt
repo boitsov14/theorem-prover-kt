@@ -240,6 +240,41 @@ fun tokenize(preTokens: ArrayDeque<PreToken>): ArrayDeque<Token> {
 	return tokens
 }
 
+fun toReversePolishNotation(inputTokens: ArrayDeque<Token>): ArrayDeque<Token> {
+	val outputTokens = ArrayDeque<Token>()
+	val stack = ArrayDeque<Token>()
+	for (token in inputTokens) {
+		when(token) {
+			Token.FALSE -> outputTokens.add(token)
+			is Token.PREDICATE -> outputTokens.add(token)
+			Token.Symbol.LEFT_PARENTHESIS -> stack.addFirst(token)
+			Token.Symbol.RIGHT_PARENTHESIS -> {
+				while (stack.isNotEmpty() && stack.first() != Token.Symbol.LEFT_PARENTHESIS) {
+					outputTokens.add(stack.removeFirst())
+				}
+				if (stack.isEmpty()) {
+					throw FormulaParserException("Parenthesis Error")
+				}
+				stack.removeFirst()
+			}
+			is Token.Operator.Unary -> stack.addFirst(token)
+			is Token.Operator.Binary -> {
+				while (stack.isNotEmpty()
+					&& stack.first() is Token.Operator
+					&& token.precedence < (stack.first() as Token.Operator).precedence) {
+					outputTokens.add(stack.removeFirst())
+				}
+				stack.addFirst(token)
+			}
+		}
+	}
+	if (Token.Symbol.LEFT_PARENTHESIS in stack) {
+		throw FormulaParserException("Parenthesis Error")
+	}
+	outputTokens.addAll(stack)
+	return outputTokens
+}
+
 sealed interface PreToken {
 	enum class Symbol(val chr: Char): PreToken {
 		LEFT_PARENTHESIS('('),
