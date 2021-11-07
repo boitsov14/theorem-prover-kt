@@ -167,25 +167,24 @@ fun parseCharacter(chr: Char): SemiToken = when {
 }
 */
 
-fun preTokenize(chrs: ArrayDeque<Char>): ArrayDeque<PreToken> {
+fun preTokenize(inputChrs: ArrayDeque<Char>): ArrayDeque<PreToken> {
 	val preTokens = ArrayDeque<PreToken>()
-	while (chrs.isNotEmpty()) {
-		when (val currentChr = chrs.removeFirst()) {
+	while (inputChrs.isNotEmpty()) {
+		when (val currentChr = inputChrs.removeFirst()) {
 			in PreToken.Symbol.values().map { it.chr } -> preTokens.add(PreToken.Symbol.values().find { it.chr == currentChr }!!)
 			' ' -> {}
-			in 'A'..'Z' -> {
-				val predicateId = mutableListOf(currentChr)
-				while (chrs.isNotEmpty() && chrs.first() !in PreToken.Symbol.values().map { it.chr } + ' ') {
-					predicateId.add(chrs.removeFirst())
+			in ('A'..'Z')+('a'..'z') -> {
+				val chrs = mutableListOf(currentChr)
+				while (inputChrs.isNotEmpty() && (inputChrs.first().isLetterOrDigit() || inputChrs.first() == '_')) {
+					chrs.add(inputChrs.removeFirst())
 				}
-				preTokens.add(PreToken.PREDICATE(String(predicateId.toCharArray())))
-			}
-			in 'a'..'z' -> {
-				val varId = mutableListOf(currentChr)
-				while (chrs.isNotEmpty() && chrs.first() !in PreToken.Symbol.values().map { it.chr } + ' ') {
-					varId.add(chrs.removeFirst())
+				val str = String(chrs.toCharArray())
+				if (currentChr.isUpperCase()) {
+					preTokens.add(PreToken.PREDICATE(str))
 				}
-				preTokens.add(PreToken.VAR(String(varId.toCharArray())))
+				if (currentChr.isLowerCase()) {
+					preTokens.add(PreToken.VAR(str))
+				}
 			}
 			else -> throw FormulaParserException("Illegal Argument >> $currentChr")
 		}
@@ -207,7 +206,7 @@ fun tokenize(preTokens: ArrayDeque<PreToken>): ArrayDeque<Token> {
 			PreToken.Symbol.FALSE 				-> tokens.add(Token.FALSE)
 			is PreToken.PREDICATE -> {
 				val vars = mutableListOf<Var>()
-				while (preTokens.firstOrNull() is PreToken.VAR) {
+				while (preTokens.isNotEmpty() && preTokens.first() is PreToken.VAR) {
 					val preTokenVar = preTokens.removeFirst() as PreToken.VAR
 					vars.add(Var(preTokenVar.id))
 				}
@@ -215,19 +214,20 @@ fun tokenize(preTokens: ArrayDeque<PreToken>): ArrayDeque<Token> {
 				tokens.add(predicate)
 			}
 			PreToken.Symbol.ALL, PreToken.Symbol.EXISTS -> {
-				try {
-					val preTokenVar = preTokens.removeFirst() as PreToken.VAR
-					val bddVar = Var(preTokenVar.id)
-					if (preTokens.removeFirst() != PreToken.Symbol.COMMA) {
-						throw FormulaParserException("Parse Error with quantifier")
-					}
-					when (preToken) {
-						PreToken.Symbol.ALL 	-> tokens.add(Token.Operator.Unary.ALL(bddVar))
-						PreToken.Symbol.EXISTS 	-> tokens.add(Token.Operator.Unary.EXISTS(bddVar))
-						else -> throw IllegalArgumentException()
-					}
-				} catch (e: Exception) {
+				if (!(preTokens.isNotEmpty() && preTokens.first() is PreToken.VAR)) {
 					throw FormulaParserException("Parse Error with quantifier")
+				}
+				val preTokenVar = preTokens.removeFirst() as PreToken.VAR
+				val bddVar = Var(preTokenVar.id)
+				if (!(preTokens.isNotEmpty() && preTokens.first() == PreToken.Symbol.COMMA)) {
+					throw FormulaParserException("Parse Error with quantifier")
+				}
+				preTokens.removeFirst()
+				if (preToken == PreToken.Symbol.ALL) {
+					tokens.add(Token.Operator.Unary.ALL(bddVar))
+				}
+				if (preToken == PreToken.Symbol.EXISTS) {
+					tokens.add(Token.Operator.Unary.EXISTS(bddVar))
 				}
 			}
 			else -> throw FormulaParserException("Parse Error")
