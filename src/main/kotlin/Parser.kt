@@ -227,11 +227,9 @@ fun tokenize(preTokens: ArrayDeque<PreToken>): ArrayDeque<Token> {
 					throw FormulaParserException("Parse Error with quantifier")
 				}
 				preTokens.removeFirst()
-				if (preToken == PreToken.Symbol.ALL) {
-					tokens.add(Token.Operator.Unary.ALL(bddVar))
-				}
-				if (preToken == PreToken.Symbol.EXISTS) {
-					tokens.add(Token.Operator.Unary.EXISTS(bddVar))
+				when(preToken) {
+					PreToken.Symbol.ALL 	-> tokens.add(Token.Operator.Unary.ALL(bddVar))
+					PreToken.Symbol.EXISTS 	-> tokens.add(Token.Operator.Unary.EXISTS(bddVar))
 				}
 			}
 			else -> throw FormulaParserException("Parse Error")
@@ -273,6 +271,57 @@ fun toReversePolishNotation(inputTokens: ArrayDeque<Token>): ArrayDeque<Token> {
 	}
 	outputTokens.addAll(stack)
 	return outputTokens
+}
+
+fun toFormula(tokens: ArrayDeque<Token>): Formula {
+	val stack = ArrayDeque<Formula>()
+	for (token in tokens) {
+		when(token) {
+			Token.FALSE -> stack.add(Formula.FALSE)
+			is Token.PREDICATE -> stack.add(Formula.PREDICATE(token.id, token.vars))
+			is Token.Operator.Unary -> {
+				if (stack.isEmpty()) {
+					throw FormulaParserException("Parse Error")
+				}
+				val fml = stack.removeLast()
+				when(token) {
+					Token.Operator.Unary.NOT -> stack.add(Formula.NOT(fml))
+					is Token.Operator.Unary.ALL -> {
+						try {
+							stack.add(Formula.ALL(token.bddVar, fml))
+						} catch (e: DuplicateBddVarException) {
+							throw FormulaParserException("bounded variable is duplicated.")
+						}
+					}
+					is Token.Operator.Unary.EXISTS -> {
+						try {
+							stack.add(Formula.EXISTS(token.bddVar, fml))
+						} catch (e: DuplicateBddVarException) {
+							throw FormulaParserException("bounded variable is duplicated.")
+						}
+					}
+				}
+			}
+			is Token.Operator.Binary -> {
+				if (stack.size < 2) {
+					throw FormulaParserException("Parse Error")
+				}
+				val rightFml = stack.removeLast()
+				val leftFml = stack.removeLast()
+				when(token) {
+					Token.Operator.Binary.AND -> stack.add(Formula.AND(leftFml, rightFml))
+					Token.Operator.Binary.OR -> stack.add(Formula.OR(leftFml, rightFml))
+					Token.Operator.Binary.IMPLIES -> stack.add(Formula.IMPLIES(leftFml, rightFml))
+					Token.Operator.Binary.IFF -> stack.add(Formula.IFF(leftFml, rightFml))
+				}
+			}
+			else -> throw IllegalArgumentException()
+		}
+	}
+	if (stack.size != 1) {
+		throw FormulaParserException("Parse Error")
+	}
+	return stack.first()
 }
 
 sealed interface PreToken {
