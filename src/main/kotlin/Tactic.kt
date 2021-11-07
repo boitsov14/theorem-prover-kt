@@ -1,3 +1,7 @@
+package core.tactic
+
+import core.formula.*
+
 // ITactic = Tactic0 | Tactic1 | Tactic2
 interface ITactic {
 	fun canApply(goal: Goal): Boolean

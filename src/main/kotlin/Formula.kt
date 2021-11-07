@@ -1,3 +1,5 @@
+package core.formula
+
 data class Var(private val id: String) {
 	override fun toString() = id
 	fun getUniqueVar(oldVars: Set<Var>): Var {
