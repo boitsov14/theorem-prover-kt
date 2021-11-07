@@ -64,7 +64,7 @@ enum class Tactic0(private val id: String): ITactic {
 					return goals.replaceFirstGoal(newGoal)
 				}
 				is Formula.ALL -> {
-					val newVar = conclusion.bddVar.getNewVar(goal.fixedVars.toSet() + conclusion.fml.bddVars())
+					val newVar = conclusion.bddVar.getUniqueVar(goal.fixedVars.toSet() + conclusion.fml.bddVars())
 					val newGoal = goal.copy(
 						fixedVars = goal.fixedVars + newVar,
 						conclusion = conclusion.fml.replace(conclusion.bddVar, newVar)
@@ -158,7 +158,7 @@ enum class Tactic1(private val id: String): ITactic {
 						return goals.replaceFirstGoal(newGoal)
 					}
 					is Formula.EXISTS -> {
-						val newVar = assumption.bddVar.getNewVar(goal.fixedVars.toSet())
+						val newVar = assumption.bddVar.getUniqueVar(goal.fixedVars.toSet())
 						val newGoal = goal.copy(
 							fixedVars = goal.fixedVars + newVar,
 							assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.fml.replace(assumption.bddVar, newVar))

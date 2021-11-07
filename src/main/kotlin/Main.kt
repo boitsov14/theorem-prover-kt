@@ -1,6 +1,14 @@
 import kotlin.system.measureTimeMillis
 
 fun main() {
+
+	val x = Var("x")
+	val y = Var("y")
+	val fml0 = Formula.PREDICATE("P", listOf(x))
+	val fml1 = Formula.ALL(x, fml0) // all x, P x
+	//val fml2 = Formula.ALL(x, fml1) // throw exception
+	//val fml3 = fml1.replace(y, x) // throw exception
+
 	while (true) {
 		print("INPUT A FORMULA >>> ")
 		val str = readLine()!!

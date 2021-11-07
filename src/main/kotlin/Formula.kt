@@ -1,6 +1,6 @@
 data class Var(private val id: String) {
 	override fun toString() = id
-	fun getNewVar(oldVars: Set<Var>): Var {
+	fun getUniqueVar(oldVars: Set<Var>): Var {
 		if (this !in oldVars) { return this }
 		var n = 1
 		while (true) {
@@ -11,6 +11,8 @@ data class Var(private val id: String) {
 	}
 }
 
+class DuplicateBddVarException: Exception()
+
 sealed class Formula {
 	object FALSE: Formula()
 	data class PREDICATE(val id: String, val vars: List<Var>): Formula()
@@ -20,6 +22,9 @@ sealed class Formula {
 	data class IMPLIES(val leftFml: Formula, val rightFml: Formula): Formula()
 	data class IFF(val leftFml: Formula, val rightFml: Formula): Formula()
 	data class ALL(val bddVar: Var, val fml: Formula): Formula() {
+		init {
+			if (bddVar in fml.bddVars()) { throw DuplicateBddVarException() }
+		}
 		override fun equals(other: Any?): Boolean {
 			if (this === other) return true
 			if (javaClass != other?.javaClass) return false
@@ -32,6 +37,9 @@ sealed class Formula {
 		}
 	}
 	data class EXISTS(val bddVar: Var, val fml: Formula): Formula() {
+		init {
+			if (bddVar in fml.bddVars()) { throw DuplicateBddVarException() }
+		}
 		override fun equals(other: Any?): Boolean {
 			if (this === other) return true
 			if (javaClass != other?.javaClass) return false
@@ -77,16 +85,26 @@ sealed class Formula {
 		is ALL 			-> fml.bddVars() + bddVar
 		is EXISTS 		-> fml.bddVars() + bddVar
 	}
-	fun replace(old: Var, new: Var): Formula = when(this) {
+	fun replace(oldVar: Var, newVar: Var): Formula = when(this) {
 		FALSE 			-> this
-		is PREDICATE 	-> PREDICATE(id, vars.map { if (it == old) new else it })
-		is NOT 			-> NOT		(fml.replace(old, new))
-		is AND 			-> AND		(leftFml.replace(old, new), rightFml.replace(old, new))
-		is OR 			-> OR		(leftFml.replace(old, new), rightFml.replace(old, new))
-		is IMPLIES 		-> IMPLIES	(leftFml.replace(old, new), rightFml.replace(old, new))
-		is IFF 			-> IFF		(leftFml.replace(old, new), rightFml.replace(old, new))
-		is ALL 			-> ALL		(bddVar, fml.replace(old, new))
-		is EXISTS 		-> EXISTS	(bddVar, fml.replace(old, new))
+		is PREDICATE 	-> PREDICATE(id, vars.map { if (it == oldVar) newVar else it })
+		is NOT 			-> NOT		(fml.replace(oldVar, newVar))
+		is AND 			-> AND		(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
+		is OR 			-> OR		(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
+		is IMPLIES 		-> IMPLIES	(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
+		is IFF 			-> IFF		(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
+		is ALL 			-> {
+			if (bddVar == oldVar || bddVar == newVar) {
+				throw DuplicateBddVarException()
+			}
+			ALL(bddVar, fml.replace(oldVar, newVar))
+		}
+		is EXISTS 		-> {
+			if (bddVar == oldVar || bddVar == newVar) {
+				throw DuplicateBddVarException()
+			}
+			EXISTS(bddVar, fml.replace(oldVar, newVar))
+		}
 	}
 }
 
