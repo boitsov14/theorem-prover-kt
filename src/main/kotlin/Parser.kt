@@ -12,6 +12,61 @@ fun parse(str: String): Formula {
 	return getFormula(reversePolishNotation)
 }
 
+sealed interface PreToken {
+	enum class Symbol(val chr: Char): PreToken {
+		LEFT_PARENTHESIS('('),
+		RIGHT_PARENTHESIS(')'),
+		COMMA(','),
+		NOT('¬'),
+		AND('∧'),
+		OR('∨'),
+		IMPLIES('→'),
+		IFF('↔'),
+		ALL('∀'),
+		EXISTS('∃'),
+		FALSE('⊥')
+	}
+	data class PREDICATE(val id: String): PreToken
+	data class VAR(val id: String): PreToken
+}
+
+sealed interface Token {
+	object LEFT_PARENTHESIS: Token
+	object RIGHT_PARENTHESIS: Token
+	sealed interface Operator: Token {
+		val precedence: Int
+		enum class Binary(override val precedence: Int): Operator {
+			AND(4),
+			OR(3),
+			IMPLIES(2),
+			IFF(1)
+		}
+		sealed interface Unary: Operator {
+			object NOT: Unary {	override val precedence = 5 }
+			data class ALL(val bddVar: Var): Unary { override val precedence = 0 }
+			data class EXISTS(val bddVar: Var): Unary { override val precedence = 0 }
+		}
+	}
+	data class PREDICATE(val id: String, val vars: List<Var>): Token
+	object FALSE: Token
+}
+
+private fun String.replace(oldValues: List<String>, newValue: String): String {
+	var result = this
+	oldValues.forEach { result = result.replace(it, newValue, true) }
+	return result
+}
+
+private fun String.toUnicode(): String = this
+	.replace(listOf("false ", "contradiction "), "⊥ ")
+	.replace(listOf("not ", "~", "negation "), "¬")
+	.replace(listOf(" and ",""" /\ """), " ∧ ")
+	.replace(listOf(" or ", """ \/ """), " ∨ ")
+	.replace(listOf(" implies ", " -> ", " => ", " --> ", " ==> ", " to ", " imply "), " → ")
+	.replace(listOf(" iff ", " <-> ", " <=> ", " <--> ", " <==> ", " if and only if "), " ↔ ")
+	.replace(listOf("forall ", "all "), "∀")
+	.replace(listOf("exists ", "ex "), "∃")
+
 private fun preTokenize(inputChrs: ArrayDeque<Char>): ArrayDeque<PreToken> {
 	val preTokens = ArrayDeque<PreToken>()
 	while (inputChrs.isNotEmpty()) {
@@ -167,61 +222,3 @@ private fun getFormula(tokens: ArrayDeque<Token>): Formula {
 	}
 	return stack.first()
 }
-
-sealed interface PreToken {
-	enum class Symbol(val chr: Char): PreToken {
-		LEFT_PARENTHESIS('('),
-		RIGHT_PARENTHESIS(')'),
-		COMMA(','),
-		NOT('¬'),
-		AND('∧'),
-		OR('∨'),
-		IMPLIES('→'),
-		IFF('↔'),
-		ALL('∀'),
-		EXISTS('∃'),
-		FALSE('⊥')
-	}
-	data class PREDICATE(val id: String): PreToken
-	data class VAR(val id: String): PreToken
-}
-
-sealed interface Token {
-	object LEFT_PARENTHESIS: Token
-	object RIGHT_PARENTHESIS: Token
-	sealed interface Operator: Token {
-		val precedence: Int
-		enum class Binary(override val precedence: Int): Operator {
-			AND(4),
-			OR(3),
-			IMPLIES(2),
-			IFF(1)
-		}
-		sealed interface Unary: Operator {
-			object NOT: Unary {	override val precedence = 5 }
-			data class ALL(val bddVar: Var): Unary { override val precedence = 0 }
-			data class EXISTS(val bddVar: Var): Unary { override val precedence = 0 }
-		}
-	}
-	data class PREDICATE(val id: String, val vars: List<Var>): Token
-	object FALSE: Token
-}
-
-private fun String.replace(
-	oldValues: List<String>,
-	newValue: String
-): String {
-	var result = this
-	oldValues.forEach { result = result.replace(it, newValue, true) }
-	return result
-}
-
-private fun String.toUnicode(): String = this
-	.replace(listOf("false ", "contradiction "), "⊥ ")
-	.replace(listOf("not ", "~", "negation "), "¬")
-	.replace(listOf(" and ",""" /\ """), " ∧ ")
-	.replace(listOf(" or ", """ \/ """), " ∨ ")
-	.replace(listOf(" implies ", " -> ", " => ", " --> ", " ==> ", " to ", " imply "), " → ")
-	.replace(listOf(" iff ", " <-> ", " <=> ", " <--> ", " <==> ", " if and only if "), " ↔ ")
-	.replace(listOf("forall ", "all "), "∀")
-	.replace(listOf("exists ", "ex "), "∃")
