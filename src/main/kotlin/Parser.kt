@@ -171,6 +171,14 @@ fun parseCharacter(chr: Char): SemiToken = when {
 }
 */
 
+fun parse(str: String): Formula {
+	val chrs = ArrayDeque(str.toUnicode().toCharArray().toList())
+	val preTokens = preTokenize(chrs)
+	val tokens = tokenize(preTokens)
+	val reversePolishNotation = toReversePolishNotation(tokens)
+	return getFormula(reversePolishNotation)
+}
+
 fun preTokenize(inputChrs: ArrayDeque<Char>): ArrayDeque<PreToken> {
 	val preTokens = ArrayDeque<PreToken>()
 	while (inputChrs.isNotEmpty()) {
@@ -183,10 +191,13 @@ fun preTokenize(inputChrs: ArrayDeque<Char>): ArrayDeque<PreToken> {
 					chrs.add(inputChrs.removeFirst())
 				}
 				val str = String(chrs.toCharArray())
-				when(currentChr) {
-					in ('A'..'Z') -> preTokens.add(PreToken.PREDICATE(str))
-					in ('a'..'z') -> preTokens.add(PreToken.VAR(str))
-				}
+				preTokens.add(
+					when(currentChr) {
+						in ('A'..'Z') -> PreToken.PREDICATE(str)
+						in ('a'..'z') -> PreToken.VAR(str)
+						else -> throw IllegalArgumentException()
+					}
+				)
 			}
 			else -> throw FormulaParserException("Illegal Argument >> $currentChr")
 		}
@@ -222,10 +233,13 @@ fun tokenize(preTokens: ArrayDeque<PreToken>): ArrayDeque<Token> {
 				val preTokenVar = preTokens.removeFirst() as PreToken.VAR
 				val bddVar = Var(preTokenVar.id)
 				preTokens.removeFirst()
-				when(preToken) {
-					PreToken.Symbol.ALL 	-> tokens.add(Token.Operator.Unary.ALL(bddVar))
-					PreToken.Symbol.EXISTS 	-> tokens.add(Token.Operator.Unary.EXISTS(bddVar))
-				}
+				tokens.add(
+					when(preToken) {
+						PreToken.Symbol.ALL 	-> Token.Operator.Unary.ALL(bddVar)
+						PreToken.Symbol.EXISTS 	-> Token.Operator.Unary.EXISTS(bddVar)
+						else -> throw IllegalArgumentException()
+					}
+				)
 			}
 			else -> throw FormulaParserException("Parse Error")
 		}
@@ -268,7 +282,7 @@ fun toReversePolishNotation(inputTokens: ArrayDeque<Token>): ArrayDeque<Token> {
 	return outputTokens
 }
 
-fun toFormula(tokens: ArrayDeque<Token>): Formula {
+fun getFormula(tokens: ArrayDeque<Token>): Formula {
 	val stack = ArrayDeque<Formula>()
 	for (token in tokens) {
 		when(token) {
@@ -303,12 +317,14 @@ fun toFormula(tokens: ArrayDeque<Token>): Formula {
 				}
 				val rightFml = stack.removeFirst()
 				val leftFml = stack.removeFirst()
-				when(token) {
-					Token.Operator.Binary.AND -> 		stack.addFirst(Formula.AND(leftFml, rightFml))
-					Token.Operator.Binary.OR -> 		stack.addFirst(Formula.OR(leftFml, rightFml))
-					Token.Operator.Binary.IMPLIES -> 	stack.addFirst(Formula.IMPLIES(leftFml, rightFml))
-					Token.Operator.Binary.IFF -> 		stack.addFirst(Formula.IFF(leftFml, rightFml))
-				}
+				stack.addFirst(
+					when(token) {
+						Token.Operator.Binary.AND -> 		Formula.AND(leftFml, rightFml)
+						Token.Operator.Binary.OR -> 		Formula.OR(leftFml, rightFml)
+						Token.Operator.Binary.IMPLIES -> 	Formula.IMPLIES(leftFml, rightFml)
+						Token.Operator.Binary.IFF -> 		Formula.IFF(leftFml, rightFml)
+					}
+				)
 			}
 			else -> throw IllegalArgumentException()
 		}
@@ -358,12 +374,21 @@ sealed interface Token {
 	object FALSE: Token
 }
 
+private fun String.replace(
+	oldValues: List<String>,
+	newValue: String
+): String {
+	var result = this
+	oldValues.forEach { result = result.replace(it, newValue, true) }
+	return result
+}
+
 fun String.toUnicode(): String = this
-	.replace("false", "⊥")
-	.replace("not", "¬")
-	.replace("to", "→")
-	.replace("and", "∧")
-	.replace("or", "∨")
-	.replace("iff", "↔")
-	.replace("all", "∀")
-	.replace("ex", "∃")
+	.replace(listOf("false ", "contradiction "), "⊥ ")
+	.replace(listOf("not ", "~", "negation "), "¬")
+	.replace(listOf(" and ",""" /\ """), " ∧ ")
+	.replace(listOf(" or ", """ \/ """), " ∨ ")
+	.replace(listOf(" implies ", " -> ", " => ", " --> ", " ==> ", " to ", " imply "), " → ")
+	.replace(listOf(" iff ", " <-> ", " <=> ", " <--> ", " <==> ", " if and only if "), " ↔ ")
+	.replace(listOf("forall ", "all "), "∀")
+	.replace(listOf("exists ", "ex "), "∃")

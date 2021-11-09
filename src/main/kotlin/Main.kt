@@ -13,22 +13,23 @@ fun main() {
 	//val fml3 = fml1.replace(y, x) // throw exception
 	 */
 
+	//println(""" /\ \/ and or forall x ~false""".toUnicode())
+
 	while (true) {
 		print("INPUT A FORMULA >>> ")
 		val str = readLine()!!
 		try {
-			val timeInMillis = measureTimeMillis {
-				val input = ArrayDeque(str.toUnicode().toCharArray().toList())
-				val preTokens = preTokenize(input)
-				println(preTokens)
-				val tokens = tokenize(preTokens)
-				println(tokens)
-				val rpn = toReversePolishNotation(tokens)
-				println(rpn)
-				val fml = toFormula(rpn)
-				println(fml)
-			}
-			println("TIME >>> $timeInMillis ms")
+			//println(parse(str))
+			println(str.toUnicode())
+			val input = ArrayDeque(str.toUnicode().toCharArray().toList())
+			val preTokens = preTokenize(input)
+			println(preTokens)
+			val tokens = tokenize(preTokens)
+			println(tokens)
+			val rpn = toReversePolishNotation(tokens)
+			println(rpn)
+			val fml = getFormula(rpn)
+			println(fml)
 		} catch (e: FormulaParserException) {
 			println(e.message)
 		}
