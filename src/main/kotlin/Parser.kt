@@ -12,7 +12,7 @@ fun parse(str: String): Formula {
 	return getFormula(reversePolishNotation)
 }
 
-fun preTokenize(inputChrs: ArrayDeque<Char>): ArrayDeque<PreToken> {
+private fun preTokenize(inputChrs: ArrayDeque<Char>): ArrayDeque<PreToken> {
 	val preTokens = ArrayDeque<PreToken>()
 	while (inputChrs.isNotEmpty()) {
 		when (val currentChr = inputChrs.removeFirst()) {
@@ -38,7 +38,7 @@ fun preTokenize(inputChrs: ArrayDeque<Char>): ArrayDeque<PreToken> {
 	return preTokens
 }
 
-fun tokenize(preTokens: ArrayDeque<PreToken>): ArrayDeque<Token> {
+private fun tokenize(preTokens: ArrayDeque<PreToken>): ArrayDeque<Token> {
 	val tokens = ArrayDeque<Token>()
 	while (preTokens.isNotEmpty()) {
 		when (val preToken = preTokens.removeFirst()) {
@@ -80,7 +80,7 @@ fun tokenize(preTokens: ArrayDeque<PreToken>): ArrayDeque<Token> {
 	return tokens
 }
 
-fun toReversePolishNotation(inputTokens: ArrayDeque<Token>): ArrayDeque<Token> {
+private fun toReversePolishNotation(inputTokens: ArrayDeque<Token>): ArrayDeque<Token> {
 	val outputTokens = ArrayDeque<Token>()
 	val stack = ArrayDeque<Token>()
 	for (token in inputTokens) {
@@ -115,7 +115,7 @@ fun toReversePolishNotation(inputTokens: ArrayDeque<Token>): ArrayDeque<Token> {
 	return outputTokens
 }
 
-fun getFormula(tokens: ArrayDeque<Token>): Formula {
+private fun getFormula(tokens: ArrayDeque<Token>): Formula {
 	val stack = ArrayDeque<Formula>()
 	for (token in tokens) {
 		when(token) {
@@ -216,7 +216,7 @@ private fun String.replace(
 	return result
 }
 
-fun String.toUnicode(): String = this
+private fun String.toUnicode(): String = this
 	.replace(listOf("false ", "contradiction "), "⊥ ")
 	.replace(listOf("not ", "~", "negation "), "¬")
 	.replace(listOf(" and ",""" /\ """), " ∧ ")

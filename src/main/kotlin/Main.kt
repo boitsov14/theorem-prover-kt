@@ -19,17 +19,7 @@ fun main() {
 		print("INPUT A FORMULA >>> ")
 		val str = readLine()!!
 		try {
-			//println(parse(str))
-			println(str.toUnicode())
-			val input = ArrayDeque(str.toUnicode().toCharArray().toList())
-			val preTokens = preTokenize(input)
-			println(preTokens)
-			val tokens = tokenize(preTokens)
-			println(tokens)
-			val rpn = toReversePolishNotation(tokens)
-			println(rpn)
-			val fml = getFormula(rpn)
-			println(fml)
+			println(parse(str))
 		} catch (e: FormulaParserException) {
 			println(e.message)
 		}
