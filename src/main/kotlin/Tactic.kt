@@ -56,10 +56,11 @@ enum class Tactic0(private val id: String): ITactic {
 	}
 	fun apply(goals: Goals): Goals {
 		val goal = goals[0]
+		val conclusion = goal.conclusion
 		when(this) {
 			ASSUMPTION -> return goals.replaceFirstGoal()
 			INTRO_IMPLIES -> {
-				val conclusion = goal.conclusion as Formula.IMPLIES
+				conclusion as Formula.IMPLIES
 				val newGoal = goal.copy(
 					assumptions = goal.assumptions.addIfDistinct(conclusion.leftFml),
 					conclusion = conclusion.rightFml
@@ -67,7 +68,7 @@ enum class Tactic0(private val id: String): ITactic {
 				return goals.replaceFirstGoal(newGoal)
 			}
 			INTRO_NOT -> {
-				val conclusion = goal.conclusion as Formula.NOT
+				conclusion as Formula.NOT
 				val newGoal = goal.copy(
 					assumptions = goal.assumptions.addIfDistinct(conclusion.fml),
 					conclusion = Formula.FALSE
@@ -75,7 +76,7 @@ enum class Tactic0(private val id: String): ITactic {
 				return goals.replaceFirstGoal(newGoal)
 			}
 			INTRO_ALL -> {
-				val conclusion = goal.conclusion as Formula.ALL
+				conclusion as Formula.ALL
 				val newVar = conclusion.bddVar.getUniqueVar(goal.fixedVars.toSet() + conclusion.fml.bddVars)
 				val newGoal = goal.copy(
 					fixedVars = goal.fixedVars + newVar,
@@ -84,24 +85,24 @@ enum class Tactic0(private val id: String): ITactic {
 				return goals.replaceFirstGoal(newGoal)
 			}
 			SPLIT_AND -> {
-				val conclusion = goal.conclusion as Formula.AND
+				conclusion as Formula.AND
 				val left    = goal.copy(conclusion = conclusion.leftFml)
 				val right   = goal.copy(conclusion = conclusion.rightFml)
 				return goals.replaceFirstGoal(left, right)
 			}
 			SPLIT_IFF -> {
-				val conclusion = goal.conclusion as Formula.IFF
+				conclusion as Formula.IFF
 				val toRight = goal.copy(conclusion = Formula.IMPLIES(conclusion.leftFml, conclusion.rightFml))
 				val toLeft  = goal.copy(conclusion = Formula.IMPLIES(conclusion.rightFml, conclusion.leftFml))
 				return goals.replaceFirstGoal(toLeft, toRight)
 			}
 			LEFT -> {
-				val conclusion = goal.conclusion as Formula.OR
+				conclusion as Formula.OR
 				val newGoal = goal.copy(conclusion = conclusion.leftFml)
 				return goals.replaceFirstGoal(newGoal)
 			}
 			RIGHT -> {
-				val conclusion = goal.conclusion as Formula.OR
+				conclusion as Formula.OR
 				val newGoal = goal.copy(conclusion = conclusion.rightFml)
 				return goals.replaceFirstGoal(newGoal)
 			}
@@ -111,7 +112,7 @@ enum class Tactic0(private val id: String): ITactic {
 			}
 			BY_CONTRA -> {
 				val newGoal = goal.copy(
-					assumptions = goal.assumptions.addIfDistinct(Formula.NOT(goal.conclusion)),
+					assumptions = goal.assumptions.addIfDistinct(Formula.NOT(conclusion)),
 					conclusion = Formula.FALSE
 				)
 				return goals.replaceFirstGoal(newGoal)
@@ -121,60 +122,57 @@ enum class Tactic0(private val id: String): ITactic {
 	data class ApplyData(val tactic0: Tactic0): IApplyData
 }
 
-// Tactic with arity 1.
-enum class Tactic1(private val id: String): ITactic {
-	APPLY("apply"),
-	CASES("cases"),
+// Tactic with one formula.
+enum class Tactic1WithFml(private val id: String): ITactic {
+	APPLY_IMPLIES("apply"),
+	APPLY_NOT("apply"),
+	CASES_AND("cases"),
+	CASES_OR("cases"),
+	CASES_IFF("cases"),
+	CASES_EXISTS("cases"),
 	REVERT("revert"),
-	USE("use"),
 	CLEAR("clear");
 	override fun toString(): String = id
-	override fun canApply(goal: Goal): Boolean = when(this) {
-		APPLY, CASES, CLEAR	-> possibleAssumptions(goal).isNotEmpty()
-		REVERT				-> possibleAssumptions(goal).isNotEmpty() || possibleFixedVars(goal).isNotEmpty()
-		USE					-> goal.conclusion is Formula.EXISTS
-	}
+	override fun canApply(goal: Goal): Boolean = possibleAssumptions(goal).isNotEmpty()
 	fun apply(goals: Goals, assumption: Formula): Goals {
 		val goal = goals[0]
 		when(this) {
-			APPLY -> return when(assumption) {
-				is Formula.IMPLIES -> {
-					val newGoal = goal.copy(conclusion = assumption.leftFml)
-					goals.replaceFirstGoal(newGoal)
-				}
-				is Formula.NOT -> {
-					val newGoal = goal.copy(conclusion = assumption.fml)
-					goals.replaceFirstGoal(newGoal)
-				}
-				else -> throw IllegalArgumentException()
+			APPLY_IMPLIES -> {
+				assumption as Formula.IMPLIES
+				val newGoal = goal.copy(conclusion = assumption.leftFml)
+				return goals.replaceFirstGoal(newGoal)
 			}
-			CASES -> {
-				when(assumption) {
-					is Formula.AND -> {
-						val newGoal = goal.copy(assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.leftFml, assumption.rightFml))
-						return goals.replaceFirstGoal(newGoal)
-					}
-					is Formula.OR -> {
-						val leftGoal	= goal.copy(assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.leftFml))
-						val rightGoal	= goal.copy(assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.rightFml))
-						return goals.replaceFirstGoal(leftGoal, rightGoal)
-					}
-					is Formula.IFF -> {
-						val toRight = Formula.IMPLIES(assumption.leftFml, assumption.rightFml)
-						val toLeft  = Formula.IMPLIES(assumption.rightFml, assumption.leftFml)
-						val newGoal = goal.copy(assumptions = goal.assumptions.replaceIfDistinct(assumption, toRight, toLeft))
-						return goals.replaceFirstGoal(newGoal)
-					}
-					is Formula.EXISTS -> {
-						val newVar = assumption.bddVar.getUniqueVar(goal.fixedVars.toSet())
-						val newGoal = goal.copy(
-							fixedVars = goal.fixedVars + newVar,
-							assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.fml.replace(assumption.bddVar, newVar))
-						)
-						return goals.replaceFirstGoal(newGoal)
-					}
-					else -> throw IllegalArgumentException()
-				}
+			APPLY_NOT -> {
+				assumption as Formula.NOT
+				val newGoal = goal.copy(conclusion = assumption.fml)
+				return goals.replaceFirstGoal(newGoal)
+			}
+			CASES_AND -> {
+				assumption as Formula.AND
+				val newGoal = goal.copy(assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.leftFml, assumption.rightFml))
+				return goals.replaceFirstGoal(newGoal)
+			}
+			CASES_OR -> {
+				assumption as Formula.OR
+				val leftGoal	= goal.copy(assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.leftFml))
+				val rightGoal	= goal.copy(assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.rightFml))
+				return goals.replaceFirstGoal(leftGoal, rightGoal)
+			}
+			CASES_IFF -> {
+				assumption as Formula.IFF
+				val toRight = Formula.IMPLIES(assumption.leftFml, assumption.rightFml)
+				val toLeft  = Formula.IMPLIES(assumption.rightFml, assumption.leftFml)
+				val newGoal = goal.copy(assumptions = goal.assumptions.replaceIfDistinct(assumption, toRight, toLeft))
+				return goals.replaceFirstGoal(newGoal)
+			}
+			CASES_EXISTS -> {
+				assumption as Formula.EXISTS
+				val newVar = assumption.bddVar.getUniqueVar(goal.fixedVars.toSet())
+				val newGoal = goal.copy(
+					fixedVars = goal.fixedVars + newVar,
+					assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.fml.replace(assumption.bddVar, newVar))
+				)
+				return goals.replaceFirstGoal(newGoal)
 			}
 			REVERT -> {
 				val newGoal = goal.copy(
@@ -187,52 +185,57 @@ enum class Tactic1(private val id: String): ITactic {
 				val newGoal = goal.copy(assumptions = goal.assumptions.minus(assumption))
 				return goals.replaceFirstGoal(newGoal)
 			}
-			else -> throw IllegalArgumentException()
 		}
 	}
+	// TODO: 2021/11/21 change to set.
+	fun possibleAssumptions(goal: Goal): List<Formula> = when(this) {
+		APPLY_IMPLIES 	-> goal.assumptions.filter { it is Formula.IMPLIES && it.rightFml  == goal.conclusion }
+		APPLY_NOT 		-> goal.assumptions.filter { it is Formula.NOT && goal.conclusion == Formula.FALSE }
+		CASES_AND 		-> goal.assumptions.filterIsInstance<Formula.AND>()
+		CASES_OR 		-> goal.assumptions.filterIsInstance<Formula.OR>()
+		CASES_IFF 		-> goal.assumptions.filterIsInstance<Formula.IFF>()
+		CASES_EXISTS 	-> goal.assumptions.filterIsInstance<Formula.EXISTS>()
+		REVERT, CLEAR 	-> goal.assumptions
+	}
+	data class ApplyData(val tactic1: Tactic1WithFml, val assumption: Formula): IApplyData
+}
+
+// Tactic with one variable.
+enum class Tactic1WithVar(private val id: String): ITactic {
+	REVERT("revert"),
+	USE("use");
+	override fun toString(): String = id
+	override fun canApply(goal: Goal): Boolean = possibleFixedVars(goal).isNotEmpty()
 	fun apply(goals: Goals, fixedVar: Var): Goals {
 		val goal = goals[0]
-		when(this) {
+		return when(this) {
 			REVERT -> {
 				val newGoal = goal.copy(
 					fixedVars = goal.fixedVars.minus(fixedVar),
 					conclusion = Formula.ALL(fixedVar, goal.conclusion)
 				)
-				return goals.replaceFirstGoal(newGoal)
+				goals.replaceFirstGoal(newGoal)
 			}
 			USE -> {
-				when(val conclusion = goal.conclusion) {
-					is Formula.EXISTS -> {
-						val newGoal = goal.copy(conclusion = conclusion.fml.replace(conclusion.bddVar, fixedVar))
-						return goals.replaceFirstGoal(newGoal)
-					}
-				}
+				val conclusion = goal.conclusion as Formula.EXISTS
+				val newGoal = goal.copy(conclusion = conclusion.fml.replace(conclusion.bddVar, fixedVar))
+				goals.replaceFirstGoal(newGoal)
 			}
-			else -> throw IllegalArgumentException()
 		}
-		throw IllegalArgumentException()
 	}
-
-	// TODO: 2021/09/22
-	// don't need to be a list but a set in an app.
-	private fun possibleAssumptions(goal: Goal): List<Formula> = when(this) {
-		APPLY   		-> goal.assumptions.filter { (it is Formula.IMPLIES && it.rightFml  == goal.conclusion) ||  (it is Formula.NOT && goal.conclusion == Formula.FALSE) }
-		CASES   		-> goal.assumptions.filter { it is Formula.AND || it is Formula.OR || it is Formula.IFF || it is Formula.EXISTS }
-		REVERT, CLEAR	-> goal.assumptions
-		else			-> listOf()
-	}
-	private fun possibleFixedVars(goal: Goal): List<Var> = when(this) {
+	// TODO: 2021/11/21 change to set.
+	fun possibleFixedVars(goal: Goal): List<Var> = when(this) {
 		REVERT -> {
-			val fixedVarsInAssumptions = goal.assumptions.fold(setOf<Var>()){ set, assumption -> set + assumption.freeVars }
+			val fixedVarsInAssumptions = goal.assumptions.map { it.freeVars }.flatten()
 			goal.fixedVars.filterNot { it in fixedVarsInAssumptions }.filterNot { it in goal.conclusion.bddVars }
 		}
 		USE -> if (goal.conclusion is Formula.EXISTS) {
 			goal.fixedVars.filterNot { it in goal.conclusion.fml.bddVars }
-		} else listOf()
-		else -> listOf()
+		} else {
+			listOf()
+		}
 	}
-	data class ApplyDataWithFml(val tactic1: Tactic1, val assumption: Formula): IApplyData
-	data class ApplyDataWithVar(val tactic1: Tactic1, val fixedVar: Var): IApplyData
+	data class ApplyData(val tactic1: Tactic1WithVar, val fixedVar: Var): IApplyData
 }
 
 // Tactic with arity 2.
