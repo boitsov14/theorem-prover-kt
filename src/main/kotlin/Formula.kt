@@ -99,9 +99,8 @@ sealed class Formula {
 		is IFF 			-> IFF		(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
 		is ALL 			-> {
 			if (oldVar == bddVar) {
-				throw DuplicateBddVarException()
-			}
-			if (newVar == bddVar) {
+				this
+			} else if (newVar == bddVar) {
 				val newBddVar = bddVar.getUniqueVar(fml.bddVars + fml.freeVars + newVar)
 				ALL(newBddVar, fml.replace(bddVar, newBddVar).replace(oldVar, newVar))
 			} else {
@@ -110,9 +109,8 @@ sealed class Formula {
 		}
 		is EXISTS 			-> {
 			if (oldVar == bddVar) {
-				throw DuplicateBddVarException()
-			}
-			if (newVar == bddVar) {
+				this
+			} else if (newVar == bddVar) {
 				val newBddVar = bddVar.getUniqueVar(fml.bddVars + fml.freeVars + newVar)
 				EXISTS(newBddVar, fml.replace(bddVar, newBddVar).replace(oldVar, newVar))
 			} else {

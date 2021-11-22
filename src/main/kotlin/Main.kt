@@ -28,20 +28,21 @@ fun main() {
 	}
 	 */
 
-	/*
+
 	val x = Var("x")
 	val x_1 = Var("x_1")
 	val x_2 = Var("x_2")
 	val y = Var("y")
-	val str = "ex x, ex x_1, P x x_1 x_2 y"
+	//val str = "ex x, ex x_1, P x x_1 x_2 y"
+	val str = "P x and ex x , Q x and P x"
 	val fml = parse(str)
 	println(fml)
 	try {
-		println(fml.replace(y, x_1))
+		println(fml.replace(x, x_1))
 	} catch (e: DuplicateBddVarException) {
 		println(e)
 	}
-	 */
+
 }
 
 /*
