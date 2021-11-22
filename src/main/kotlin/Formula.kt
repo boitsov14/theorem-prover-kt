@@ -98,16 +98,26 @@ sealed class Formula {
 		is IMPLIES 		-> IMPLIES	(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
 		is IFF 			-> IFF		(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
 		is ALL 			-> {
-			if (bddVar == oldVar || bddVar == newVar) {
+			if (oldVar == bddVar) {
 				throw DuplicateBddVarException()
 			}
-			ALL(bddVar, fml.replace(oldVar, newVar))
+			if (newVar == bddVar) {
+				val newBddVar = bddVar.getUniqueVar(fml.bddVars + fml.freeVars + newVar)
+				ALL(newBddVar, fml.replace(bddVar, newBddVar).replace(oldVar, newVar))
+			} else {
+				ALL(bddVar, fml.replace(oldVar, newVar))
+			}
 		}
-		is EXISTS 		-> {
-			if (bddVar == oldVar || bddVar == newVar) {
+		is EXISTS 			-> {
+			if (oldVar == bddVar) {
 				throw DuplicateBddVarException()
 			}
-			EXISTS(bddVar, fml.replace(oldVar, newVar))
+			if (newVar == bddVar) {
+				val newBddVar = bddVar.getUniqueVar(fml.bddVars + fml.freeVars + newVar)
+				EXISTS(newBddVar, fml.replace(bddVar, newBddVar).replace(oldVar, newVar))
+			} else {
+				EXISTS(bddVar, fml.replace(oldVar, newVar))
+			}
 		}
 	}
 }

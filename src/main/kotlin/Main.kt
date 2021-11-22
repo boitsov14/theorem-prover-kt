@@ -15,6 +15,7 @@ fun main() {
 
 	//println(""" /\ \/ and or forall x ~false""".toUnicode())
 
+	/*
 	while (true) {
 		print("INPUT A FORMULA >>> ")
 		val str = readLine()!!
@@ -25,6 +26,22 @@ fun main() {
 		}
 		println("--------------------------------------")
 	}
+	 */
+
+	/*
+	val x = Var("x")
+	val x_1 = Var("x_1")
+	val x_2 = Var("x_2")
+	val y = Var("y")
+	val str = "ex x, ex x_1, P x x_1 x_2 y"
+	val fml = parse(str)
+	println(fml)
+	try {
+		println(fml.replace(y, x_1))
+	} catch (e: DuplicateBddVarException) {
+		println(e)
+	}
+	 */
 }
 
 /*

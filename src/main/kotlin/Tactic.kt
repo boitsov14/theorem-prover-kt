@@ -6,15 +6,16 @@ import core.formula.*
 interface ITactic {
 	fun canApply(goal: Goal): Boolean
 }
-
+/*
 val allTactics: List<ITactic> = Tactic0.values().toList() + Tactic1.values() + Tactic2.values()
 // TODO: 2021/10/28 this doesn't need to be a list in an app.
 
 fun applicableTactics(goal: Goal) = allTactics.filter { it.canApply(goal) }
+*/
 
 // IApplyData = ApplyData  | ApplyDataWithFormula | ApplyDataWithVar | ApplyDataWithFormula | ApplyDataWithVar
 sealed interface IApplyData
-
+/*
 typealias History = List<IApplyData>
 
 fun IApplyData.apply(goals: Goals): Goals = when(this) {
@@ -27,6 +28,7 @@ fun IApplyData.apply(goals: Goals): Goals = when(this) {
 
 fun History.apply(goals: Goals): Goals = this.fold(goals){currentGoals, applyData -> applyData.apply(currentGoals)}
 
+ */
 // Tactic with arity 0.
 enum class Tactic0(private val id: String): ITactic {
 	ASSUMPTION("assumption"),
