@@ -22,7 +22,7 @@ fun IApplyData.apply(goals: Goals): Goals = when(this) {
 	is Tactic2WithVar.ApplyData -> this.tactic2WithVar.apply(goals, this.assumption, this.fixedVar)
 }
 
-fun History.apply(goals: Goals): Goals = this.fold(goals){currentGoals, applyData -> applyData.apply(currentGoals)}
+fun History.apply(firstGoals: Goals): Goals = this.fold(firstGoals){ currentGoals, applyData -> applyData.apply(currentGoals)}
 
 // Tactic with arity 0.
 enum class Tactic0(private val id: String): ITactic {

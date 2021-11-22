@@ -1,10 +1,97 @@
-import kotlin.system.measureTimeMillis
 import core.formula.*
 import core.parser.*
 import core.tactic.*
 
+/*
+(all x, P x) to (ex x, P x)
+(ex y, all x, P x y) to (all x, ex y, P x y)
+not (P and Q) to (not P or not Q)
+P and not P to Q
+P to Q to (P and Q to R and S) to R
+ */
+
 fun main() {
 
+	val currentHistory = mutableListOf<IApplyData>()
+	print("INPUT FORMULA >>> ")
+	val str = readLine()!!
+	val fml = parse(str)
+	val firstGoal = Goal(fml)
+	val firstGoals = listOf(firstGoal)
+
+	while (true) {
+		val currentGoals = currentHistory.apply(firstGoals)
+		if (currentGoals.isEmpty()) { break }
+		println("--------------------------------------")
+		printGoals(currentGoals)
+		val currentGoal = currentGoals.first()
+		print("Possible tactics are >>> ")
+		println(applicableTactics(currentGoal).joinToString())
+		print("Select a tactic >>> ")
+		val tacticStr = readLine()!!
+		if (tacticStr == "back") {
+			currentHistory.removeLast()
+			continue
+		}
+		when(val tactic = applicableTactics(currentGoal).find { "$it" == tacticStr }!!) {
+			is Tactic0 -> {
+				currentHistory.add(Tactic0.ApplyData(tactic))
+				if (tactic == Tactic0.USE_WITHOUT_FIXED_VARS) {
+					currentGoal.conclusion as Formula.EXISTS
+					println("USE >>> ${currentGoal.conclusion.bddVar}")
+					print("PRESS ENTER >>> ")
+					readLine()
+				}
+			}
+			is Tactic1WithFml -> {
+				print("CHOOSE FORMULA >>> ")
+				println(tactic.possibleAssumptions(currentGoal).joinToString())
+				val assumptionNum = readLine()!!.toInt()
+				val assumption = tactic.possibleAssumptions(currentGoal)[assumptionNum]
+				currentHistory.add(Tactic1WithFml.ApplyData(tactic, assumption))
+				if (tactic == Tactic1WithFml.HAVE_IMPLIES || tactic == Tactic1WithFml.HAVE_IMPLIES_WITHOUT_LEFT) {
+					assumption as Formula.IMPLIES
+					println("PAIR >>> ${assumption.leftFml}")
+					print("PRESS ENTER >>> ")
+					readLine()
+				}
+				if (tactic == Tactic1WithFml.HAVE_NOT) {
+					assumption as Formula.NOT
+					println("PAIR >>> ${assumption.fml}")
+					print("PRESS ENTER >>> ")
+					readLine()
+				}
+				if (tactic == Tactic1WithFml.HAVE_WITHOUT_FIXED_VARS) {
+					assumption as Formula.ALL
+					println("HAVE >>> ${assumption.bddVar}")
+					print("PRESS ENTER >>> ")
+					readLine()
+				}
+			}
+			is Tactic1WithVar -> {
+				print("CHOOSE VARIABLE >>> ")
+				println(tactic.possibleFixedVars(currentGoal).joinToString())
+				val varStr = readLine()!!
+				val inputVar = tactic.possibleFixedVars(currentGoal).find { "$it" == varStr }!!
+				currentHistory.add(Tactic1WithVar.ApplyData(tactic, inputVar))
+			}
+			is Tactic2WithVar -> {
+				print("CHOOSE FORMULA >>> ")
+				val possibleAssumptions = tactic.possiblePairOfAssumptionAndFixedVars(currentGoal).map { it.first }.distinct()
+				println(possibleAssumptions.joinToString())
+				val assumptionNum = readLine()!!.toInt()
+				val assumption = possibleAssumptions[assumptionNum]
+				print("CHOOSE VARIABLE >>> ")
+				val possibleVars = tactic.possiblePairOfAssumptionAndFixedVars(currentGoal).filter { it.first == assumption }.map { it.second }
+				println(possibleVars.joinToString())
+				val varStr = readLine()!!
+				val inputVar = possibleVars.find { "$it" == varStr }!!
+				currentHistory.add(Tactic2WithVar.ApplyData(tactic, assumption, inputVar))
+			}
+		}
+	}
+	println("--------------------------------------")
+	println("Proof complete!")
 }
 /*
 fun main() {
