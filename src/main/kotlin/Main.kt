@@ -4,6 +4,10 @@ import core.parser.*
 import core.tactic.*
 
 fun main() {
+
+}
+/*
+fun main() {
 	/*
 	val x = Var("x")
 	val y = Var("y")
@@ -28,7 +32,7 @@ fun main() {
 	}
 	 */
 
-
+	/*
 	val x = Var("x")
 	val x_1 = Var("x_1")
 	val x_2 = Var("x_2")
@@ -42,8 +46,10 @@ fun main() {
 	} catch (e: DuplicateBddVarException) {
 		println(e)
 	}
+	 */
 
 }
+ */
 
 /*
 fun main() {

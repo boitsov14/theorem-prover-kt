@@ -2,33 +2,28 @@ package core.tactic
 
 import core.formula.*
 
-// ITactic = Tactic0 | Tactic1 | Tactic2
-interface ITactic {
+sealed interface ITactic {
 	fun canApply(goal: Goal): Boolean
 }
-/*
-val allTactics: List<ITactic> = Tactic0.values().toList() + Tactic1.values() + Tactic2.values()
-// TODO: 2021/10/28 this doesn't need to be a list in an app.
+
+val allTactics: List<ITactic> = Tactic0.values().toList() + Tactic1WithFml.values() + Tactic1WithVar.values() + Tactic2WithVar.values()
+// TODO: 2021/10/28 change to set.
 
 fun applicableTactics(goal: Goal) = allTactics.filter { it.canApply(goal) }
-*/
 
-// IApplyData = ApplyData  | ApplyDataWithFormula | ApplyDataWithVar | ApplyDataWithFormula | ApplyDataWithVar
 sealed interface IApplyData
-/*
+
 typealias History = List<IApplyData>
 
 fun IApplyData.apply(goals: Goals): Goals = when(this) {
 	is Tactic0.ApplyData 		-> this.tactic0.apply(goals)
-	is Tactic1.ApplyDataWithFml -> this.tactic1.apply(goals, this.assumption)
-	is Tactic1.ApplyDataWithVar -> this.tactic1.apply(goals, this.fixedVar)
-	is Tactic2.ApplyDataWithFml -> this.tactic2.apply(goals, this.assumptionApply, this.assumptionApplied)
-	is Tactic2.ApplyDataWithVar -> this.tactic2.apply(goals, this.assumption, this.fixedVar)
+	is Tactic1WithFml.ApplyData -> this.tactic1WithFml.apply(goals, this.assumption)
+	is Tactic1WithVar.ApplyData -> this.tactic1WithVar.apply(goals, this.fixedVar)
+	is Tactic2WithVar.ApplyData -> this.tactic2WithVar.apply(goals, this.assumption, this.fixedVar)
 }
 
 fun History.apply(goals: Goals): Goals = this.fold(goals){currentGoals, applyData -> applyData.apply(currentGoals)}
 
- */
 // Tactic with arity 0.
 enum class Tactic0(private val id: String): ITactic {
 	ASSUMPTION("assumption"),
@@ -144,12 +139,12 @@ enum class Tactic1WithFml(private val id: String): ITactic {
 	CASES_EXISTS("cases"),
 	REVERT("revert"),
 	CLEAR("clear"),
+	HAVE_IMPLIES("have"),
+	HAVE_IMPLIES_WITHOUT_LEFT("have"),
+	HAVE_NOT("have"),
 	HAVE_WITHOUT_FIXED_VARS("have");
 	override fun toString(): String = id
-	override fun canApply(goal: Goal): Boolean = when(this) {
-		HAVE_WITHOUT_FIXED_VARS -> goal.fixedVars.isEmpty() && possibleAssumptions(goal).isNotEmpty()
-		else -> possibleAssumptions(goal).isNotEmpty()
-	}
+	override fun canApply(goal: Goal): Boolean = possibleAssumptions(goal).isNotEmpty()
 	fun apply(goals: Goals, assumption: Formula): Goals {
 		val goal = goals[0]
 		when(this) {
@@ -201,6 +196,24 @@ enum class Tactic1WithFml(private val id: String): ITactic {
 				val newGoal = goal.copy(assumptions = goal.assumptions.minus(assumption))
 				return goals.replaceFirstGoal(newGoal)
 			}
+			HAVE_IMPLIES -> {
+				assumption as Formula.IMPLIES
+				val newGoal = goal.copy(assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.rightFml))
+				return goals.replaceFirstGoal(newGoal)
+			}
+			HAVE_IMPLIES_WITHOUT_LEFT -> {
+				assumption as Formula.IMPLIES
+				val newGoal1 = goal.copy(
+					assumptions = goal.assumptions.minus(assumption),
+					conclusion = assumption.leftFml
+				)
+				val newGoal2 = goal.copy(assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.rightFml))
+				return goals.replaceFirstGoal(newGoal1, newGoal2)
+			}
+			HAVE_NOT -> {
+				val newGoal = goal.copy(assumptions = goal.assumptions.addIfDistinct(Formula.FALSE))
+				return goals.replaceFirstGoal(newGoal)
+			}
 			HAVE_WITHOUT_FIXED_VARS -> {
 				assumption as Formula.ALL
 				val newAssumption = assumption.fml
@@ -222,9 +235,26 @@ enum class Tactic1WithFml(private val id: String): ITactic {
 		CASES_IFF 		-> goal.assumptions.filterIsInstance<Formula.IFF>()
 		CASES_EXISTS 	-> goal.assumptions.filterIsInstance<Formula.EXISTS>()
 		REVERT, CLEAR 	-> goal.assumptions
-		HAVE_WITHOUT_FIXED_VARS -> goal.assumptions.filterIsInstance<Formula.ALL>()
+		HAVE_IMPLIES -> goal.assumptions
+			.filterIsInstance<Formula.IMPLIES>()
+			.filter { it.leftFml in goal.assumptions }
+			.filterNot { it.rightFml in goal.assumptions }
+		HAVE_IMPLIES_WITHOUT_LEFT -> goal.assumptions
+			.filterIsInstance<Formula.IMPLIES>()
+			.filterNot { it.leftFml in goal.assumptions }
+			.filterNot { it.leftFml == goal.conclusion }
+			.filterNot { it.rightFml in goal.assumptions }
+		HAVE_NOT -> if (Formula.FALSE !in goal.assumptions) {
+			goal.assumptions
+				.filterIsInstance<Formula.NOT>()
+				.filter { it.fml in goal.assumptions }
+		} else { listOf() }
+		HAVE_WITHOUT_FIXED_VARS -> if (goal.fixedVars.isEmpty()) {
+			goal.assumptions
+				.filterIsInstance<Formula.ALL>()
+		} else { listOf() }
 	}
-	data class ApplyData(val tactic1: Tactic1WithFml, val assumption: Formula): IApplyData
+	data class ApplyData(val tactic1WithFml: Tactic1WithFml, val assumption: Formula): IApplyData
 }
 
 // Tactic with one variable.
@@ -268,56 +298,7 @@ enum class Tactic1WithVar(private val id: String): ITactic {
 		}
 		USE -> goal.fixedVars
 	}
-	data class ApplyData(val tactic1: Tactic1WithVar, val fixedVar: Var): IApplyData
-}
-
-// Tactic with two formulas.
-enum class Tactic2WithFml(private val id: String): ITactic {
-	HAVE_IMPLIES("have"),
-	HAVE_IMPLIES_WITHOUT_LEFT("have"),
-	HAVE_NOT("have");
-	override fun toString(): String = id
-	override fun canApply(goal: Goal): Boolean = possibleAssumptions(goal).isNotEmpty()
-	fun apply(goals: Goals, assumption: Formula): Goals {
-		val goal = goals[0]
-		return when(this) {
-			HAVE_IMPLIES -> {
-				assumption as Formula.IMPLIES
-				val newGoal = goal.copy(assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.rightFml))
-				goals.replaceFirstGoal(newGoal)
-			}
-			HAVE_IMPLIES_WITHOUT_LEFT -> {
-				assumption as Formula.IMPLIES
-				val newGoal1 = goal.copy(
-					assumptions = goal.assumptions.minus(assumption),
-					conclusion = assumption.leftFml
-				)
-				val newGoal2 = goal.copy(assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.rightFml))
-				goals.replaceFirstGoal(newGoal1, newGoal2)
-			}
-			HAVE_NOT -> {
-				val newGoal = goal.copy(assumptions = goal.assumptions.addIfDistinct(Formula.FALSE))
-				goals.replaceFirstGoal(newGoal)
-			}
-		}
-	}
-	// TODO: 2021/11/21 change to set.
-	fun possibleAssumptions(goal: Goal): List<Formula> = when(this) {
-		HAVE_IMPLIES -> goal.assumptions
-			.filterIsInstance<Formula.IMPLIES>()
-			.filter { it.leftFml in goal.assumptions }
-			.filterNot { it.rightFml in goal.assumptions }
-		HAVE_IMPLIES_WITHOUT_LEFT -> goal.assumptions
-			.filterIsInstance<Formula.IMPLIES>()
-			.filterNot { it.leftFml in goal.assumptions }
-			.filterNot { it.leftFml == goal.conclusion }
-			.filterNot { it.rightFml in goal.assumptions }
-		HAVE_NOT -> goal.assumptions
-			.filterIsInstance<Formula.NOT>()
-			.filter { it.fml in goal.assumptions }
-			.filterNot { Formula.FALSE in goal.assumptions }
-	}
-	data class ApplyDataWithFml(val tactic2: Tactic2WithFml, val assumptionApply: Formula): IApplyData
+	data class ApplyData(val tactic1WithVar: Tactic1WithVar, val fixedVar: Var): IApplyData
 }
 
 // Tactic with one formula and one variable.
@@ -345,5 +326,5 @@ enum class Tactic2WithVar(private val id: String): ITactic {
 		}
 		return result
 	}
-	data class ApplyDataWithVar(val tactic2: Tactic2WithVar, val assumption: Formula, val fixedVar: Var): IApplyData
+	data class ApplyData(val tactic2WithVar: Tactic2WithVar, val assumption: Formula, val fixedVar: Var): IApplyData
 }
