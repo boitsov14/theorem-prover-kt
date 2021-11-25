@@ -4,8 +4,8 @@ import core.formula.*
 
 class FormulaParserException(message:String): Exception(message)
 
-fun parse(str: String): Formula {
-	val chrs = ArrayDeque(str.toUnicode().toCharArray().toList())
+fun String.parse(): Formula {
+	val chrs = ArrayDeque(this.toOneLetter().toCharArray().toList())
 	val preTokens = preTokenize(chrs)
 	val tokens = tokenize(preTokens)
 	val reversePolishNotation = toReversePolishNotation(tokens)
@@ -57,11 +57,11 @@ private fun String.replace(oldValues: List<String>, newValue: String): String {
 	return result
 }
 
-private fun String.toUnicode(): String = this
+private fun String.toOneLetter(): String = this
 	.replace(listOf("false ", "contradiction "), "⊥ ")
 	.replace(listOf("not ", "~", "negation "), "¬")
-	.replace(listOf(" and ",""" /\ """), " ∧ ")
-	.replace(listOf(" or ", """ \/ """), " ∨ ")
+	.replace(listOf(" and ",""" /\ """, "&"), " ∧ ")
+	.replace(listOf(" or ", """ \/ """, "|"), " ∨ ")
 	.replace(listOf(" implies ", " -> ", " => ", " --> ", " ==> ", " to ", " imply "), " → ")
 	.replace(listOf(" iff ", " <-> ", " <=> ", " <--> ", " <==> ", " if and only if "), " ↔ ")
 	.replace(listOf("forall ", "all "), "∀")
