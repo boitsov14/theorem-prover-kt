@@ -27,11 +27,12 @@ sealed class Formula {
 		init {
 			if (bddVar in operandFml.bddVars) { throw DuplicateBddVarException() }
 		}
+		fun substitute(newVar: Var): Formula = operandFml.replace(bddVar, newVar)
 		override fun equals(other: Any?): Boolean {
 			if (this === other) return true
 			if (javaClass != other?.javaClass) return false
 			other as ALL
-			if (operandFml == other.operandFml.replace(other.bddVar, bddVar)) return true
+			if (operandFml == other.substitute(bddVar)) return true
 			return false
 		}
 		override fun hashCode(): Int {
@@ -42,11 +43,12 @@ sealed class Formula {
 		init {
 			if (bddVar in operandFml.bddVars) { throw DuplicateBddVarException() }
 		}
+		fun substitute(newVar: Var): Formula = operandFml.replace(bddVar, newVar)
 		override fun equals(other: Any?): Boolean {
 			if (this === other) return true
 			if (javaClass != other?.javaClass) return false
 			other as EXISTS
-			if (operandFml == other.operandFml.replace(other.bddVar, bddVar)) return true
+			if (operandFml == other.substitute(bddVar)) return true
 			return false
 		}
 		override fun hashCode(): Int {

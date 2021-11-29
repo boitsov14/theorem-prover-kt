@@ -80,7 +80,7 @@ enum class Tactic0(private val id: String): ITactic {
 				val newVar = conclusion.bddVar.getUniqueVar(goal.fixedVars.toSet())
 				val newGoal = goal.copy(
 					fixedVars = goal.fixedVars + newVar,
-					conclusion = conclusion.operandFml.replace(conclusion.bddVar, newVar)
+					conclusion = conclusion.substitute(newVar)
 				)
 				return goals.replace(newGoal)
 			}
@@ -180,9 +180,10 @@ enum class Tactic1WithFml(private val id: String): ITactic {
 			CASES_EXISTS -> {
 				assumption as Formula.EXISTS
 				val newVar = assumption.bddVar.getUniqueVar(goal.fixedVars.toSet())
+				val newAssumption = assumption.substitute(newVar)
 				val newGoal = goal.copy(
 					fixedVars = goal.fixedVars + newVar,
-					assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.operandFml.replace(assumption.bddVar, newVar))
+					assumptions = goal.assumptions.replaceIfDistinct(assumption, newAssumption)
 				)
 				return goals.replace(newGoal)
 			}
@@ -271,12 +272,13 @@ enum class Tactic1WithVar(private val id: String): ITactic {
 		val goal = goals[0]
 		return when(this) {
 			REVERT -> {
-				val newConclusion = if (fixedVar in goal.conclusion.bddVars) {
-					val newVar = fixedVar.getUniqueVar(goal.conclusion.bddVars)
-					val replacedConclusion = goal.conclusion.replace(fixedVar, newVar)
+				val conclusion = goal.conclusion
+				val newConclusion = if (fixedVar in conclusion.bddVars) {
+					val newVar = fixedVar.getUniqueVar(conclusion.bddVars)
+					val replacedConclusion = conclusion.replace(fixedVar, newVar)
 					Formula.ALL(newVar, replacedConclusion)
 				} else {
-					Formula.ALL(fixedVar, goal.conclusion)
+					Formula.ALL(fixedVar, conclusion)
 				}
 				val newGoal = goal.copy(
 					fixedVars = goal.fixedVars.minus(fixedVar),
@@ -286,7 +288,9 @@ enum class Tactic1WithVar(private val id: String): ITactic {
 			}
 			USE -> {
 				val conclusion = goal.conclusion as Formula.EXISTS
-				val newGoal = goal.copy(conclusion = conclusion.operandFml.replace(conclusion.bddVar, fixedVar))
+				val newGoal = goal.copy(
+					conclusion = conclusion.substitute(fixedVar)
+				)
 				goals.replace(newGoal)
 			}
 		}
@@ -310,7 +314,7 @@ enum class Tactic2WithVar(private val id: String): ITactic {
 	fun apply(goals: Goals, assumption: Formula, fixedVar: Var): Goals {
 		val goal = goals[0]
 		assumption as Formula.ALL
-		val newAssumption = assumption.operandFml.replace(assumption.bddVar, fixedVar)
+		val newAssumption = assumption.substitute(fixedVar)
 		// TODO: 2021/11/22 allのすぐ下に新しいassumptionを挿入したい．
 		val newGoal = goal.copy(assumptions = goal.assumptions.addIfDistinct(newAssumption))
 		return goals.replace(newGoal)
@@ -320,7 +324,7 @@ enum class Tactic2WithVar(private val id: String): ITactic {
 		val possibleAssumptions = goal.assumptions.filterIsInstance<Formula.ALL>()
 		for (assumption in possibleAssumptions) {
 			for (fixedVar in goal.fixedVars) {
-				if (assumption.operandFml.replace(assumption.bddVar, fixedVar) !in goal.assumptions) {
+				if (assumption.substitute(fixedVar) !in goal.assumptions) {
 					result.add(Pair(assumption, fixedVar))
 				}
 			}
