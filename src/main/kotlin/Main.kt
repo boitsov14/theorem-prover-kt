@@ -8,6 +8,7 @@ import core.tactic.*
 not (P and Q) to (not P or not Q)
 P and not P to Q
 P to Q to (P and Q to R and S) to R
+((A to B) to A) to A
  */
 
 fun main() {

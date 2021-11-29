@@ -109,7 +109,7 @@ sealed class Formula {
 				ALL(bddVar, operandFml.replace(oldVar, newVar))
 			}
 		}
-		is EXISTS 			-> {
+		is EXISTS 		-> {
 			if (oldVar == bddVar) {
 				this
 			} else if (newVar == bddVar) {
