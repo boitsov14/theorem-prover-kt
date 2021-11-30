@@ -43,10 +43,10 @@ fun main() {
 			}
 			is Tactic1WithFml -> {
 				print("AVAILABLE FORMULAS >>> ")
-				println(tactic.possibleAssumptions(goal).joinToString())
+				println(tactic.availableAssumptions(goal).joinToString())
 				print("SELECT A FORMULA >>> ")
 				val assumptionNum = readLine()!!.toInt()
-				val assumption = tactic.possibleAssumptions(goal)[assumptionNum]
+				val assumption = tactic.availableAssumptions(goal)[assumptionNum]
 				history.add(Tactic1WithFml.ApplyData(tactic, assumption))
 				if (tactic == Tactic1WithFml.HAVE_IMPLIES || tactic == Tactic1WithFml.HAVE_IMPLIES_WITHOUT_LEFT) {
 					assumption as Formula.IMPLIES
@@ -69,21 +69,21 @@ fun main() {
 			}
 			is Tactic1WithVar -> {
 				print("AVAILABLE VARIABLES >>> ")
-				println(tactic.possibleFixedVars(goal).joinToString())
+				println(tactic.availableFixedVars(goal).joinToString())
 				print("SELECT A VARIABLE >>> ")
 				val varStr = readLine()!!
-				val inputVar = tactic.possibleFixedVars(goal).find { "$it" == varStr }!!
+				val inputVar = tactic.availableFixedVars(goal).find { "$it" == varStr }!!
 				history.add(Tactic1WithVar.ApplyData(tactic, inputVar))
 			}
 			is Tactic2WithVar -> {
 				print("AVAILABLE FORMULAS >>> ")
-				val possibleAssumptions = tactic.possiblePairsOfAssumptionAndFixedVar(goal).map { it.first }.distinct()
+				val possibleAssumptions = tactic.availablePairsOfAssumptionAndFixedVar(goal).map { it.first }.distinct()
 				println(possibleAssumptions.joinToString())
 				print("SELECT A FORMULA >>> ")
 				val assumptionNum = readLine()!!.toInt()
 				val assumption = possibleAssumptions[assumptionNum]
 				print("AVAILABLE VARIABLES >>> ")
-				val possibleVars = tactic.possiblePairsOfAssumptionAndFixedVar(goal).filter { it.first == assumption }.map { it.second }
+				val possibleVars = tactic.availablePairsOfAssumptionAndFixedVar(goal).filter { it.first == assumption }.map { it.second }
 				println(possibleVars.joinToString())
 				print("SELECT A VARIABLE >>> ")
 				val varStr = readLine()!!
