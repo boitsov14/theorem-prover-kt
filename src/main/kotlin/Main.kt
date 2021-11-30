@@ -1,6 +1,8 @@
 import core.formula.*
 import core.parser.*
+import core.prover.*
 import core.tactic.*
+import kotlin.system.measureTimeMillis
 
 /*
 (all x, P x) to (ex x, P x)
@@ -9,14 +11,38 @@ not (P and Q) to (not P or not Q)
 P and not P to Q
 P to Q to (P and Q to R and S) to R
 ((A to B) to A) to A
+A to (A to B) to ((A to B) to C) to C
  */
 
 fun main() {
-	val history = mutableListOf<IApplyData>()
 	print("INPUT A FORMULA >>> ")
 	val fml = readLine()!!.parse()
 	val firstGoals = Goal(fml).toGoals()
 
+	val history = mutableListOf<IApplyData>()
+
+	val time = measureTimeMillis {
+		try {
+			while (true) {
+				val goals = history.apply(firstGoals)
+				if (goals.isEmpty()) { break }
+				val goal = goals.first()
+				history.add(applyBasicApplicableTactic(goal))
+			}
+		} catch (e: UnableToProveException) {
+			printHistory(firstGoals, history)
+			printGoals(history.apply(firstGoals))
+		}
+	}
+	println("Completed in $time ms")
+
+	printHistory(firstGoals, history)
+
+	//letMeProve(firstGoals)
+}
+
+fun letMeProve(firstGoals: Goals) {
+	val history = mutableListOf<IApplyData>()
 	while (true) {
 		val goals = history.apply(firstGoals)
 		if (goals.isEmpty()) { break }
@@ -95,6 +121,32 @@ fun main() {
 	println("--------------------------------------")
 	println("Proof complete!")
 }
+
+fun printGoals(goals: Goals) {
+	for (goal in goals) {
+		if (goal.fixedVars.isNotEmpty()) println(goal.fixedVars.joinToString(separator = " ", postfix = " : Fixed"))
+		goal.assumptions.forEach { println("$it") }
+		println("⊢ " + "${goal.conclusion}")
+	}
+}
+
+fun printHistory(firstGoals: Goals, history: History) {
+	var goals = firstGoals
+	for (applyData in history) {
+		printGoals(goals)
+		print(">>> ")
+		println(applyData.getString())
+		goals = applyData.apply(goals)
+	}
+}
+
+fun IApplyData.getString(): String = when(this) {
+	is Tactic0.ApplyData -> "${this.tactic0}"
+	is Tactic1WithFml.ApplyData -> "${this.tactic1WithFml} ${this.assumption}"
+	is Tactic1WithVar.ApplyData -> "${this.tactic1WithVar} ${this.fixedVar}"
+	is Tactic2WithVar.ApplyData -> "${this.tactic2WithVar} ${this.assumption} ${this.fixedVar}"
+}
+
 /*
 fun main() {
 	/*
@@ -196,27 +248,6 @@ fun main() {
 
 }
 */
-
-fun printGoals(goals: Goals) {
-	for (goal in goals) {
-		if (goal.fixedVars.isNotEmpty()) println(goal.fixedVars.joinToString(separator = " ", postfix = " : Fixed"))
-		goal.assumptions.forEach { println("$it") }
-		println("⊢ " + "${goal.conclusion}")
-	}
-}
-
-// TODO: 2021/11/01 Need to rewrite
-/*
-fun printHistory(history: History) {
-	for (flow in history) {
-		println("--------------------------------------")
-		printGoals(flow.previousGoals)
-		println("--------------------------------------")
-		print(">>> ")
-		println(flow)
-	}
-}
- */
 
 /*
 	val variousGoals = listOf(

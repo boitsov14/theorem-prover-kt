@@ -1,6 +1,7 @@
 package core.tactic
 
 import core.formula.*
+import java.lang.IllegalArgumentException
 
 sealed interface ITactic {
 	fun canApply(goal: Goal): Boolean
@@ -23,6 +24,8 @@ fun IApplyData.apply(goals: Goals): Goals = when(this) {
 }
 
 fun History.apply(firstGoals: Goals): Goals = this.fold(firstGoals){ currentGoals, applyData -> applyData.apply(currentGoals)}
+
+class IllegalTacticException: Exception()
 
 // Tactic with arity 0.
 enum class Tactic0(private val id: String): ITactic {
@@ -56,6 +59,7 @@ enum class Tactic0(private val id: String): ITactic {
 	}
 	fun apply(goals: Goals): Goals {
 		val goal = goals[0]
+		if (!(this.canApply(goal))) { throw IllegalTacticException() }
 		val conclusion = goal.conclusion
 		when(this) {
 			ASSUMPTION -> return goals.replace()
@@ -162,6 +166,7 @@ enum class Tactic1WithFml(private val id: String): ITactic {
 	override fun canApply(goal: Goal): Boolean = availableAssumptions(goal).isNotEmpty()
 	fun apply(goals: Goals, assumption: Formula): Goals {
 		val goal = goals[0]
+		if (!(this.canApply(goal))) { throw IllegalTacticException() }
 		when(this) {
 			APPLY_IMPLIES -> {
 				assumption as Formula.IMPLIES
@@ -315,6 +320,7 @@ enum class Tactic1WithVar(private val id: String): ITactic {
 	}
 	fun apply(goals: Goals, fixedVar: Var): Goals {
 		val goal = goals[0]
+		if (!(this.canApply(goal))) { throw IllegalTacticException() }
 		return when(this) {
 			REVERT -> {
 				val conclusion = goal.conclusion
@@ -358,6 +364,7 @@ enum class Tactic2WithVar(private val id: String): ITactic {
 	override fun canApply(goal: Goal): Boolean = availablePairsOfAssumptionAndFixedVar(goal).isNotEmpty()
 	fun apply(goals: Goals, assumption: Formula, fixedVar: Var): Goals {
 		val goal = goals[0]
+		if (!(this.canApply(goal))) { throw IllegalTacticException() }
 		assumption as Formula.ALL
 		val newAssumption = assumption.substitute(fixedVar)
 		val newGoal = goal.copy(
