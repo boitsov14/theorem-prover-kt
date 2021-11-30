@@ -124,23 +124,33 @@ sealed class Formula {
 
 fun List<Formula>.addIfDistinct(newFml: Formula): List<Formula> = if (newFml !in this) this + newFml else this
 
+fun List<Formula>.addBelow(fml: Formula, newFml: Formula): List<Formula> {
+	val first = this.takeWhile { it != fml }
+	val second = this.takeLastWhile { it != fml }
+	return first + fml + newFml + second
+}
+
+fun List<Formula>.replace(removedFml: Formula, newFml: Formula): List<Formula> {
+	val first = this.takeWhile { it != removedFml }
+	val second = this.takeLastWhile { it != removedFml }
+	return first + newFml + second
+}
+
 fun List<Formula>.replaceIfDistinct(removedFml: Formula, vararg newFmls: Formula): List<Formula> {
-	val index = this.indexOf(removedFml)
-	val first = this.subList(0, index)
-	val second = this.subList(index + 1, this.size)
-	val newDistinctFmls = mutableListOf<Formula>()
-	for (newFml in newFmls) {
-		if (newFml !in first + newDistinctFmls + second) {
-			newDistinctFmls.add(newFml)
-		}
-	}
+	val first = this.takeWhile { it != removedFml }
+	val second = this.takeLastWhile { it != removedFml }
+	val newDistinctFmls = newFmls.distinct().filterNot { it in first + second }
 	return first + newDistinctFmls + second
 }
 
+class DuplicateAssumptionException: Exception()
+
 data class Goal(val fixedVars: List<Var>, val assumptions: List<Formula>, val conclusion: Formula) {
+	init {
+		if (assumptions.distinct().size < assumptions.size) { throw DuplicateAssumptionException() }
+	}
 	constructor(assumptions: List<Formula>, conclusion: Formula) : this(emptyList(), assumptions, conclusion)
 	constructor(conclusion: Formula) : this(emptyList(), conclusion)
-	// TODO: 2021/10/31 Do we need these constructor?
 	override fun toString() = (if (assumptions.isNotEmpty()) assumptions.joinToString(separator = ", ", postfix = " ") else "") + "⊢ " + "$conclusion"
 	fun toGoals():Goals = listOf(this)
 }
