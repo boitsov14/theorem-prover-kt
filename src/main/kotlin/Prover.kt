@@ -49,3 +49,39 @@ fun applyBasicApplicableTactic(goal: Goal): IApplyData = when {
 		throw UnableToProveException()
 	}
 }
+
+fun applyAdvancedApplicableTactic(goal: Goal): List<IApplyData> {
+	val result = mutableListOf<IApplyData>()
+	for (assumption in Tactic1WithFml.APPLY_NOT.availableAssumptions(goal)) {
+		result.add(Tactic1WithFml.ApplyData(Tactic1WithFml.APPLY_NOT, assumption))
+	}
+	for (assumption in Tactic1WithFml.APPLY_IMPLIES.availableAssumptions(goal)) {
+		result.add(Tactic1WithFml.ApplyData(Tactic1WithFml.APPLY_IMPLIES, assumption))
+	}
+	for (assumption in Tactic1WithFml.HAVE_IMPLIES_WITHOUT_LEFT.availableAssumptions(goal)) {
+		result.add(Tactic1WithFml.ApplyData(Tactic1WithFml.HAVE_IMPLIES_WITHOUT_LEFT, assumption))
+	}
+	if (Tactic0.EXFALSO.canApply(goal)) {
+		result.add(Tactic0.ApplyData(Tactic0.EXFALSO))
+	}
+	if (Tactic0.BY_CONTRA.canApply(goal)) {
+		result.add(Tactic0.ApplyData(Tactic0.BY_CONTRA))
+	}
+	return result
+}
+
+fun applyBasicApplicableTacticAsManyAsPossible(inputGoals: Goals): History {
+	val history = mutableListOf<IApplyData>()
+	while (true) {
+		val goals = history.apply(inputGoals)
+		if (goals.isEmpty()) {
+			return history
+		}
+		val goal = goals.first()
+		try {
+			history.add(applyBasicApplicableTactic(goal))
+		} catch (e: UnableToProveException) {
+			return history
+		}
+	}
+}

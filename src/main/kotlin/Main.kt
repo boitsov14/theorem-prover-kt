@@ -13,6 +13,9 @@ P to Q to (P and Q to R and S) to R
 ((A to B) to A) to A
 A to (A to B) to ((A to B) to C) to C
 ((P or not P) to Q and not Q) to false
+not (P and Q and R and S and T) to (not P or not Q or not R or not S or not T)
+not (P and Q and R and S and T and U) to (not P or not Q or not R or not S or not T or not U) // 25 seconds, 1860003
+not (P and Q and R and S and T and U and V) to (not P or not Q or not R or not S or not T or not U or not V) // OutOfMemoryError
  */
 
 fun main() {
@@ -20,26 +23,36 @@ fun main() {
 	val fml = readLine()!!.parse()
 	val firstGoals = Goal(fml).toGoals()
 
-	letMeProve(firstGoals)
+	//letMeProve(firstGoals)
 
-	val history = mutableListOf<IApplyData>()
+	val start = System.currentTimeMillis()
 
-	val time = measureTimeMillis {
-		try {
-			while (true) {
-				val goals = history.apply(firstGoals)
-				if (goals.isEmpty()) { break }
-				val goal = goals.first()
-				history.add(applyBasicApplicableTactic(goal))
-			}
-		} catch (e: UnableToProveException) {
-			printHistory(firstGoals, history)
-			printGoals(history.apply(firstGoals))
+	val histories = ArrayDeque<History>()
+	histories.add(listOf())
+
+	while (true) {
+		val history = histories.removeFirst()
+		val newHistory = history + applyBasicApplicableTacticAsManyAsPossible(history.apply(firstGoals))
+		val goals = newHistory.apply(firstGoals)
+		if (goals.isEmpty()) {
+			val end = System.currentTimeMillis()
+			val time = end - start
+			println("Completed in $time ms")
+			println(histories.size)
+			printHistory(firstGoals, newHistory)
+			break
+		}
+		val goal = goals.first()
+		if (Tactic0.LEFT.canApply(goal)) {
+			histories.addFirst(newHistory + Tactic0.ApplyData(Tactic0.RIGHT))
+			histories.addFirst(newHistory + Tactic0.ApplyData(Tactic0.LEFT))
+		}
+		for (applyData in applyAdvancedApplicableTactic(goal)) {
+			histories.add(newHistory + applyData)
 		}
 	}
-	println("Completed in $time ms")
-
-	printHistory(firstGoals, history)
+	//val time = measureTimeMillis {}
+	//println("Completed in $time ms")
 }
 
 fun letMeProve(firstGoals: Goals) {
