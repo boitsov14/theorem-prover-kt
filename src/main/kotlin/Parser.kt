@@ -58,7 +58,7 @@ private fun String.replace(oldValues: List<String>, newValue: String): String {
 }
 
 private fun String.toOneLetter(): String = this
-	.replace(listOf("false ", "contradiction "), "⊥ ")
+	.replace(listOf("false", "contradiction"), "⊥")
 	.replace(listOf("not ", "~", "negation "), "¬")
 	.replace(listOf(" and ",""" /\ """, "&"), " ∧ ")
 	.replace(listOf(" or ", """ \/ """, "|"), " ∨ ")

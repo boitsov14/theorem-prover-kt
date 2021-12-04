@@ -22,9 +22,6 @@ fun applyBasicApplicableTactic(goal: Goal): IApplyData = when {
 	Tactic0.INTRO_NOT.canApply(goal) -> {
 		Tactic0.ApplyData(Tactic0.INTRO_NOT)
 	}
-	Tactic0.INTRO_ALL.canApply(goal) -> {
-		Tactic0.ApplyData(Tactic0.INTRO_ALL)
-	}
 	Tactic1WithFml.HAVE_IMPLIES.canApply(goal) -> {
 		// TODO: 2021/11/30 (a to b) to c, a to b, a のようなときに先にa to bされると渋い？
 		val assumption = Tactic1WithFml.HAVE_IMPLIES.availableAssumptions(goal).sortedWith(compareBy { it.toString().length }).reversed().first()

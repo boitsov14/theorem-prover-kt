@@ -12,12 +12,15 @@ P and not P to Q
 P to Q to (P and Q to R and S) to R
 ((A to B) to A) to A
 A to (A to B) to ((A to B) to C) to C
+((P or not P) to Q and not Q) to false
  */
 
 fun main() {
 	print("INPUT A FORMULA >>> ")
 	val fml = readLine()!!.parse()
 	val firstGoals = Goal(fml).toGoals()
+
+	letMeProve(firstGoals)
 
 	val history = mutableListOf<IApplyData>()
 
@@ -37,8 +40,6 @@ fun main() {
 	println("Completed in $time ms")
 
 	printHistory(firstGoals, history)
-
-	//letMeProve(firstGoals)
 }
 
 fun letMeProve(firstGoals: Goals) {

@@ -241,7 +241,7 @@ enum class Tactic1WithFml(private val id: String): ITactic {
 			HAVE_IMPLIES_WITHOUT_LEFT -> {
 				assumption as Formula.IMPLIES
 				val newGoal1 = goal.copy(
-					assumptions = goal.assumptions.minus(assumption),
+					assumptions = goal.assumptions,
 					conclusion = assumption.leftFml
 				)
 				val newGoal2 = goal.copy(
@@ -271,6 +271,7 @@ enum class Tactic1WithFml(private val id: String): ITactic {
 		APPLY_IMPLIES -> goal.assumptions
 			.filterIsInstance<Formula.IMPLIES>()
 			.filter { it.rightFml  == goal.conclusion }
+			.filterNot { it.leftFml == goal.conclusion }
 		APPLY_NOT -> goal.assumptions
 			.filterIsInstance<Formula.NOT>()
 			.filter { goal.conclusion == Formula.FALSE }
@@ -292,10 +293,13 @@ enum class Tactic1WithFml(private val id: String): ITactic {
 			.filter { it.leftFml in goal.assumptions }
 			.filterNot { it.rightFml in goal.assumptions }
 		HAVE_IMPLIES_WITHOUT_LEFT -> goal.assumptions
+			.asSequence()
 			.filterIsInstance<Formula.IMPLIES>()
 			.filterNot { it.leftFml in goal.assumptions }
 			.filterNot { it.leftFml == goal.conclusion }
 			.filterNot { it.rightFml in goal.assumptions }
+			.filterNot { it.rightFml == goal.conclusion }
+			.toList()
 		HAVE_NOT -> if (Formula.FALSE !in goal.assumptions) {
 			goal.assumptions
 				.filterIsInstance<Formula.NOT>()
