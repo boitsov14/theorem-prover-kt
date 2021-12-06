@@ -16,6 +16,10 @@ A to (A to B) to ((A to B) to C) to C
 not (P and Q and R and S and T) to (not P or not Q or not R or not S or not T)
 not (P and Q and R and S and T and U) to (not P or not Q or not R or not S or not T or not U)
 not (P and Q and R and S and T and U and V) to (not P or not Q or not R or not S or not T or not U or not V)
+((A and B) to C) to (A to C) or (B to C)
+(A or B or C or D or E or F or G or X) or (AA or BB or CC or DD or EE or FF or GG or not X)
+(A to B) to (not A or B)
+(A to B) to not not (not A or B)
  */
 
 fun main() {
@@ -23,18 +27,17 @@ fun main() {
 	val fml = readLine()!!.parse()
 	val firstGoals = Goal(fml).toGoals()
 
+	prove(firstGoals)
 	//letMeProve(firstGoals)
+}
 
+fun prove(firstGoals: Goals) {
 	val start = System.currentTimeMillis()
-
 	val histories = ArrayDeque<History>()
 	histories.add(listOf())
-
+	val oldGoals = mutableSetOf<Goals>()
 	var count = 0
 	var duplicate = 0
-
-	val oldGoals = mutableSetOf<Goals>()
-
 	while (true) {
 		val history0 = histories.removeFirst()
 		val goals0 = history0.apply(firstGoals)
@@ -44,6 +47,7 @@ fun main() {
 			val end = System.currentTimeMillis()
 			val time = end - start
 			println("Completed in $time ms")
+			println("proof size: ${history.size}")
 			println("loop count: $count")
 			println("histories size: ${histories.size}")
 			println("oldGoals size: ${oldGoals.size}")
