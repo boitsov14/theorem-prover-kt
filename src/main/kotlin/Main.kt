@@ -2,7 +2,7 @@ import core.formula.*
 import core.parser.*
 import core.prover.*
 import core.tactic.*
-import kotlin.system.measureTimeMillis
+//import kotlin.system.measureTimeMillis
 
 /*
 (all x, P x) to (ex x, P x)
@@ -13,8 +13,8 @@ P to Q to (P and Q to R and S) to R
 ((A to B) to A) to A
 A to (A to B) to ((A to B) to C) to C
 ((P or not P) to Q and not Q) to false
-not (P and Q and R and S and T) to (not P or not Q or not R or not S or not T)
-not (P and Q and R and S and T and U) to (not P or not Q or not R or not S or not T or not U) // 25 seconds, 1860003
+not (P and Q and R and S and T) to (not P or not Q or not R or not S or not T) // 1.3 seconds, 51,026 loops, 92,440 histories
+not (P and Q and R and S and T and U) to (not P or not Q or not R or not S or not T or not U) // 25 seconds, 947,387 loops, 1,860,003 histories
 not (P and Q and R and S and T and U and V) to (not P or not Q or not R or not S or not T or not U or not V) // OutOfMemoryError
  */
 
@@ -30,26 +30,32 @@ fun main() {
 	val histories = ArrayDeque<History>()
 	histories.add(listOf())
 
+	var count = 0
+
 	while (true) {
-		val history = histories.removeFirst()
-		val newHistory = history + applyBasicApplicableTacticAsManyAsPossible(history.apply(firstGoals))
-		val goals = newHistory.apply(firstGoals)
+		val history0 = histories.removeFirst()
+		val goals0 = history0.apply(firstGoals)
+		val history = history0 + applyManyBasicTactics(goals0)
+		val goals = history.apply(firstGoals)
 		if (goals.isEmpty()) {
 			val end = System.currentTimeMillis()
 			val time = end - start
 			println("Completed in $time ms")
-			println(histories.size)
-			printHistory(firstGoals, newHistory)
+			println("loop count: $count")
+			println("histories size: ${histories.size}")
+			printHistory(firstGoals, history)
 			break
 		}
 		val goal = goals.first()
 		if (Tactic0.LEFT.canApply(goal)) {
-			histories.addFirst(newHistory + Tactic0.ApplyData(Tactic0.RIGHT))
-			histories.addFirst(newHistory + Tactic0.ApplyData(Tactic0.LEFT))
+			histories.addFirst(history + Tactic0.ApplyData(Tactic0.RIGHT))
+			histories.addFirst(history + Tactic0.ApplyData(Tactic0.LEFT))
 		}
-		for (applyData in applyAdvancedApplicableTactic(goal)) {
-			histories.add(newHistory + applyData)
+		for (applyData in applyAdvancedTactic(goal)) {
+			val newHistory = history + applyData
+			histories.add(newHistory)
 		}
+		count++
 	}
 	//val time = measureTimeMillis {}
 	//println("Completed in $time ms")

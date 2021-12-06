@@ -5,7 +5,7 @@ import core.tactic.*
 
 class UnableToProveException: Exception()
 
-fun applyBasicApplicableTactic(goal: Goal): IApplyData = when {
+fun applyBasicTactic(goal: Goal): IApplyData = when {
 	Tactic0.ASSUMPTION.canApply(goal) -> {
 		Tactic0.ApplyData(Tactic0.ASSUMPTION)
 	}
@@ -50,7 +50,7 @@ fun applyBasicApplicableTactic(goal: Goal): IApplyData = when {
 	}
 }
 
-fun applyAdvancedApplicableTactic(goal: Goal): List<IApplyData> {
+fun applyAdvancedTactic(goal: Goal): List<IApplyData> {
 	val result = mutableListOf<IApplyData>()
 	for (assumption in Tactic1WithFml.APPLY_NOT.availableAssumptions(goal)) {
 		result.add(Tactic1WithFml.ApplyData(Tactic1WithFml.APPLY_NOT, assumption))
@@ -70,7 +70,7 @@ fun applyAdvancedApplicableTactic(goal: Goal): List<IApplyData> {
 	return result
 }
 
-fun applyBasicApplicableTacticAsManyAsPossible(inputGoals: Goals): History {
+fun applyManyBasicTactics(inputGoals: Goals): History {
 	val history = mutableListOf<IApplyData>()
 	while (true) {
 		val goals = history.apply(inputGoals)
@@ -79,7 +79,7 @@ fun applyBasicApplicableTacticAsManyAsPossible(inputGoals: Goals): History {
 		}
 		val goal = goals.first()
 		try {
-			history.add(applyBasicApplicableTactic(goal))
+			history.add(applyBasicTactic(goal))
 		} catch (e: UnableToProveException) {
 			return history
 		}
