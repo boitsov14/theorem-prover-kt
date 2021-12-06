@@ -85,3 +85,24 @@ fun applyManyBasicTactics(inputGoals: Goals): History {
 		}
 	}
 }
+
+/*
+INPUT A FORMULA >>> not (P and Q and R and S and T) to (not P or not Q or not R or not S or not T)
+Completed in 604 ms
+loop count: 14665
+histories size: 11798
+oldGoals size: 22899
+duplicate count: 16272
+
+INPUT A FORMULA >>> not (P and Q and R and S and T and U) to (not P or not Q or not R or not S or not T or not U)
+Completed in 5325 ms
+loop count: 161694
+histories size: 128010
+oldGoals size: 237527
+duplicate count: 210007
+
+INPUT A FORMULA >>> not (P and Q and R and S and T and U and V) to (not P or not Q or not R or not S or not T or not U or not V)
+Completed in 81941 ms
+loop count: 2057665
+histories size: 1589524
+ */

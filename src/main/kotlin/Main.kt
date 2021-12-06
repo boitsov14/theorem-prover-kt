@@ -13,9 +13,9 @@ P to Q to (P and Q to R and S) to R
 ((A to B) to A) to A
 A to (A to B) to ((A to B) to C) to C
 ((P or not P) to Q and not Q) to false
-not (P and Q and R and S and T) to (not P or not Q or not R or not S or not T) // 1.3 seconds, 51,026 loops, 92,440 histories
-not (P and Q and R and S and T and U) to (not P or not Q or not R or not S or not T or not U) // 25 seconds, 947,387 loops, 1,860,003 histories
-not (P and Q and R and S and T and U and V) to (not P or not Q or not R or not S or not T or not U or not V) // OutOfMemoryError
+not (P and Q and R and S and T) to (not P or not Q or not R or not S or not T)
+not (P and Q and R and S and T and U) to (not P or not Q or not R or not S or not T or not U)
+not (P and Q and R and S and T and U and V) to (not P or not Q or not R or not S or not T or not U or not V)
  */
 
 fun main() {
@@ -31,6 +31,9 @@ fun main() {
 	histories.add(listOf())
 
 	var count = 0
+	var duplicate = 0
+
+	val oldGoals = mutableSetOf<Goals>()
 
 	while (true) {
 		val history0 = histories.removeFirst()
@@ -43,6 +46,13 @@ fun main() {
 			println("Completed in $time ms")
 			println("loop count: $count")
 			println("histories size: ${histories.size}")
+			println("oldGoals size: ${oldGoals.size}")
+			println("duplicate count: $duplicate")
+			if (Tactic0.ApplyData(Tactic0.BY_CONTRA) in history) {
+				println("classic")
+			} else {
+				println("intuitionistic")
+			}
 			printHistory(firstGoals, history)
 			break
 		}
@@ -51,14 +61,18 @@ fun main() {
 			histories.addFirst(history + Tactic0.ApplyData(Tactic0.RIGHT))
 			histories.addFirst(history + Tactic0.ApplyData(Tactic0.LEFT))
 		}
+		oldGoals.add(goals)
 		for (applyData in applyAdvancedTactic(goal)) {
-			val newHistory = history + applyData
-			histories.add(newHistory)
+			val newGoals = applyData.apply(goals)
+			if (newGoals in oldGoals) {
+				duplicate++
+				continue
+			}
+			oldGoals.add(newGoals)
+			histories.add(history + applyData)
 		}
 		count++
 	}
-	//val time = measureTimeMillis {}
-	//println("Completed in $time ms")
 }
 
 fun letMeProve(firstGoals: Goals) {
