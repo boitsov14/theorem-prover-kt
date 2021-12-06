@@ -40,9 +40,9 @@ fun prove(firstGoals: Goals) {
 	var duplicate = 0
 	while (true) {
 		val history0 = histories.removeFirst()
-		val goals0 = history0.apply(firstGoals)
+		val goals0 = history0.applyTactics(firstGoals)
 		val history = history0 + applyManyBasicTactics(goals0)
-		val goals = history.apply(firstGoals)
+		val goals = history.applyTactics(firstGoals)
 		if (goals.isEmpty()) {
 			val end = System.currentTimeMillis()
 			val time = end - start
@@ -67,7 +67,7 @@ fun prove(firstGoals: Goals) {
 		}
 		oldGoals.add(goals)
 		for (applyData in applyAdvancedTactic(goal)) {
-			val newGoals = applyData.apply(goals)
+			val newGoals = applyData.applyTactic(goals)
 			if (newGoals in oldGoals) {
 				duplicate++
 				continue
@@ -82,7 +82,7 @@ fun prove(firstGoals: Goals) {
 fun letMeProve(firstGoals: Goals) {
 	val history = mutableListOf<IApplyData>()
 	while (true) {
-		val goals = history.apply(firstGoals)
+		val goals = history.applyTactics(firstGoals)
 		if (goals.isEmpty()) { break }
 		println("--------------------------------------")
 		printGoals(goals)
@@ -174,7 +174,7 @@ fun printHistory(firstGoals: Goals, history: History) {
 		printGoals(goals)
 		print(">>> ")
 		println(applyData.getString())
-		goals = applyData.apply(goals)
+		goals = applyData.applyTactic(goals)
 	}
 }
 

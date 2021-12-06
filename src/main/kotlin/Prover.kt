@@ -73,7 +73,7 @@ fun applyAdvancedTactic(goal: Goal): List<IApplyData> {
 fun applyManyBasicTactics(inputGoals: Goals): History {
 	val history = mutableListOf<IApplyData>()
 	while (true) {
-		val goals = history.apply(inputGoals)
+		val goals = history.applyTactics(inputGoals)
 		if (goals.isEmpty()) {
 			return history
 		}

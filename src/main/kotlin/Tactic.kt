@@ -1,7 +1,6 @@
 package core.tactic
 
 import core.formula.*
-import java.lang.IllegalArgumentException
 
 sealed interface ITactic {
 	fun canApply(goal: Goal): Boolean
@@ -16,14 +15,14 @@ sealed interface IApplyData
 
 typealias History = List<IApplyData>
 
-fun IApplyData.apply(goals: Goals): Goals = when(this) {
-	is Tactic0.ApplyData 		-> this.tactic0.apply(goals)
-	is Tactic1WithFml.ApplyData -> this.tactic1WithFml.apply(goals, this.assumption)
-	is Tactic1WithVar.ApplyData -> this.tactic1WithVar.apply(goals, this.fixedVar)
-	is Tactic2WithVar.ApplyData -> this.tactic2WithVar.apply(goals, this.assumption, this.fixedVar)
+fun IApplyData.applyTactic(goals: Goals): Goals = when(this) {
+	is Tactic0.ApplyData 		-> this.tactic0.applyTactic(goals)
+	is Tactic1WithFml.ApplyData -> this.tactic1WithFml.applyTactic(goals, this.assumption)
+	is Tactic1WithVar.ApplyData -> this.tactic1WithVar.applyTactic(goals, this.fixedVar)
+	is Tactic2WithVar.ApplyData -> this.tactic2WithVar.applyTactic(goals, this.assumption, this.fixedVar)
 }
 
-fun History.apply(firstGoals: Goals): Goals = this.fold(firstGoals){ currentGoals, applyData -> applyData.apply(currentGoals)}
+fun History.applyTactics(firstGoals: Goals): Goals = this.fold(firstGoals){ currentGoals, applyData -> applyData.applyTactic(currentGoals)}
 
 class IllegalTacticException: Exception()
 
@@ -57,7 +56,7 @@ enum class Tactic0(private val id: String): ITactic {
 			USE_WITHOUT_FIXED_VARS -> conclusion is Formula.EXISTS && goal.fixedVars.isEmpty()
 		}
 	}
-	fun apply(goals: Goals): Goals {
+	fun applyTactic(goals: Goals): Goals {
 		val goal = goals[0]
 		if (!(this.canApply(goal))) { throw IllegalTacticException() }
 		val conclusion = goal.conclusion
@@ -164,7 +163,7 @@ enum class Tactic1WithFml(private val id: String): ITactic {
 	override fun toString(): String = id
 	data class ApplyData(val tactic1WithFml: Tactic1WithFml, val assumption: Formula): IApplyData
 	override fun canApply(goal: Goal): Boolean = availableAssumptions(goal).isNotEmpty()
-	fun apply(goals: Goals, assumption: Formula): Goals {
+	fun applyTactic(goals: Goals, assumption: Formula): Goals {
 		val goal = goals[0]
 		if (!(this.canApply(goal))) { throw IllegalTacticException() }
 		when(this) {
@@ -322,7 +321,7 @@ enum class Tactic1WithVar(private val id: String): ITactic {
 		REVERT -> availableFixedVars(goal).isNotEmpty()
 		USE -> goal.conclusion is Formula.EXISTS && availableFixedVars(goal).isNotEmpty()
 	}
-	fun apply(goals: Goals, fixedVar: Var): Goals {
+	fun applyTactic(goals: Goals, fixedVar: Var): Goals {
 		val goal = goals[0]
 		if (!(this.canApply(goal))) { throw IllegalTacticException() }
 		return when(this) {
@@ -366,7 +365,7 @@ enum class Tactic2WithVar(private val id: String): ITactic {
 	override fun toString(): String = id
 	data class ApplyData(val tactic2WithVar: Tactic2WithVar, val assumption: Formula, val fixedVar: Var): IApplyData
 	override fun canApply(goal: Goal): Boolean = availablePairsOfAssumptionAndFixedVar(goal).isNotEmpty()
-	fun apply(goals: Goals, assumption: Formula, fixedVar: Var): Goals {
+	fun applyTactic(goals: Goals, assumption: Formula, fixedVar: Var): Goals {
 		val goal = goals[0]
 		if (!(this.canApply(goal))) { throw IllegalTacticException() }
 		assumption as Formula.ALL
