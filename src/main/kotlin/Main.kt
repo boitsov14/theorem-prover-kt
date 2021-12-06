@@ -231,63 +231,6 @@ fun main() {
  */
 
 /*
-fun main() {
-	val currentHistory: History = mutableListOf()
-	//print("Input a formula you want to prove >>> ")
-	//var currentGoals = listOf(Goal(readLine()!!.parse()!!))
-	/*
-	not (P and Q) to (not P or not Q)
-	not (P and Q and R) to (not P or not Q or not R)
-	not (P and Q and R and S) to (not P or not Q or not R or not S)
-	not (P and Q and R and S and T) to (not P or not Q or not R or not S or not T)
-	*/
-	val fml = "(P and Q) to (not P or not Q)"
-	println("--------------------------------------")
-	var currentGoals = listOf(Goal(fml.parse()!!))
-	print("INPUT FORMULA : ")
-	printGoals(currentGoals)
-	println("--------------------------------------")
-
-	val histories0: List<History>
-	val timeInMillis = measureTimeMillis {
-		histories0 = prover(currentGoals,false, 30)
-	}
-	val histories1 = histories0.getIntuitionisticProofs()
-
-	val histories
-	= if (histories0.isEmpty()) {
-		println("We couldn't find the proof...")
-		listOf()
-	} else if (histories1.isEmpty()) {
-		println("We found (not intuitionistic) proofs!")
-		histories0
-	} else {
-		println("We found intuitionistic proofs!!")
-		histories1
-	}
-
-	println("TIME >>> $timeInMillis ms")
-
-	/*
-	for (history in histories) {
-		for (flow in history) {
-			println(flow.previousGoals)
-		}
-		println("--------------------------------------")
-	}
-
-	 */
-
-
-	println("The following is the history")
-	printHistory(histories.first())
-	println("--------------------------------------")
-	println("Proof complete!")
-
-}
-*/
-
-/*
 	val variousGoals = listOf(
 	listOf(Goal("all x, all y, P x y".parse()!!)),
 	listOf(Goal("P and Q to Q and P".parse()!!)),
