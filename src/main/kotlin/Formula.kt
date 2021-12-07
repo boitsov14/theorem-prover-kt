@@ -1,4 +1,4 @@
-package core.formula
+package formula
 
 data class Var(private val id: String) {
 	override fun toString() = id
@@ -142,19 +142,3 @@ fun List<Formula>.replaceIfDistinct(removedFml: Formula, vararg newFmls: Formula
 	val newDistinctFmls = newFmls.distinct().filterNot { it in first + second }
 	return first + newDistinctFmls + second
 }
-
-class DuplicateAssumptionException: Exception()
-
-data class Goal(val fixedVars: List<Var>, val assumptions: List<Formula>, val conclusion: Formula) {
-	init {
-		if (assumptions.distinct().size < assumptions.size) { throw DuplicateAssumptionException() }
-	}
-	constructor(assumptions: List<Formula>, conclusion: Formula) : this(emptyList(), assumptions, conclusion)
-	constructor(conclusion: Formula) : this(emptyList(), conclusion)
-	override fun toString() = (if (assumptions.isNotEmpty()) assumptions.joinToString(separator = ", ", postfix = " ") else "") + "⊢ " + "$conclusion"
-	fun toGoals():Goals = listOf(this)
-}
-
-typealias Goals = List<Goal>
-
-fun Goals.replace(vararg newFirstGoals: Goal): Goals = newFirstGoals.toList() + this.drop(1)
