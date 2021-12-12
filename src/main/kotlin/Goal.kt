@@ -6,7 +6,9 @@ class DuplicateAssumptionException: Exception()
 
 data class Goal(val fixedVars: List<Var>, val assumptions: List<Formula>, val conclusion: Formula) {
 	init {
-		if (assumptions.distinct().size < assumptions.size) { throw DuplicateAssumptionException() }
+		if (assumptions.distinct().size < assumptions.size
+			|| fixedVars.distinct().size < fixedVars.size
+		) { throw DuplicateAssumptionException() }
 	}
 	constructor(assumptions: List<Formula>, conclusion: Formula) : this(emptyList(), assumptions, conclusion)
 	constructor(conclusion: Formula) : this(emptyList(), conclusion)

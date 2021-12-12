@@ -1,3 +1,5 @@
+package console1
+
 import formula.*
 import goal.*
 import prover.*
