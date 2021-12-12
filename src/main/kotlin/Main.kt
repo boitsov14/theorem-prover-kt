@@ -1,9 +1,10 @@
-import formula.*
-import goal.*
 import parser.*
-import prover.*
-import tactic.*
-//import kotlin.system.measureTimeMillis
+
+//import goal.*
+//import console1.*
+
+import sequentGoal.*
+import console2.*
 
 /*
 (all x, P x) to (ex x, P x)
@@ -26,10 +27,14 @@ not (P and Q and R and S and T and U and V) to (not P or not Q or not R or not S
 fun main() {
 	print("INPUT A FORMULA >>> ")
 	val fml = readLine()!!.parse()
-	val firstGoals = Goal(fml).toGoals()
+	val firstGoals = Goal(listOf(fml)).toGoals()
+	firstGoals.prove()
 
+	/*
+	val firstGoals = Goal(fml).toGoals()
 	prove(firstGoals)
-	//letMeProve(firstGoals)
+	letMeProve(firstGoals)
+	 */
 }
 
 /*
