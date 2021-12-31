@@ -80,11 +80,11 @@ enum class BasicTactic(private val id: String): ITactic {
 				.filterNot { it.leftFml in assumptions || it.rightFml in conclusions }
 			EXISTS_LEFT -> assumptions
 				.filterIsInstance<Formula.EXISTS>()
-				.filterNot { assumption -> goal.fixedVars.any { fixedVar -> assumption.substitute(fixedVar) in assumptions } }
+				.filterNot { assumption -> goal.freeVars.any { fixedVar -> assumption.substitute(fixedVar) in assumptions } }
 			// TODO: 2021/12/12 関数記号も認めるようになったら修正要
 			ALL_RIGHT -> conclusions
 				.filterIsInstance<Formula.ALL>()
-				.filterNot { conclusion -> goal.fixedVars.any { fixedVar -> conclusion.substitute(fixedVar) in conclusions } }
+				.filterNot { conclusion -> goal.freeVars.any { fixedVar -> conclusion.substitute(fixedVar) in conclusions } }
 		}
 	}
 	fun applyTactic(goals: Goals, fml: Formula): Goals {
@@ -182,20 +182,18 @@ enum class BasicTactic(private val id: String): ITactic {
 			}
 			ALL_RIGHT -> {
 				fml as Formula.ALL
-				val newVar = fml.bddVar.getUniqueVar(goal.fixedVars.toSet())
+				val newVar = fml.bddVar.getUniqueVar(goal.freeVars.toSet())
 				val newConclusion = fml.substitute(newVar)
 				val newGoal = goal.copy(
-					fixedVars = goal.fixedVars + newVar,
 					conclusions = conclusions.replace(fml, newConclusion)
 				)
 				return goals.replace(newGoal)
 			}
 			EXISTS_LEFT -> {
 				fml as Formula.EXISTS
-				val newVar = fml.bddVar.getUniqueVar(goal.fixedVars.toSet())
+				val newVar = fml.bddVar.getUniqueVar(goal.freeVars.toSet())
 				val newAssumption = fml.substitute(newVar)
 				val newGoal = goal.copy(
-					fixedVars = goal.fixedVars + newVar,
 					assumptions = goal.assumptions.replace(fml, newAssumption)
 				)
 				return goals.replace(newGoal)
