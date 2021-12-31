@@ -11,12 +11,15 @@ val allTactics: List<ITactic> = BasicTactic.values().toList()
 
 fun Sequent.applicableTactics() = allTactics.filter { it.canApply(this) }
 
-sealed interface IApplyData
+// TODO: 2022/01/01 change tacticGame ver?
+sealed interface IApplyData {
+	val tactic: ITactic
+}
 
 typealias History = List<IApplyData>
 
 fun IApplyData.applyTactic(sequents: Sequents): Sequents = when(this) {
-	is BasicTactic.ApplyData -> this.basicTactic.applyTactic(sequents, this.fml)
+	is BasicTactic.ApplyData -> this.tactic.applyTactic(sequents, this.fml)
 }
 
 fun History.applyTactics(firstSequents: Sequents): Sequents = this.fold(firstSequents){ currentGoals, applyData -> applyData.applyTactic(currentGoals)}
@@ -53,7 +56,7 @@ enum class BasicTactic: ITactic {
 		ALL_RIGHT 		-> "∀R"
 		EXISTS_LEFT 	-> "∃L"
 	}
-	data class ApplyData(val basicTactic: BasicTactic, val fml: Formula) : IApplyData
+	data class ApplyData(override val tactic: BasicTactic, val fml: Formula) : IApplyData
 	override fun canApply(sequent: Sequent): Boolean = availableFmls(sequent).isNotEmpty()
 	fun availableFmls(sequent: Sequent): List<Formula> {
 		val assumptions = sequent.assumptions

@@ -18,7 +18,7 @@ fun Sequents.prove() {
 			println("PROOF FAILED")
 			break
 		}
-		println(">>> $applyData")
+		println(">>> ${applyData.tactic}")
 		history.add(applyData)
 		count++
 	}
