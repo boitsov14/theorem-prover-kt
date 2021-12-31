@@ -1,6 +1,6 @@
 package tacticGame
 
-import core.Formula
+import core.Formula.*
 
 fun prove(firstGoals: Goals) {
 	val start = System.currentTimeMillis()
@@ -70,7 +70,7 @@ fun letMeProve(firstGoals: Goals) {
 			is Tactic0 -> {
 				history.add(Tactic0.ApplyData(tactic))
 				if (tactic == Tactic0.USE_WITHOUT_FIXED_VARS) {
-					goal.conclusion as Formula.EXISTS
+					goal.conclusion as EXISTS
 					println("USE >>> ${goal.conclusion.bddVar}")
 					print("PRESS ENTER >>> ")
 					readLine()
@@ -84,19 +84,19 @@ fun letMeProve(firstGoals: Goals) {
 				val assumption = tactic.availableAssumptions(goal)[assumptionNum]
 				history.add(Tactic1WithFml.ApplyData(tactic, assumption))
 				if (tactic == Tactic1WithFml.HAVE_IMPLIES || tactic == Tactic1WithFml.HAVE_IMPLIES_WITHOUT_LEFT) {
-					assumption as Formula.IMPLIES
+					assumption as IMPLIES
 					println("PAIR >>> ${assumption.leftFml}")
 					print("PRESS ENTER >>> ")
 					readLine()
 				}
 				if (tactic == Tactic1WithFml.HAVE_NOT) {
-					assumption as Formula.NOT
+					assumption as NOT
 					println("PAIR >>> ${assumption.operandFml}")
 					print("PRESS ENTER >>> ")
 					readLine()
 				}
 				if (tactic == Tactic1WithFml.HAVE_WITHOUT_FIXED_VARS) {
-					assumption as Formula.ALL
+					assumption as ALL
 					println("HAVE >>> ${assumption.bddVar}")
 					print("PRESS ENTER >>> ")
 					readLine()

@@ -1,6 +1,7 @@
 package sequentProver
 
 import core.*
+import core.Formula.*
 
 sealed interface ITactic {
 	fun canApply(sequent: Sequent): Boolean
@@ -64,45 +65,45 @@ enum class BasicTactic: ITactic {
 		return when(this) {
 			ASSUMPTION -> conclusions
 				.filter { it in assumptions } +
-					assumptions.filter { it == Formula.FALSE } +
-					conclusions.filter { it == Formula.TRUE }
+					assumptions.filter { it == FALSE } +
+					conclusions.filter { it == TRUE }
 			AND_LEFT -> assumptions
-				.filterIsInstance<Formula.AND>()
+				.filterIsInstance<AND>()
 				.filterNot { it.leftFml in assumptions && it.rightFml in assumptions }
 			AND_RIGHT -> conclusions
-				.filterIsInstance<Formula.AND>()
+				.filterIsInstance<AND>()
 				.filterNot { it.leftFml in conclusions || it.rightFml in conclusions }
 			OR_LEFT -> assumptions
-				.filterIsInstance<Formula.OR>()
+				.filterIsInstance<OR>()
 				.filterNot { it.leftFml in assumptions || it.rightFml in assumptions }
 			OR_RIGHT -> conclusions
-				.filterIsInstance<Formula.OR>()
+				.filterIsInstance<OR>()
 				.filterNot { it.leftFml in conclusions && it.rightFml in conclusions }
 			IMPLIES_LEFT -> assumptions
-				.filterIsInstance<Formula.IMPLIES>()
+				.filterIsInstance<IMPLIES>()
 				.filterNot { it.leftFml in conclusions }
 				.filterNot { it.rightFml in assumptions }
 			IMPLIES_RIGHT -> conclusions
-				.filterIsInstance<Formula.IMPLIES>()
+				.filterIsInstance<IMPLIES>()
 				.filterNot { it.leftFml in assumptions && it.rightFml in conclusions }
 			NOT_LEFT -> assumptions
-				.filterIsInstance<Formula.NOT>()
+				.filterIsInstance<NOT>()
 				.filterNot { it.operandFml in conclusions }
 			NOT_RIGHT -> conclusions
-				.filterIsInstance<Formula.NOT>()
+				.filterIsInstance<NOT>()
 				.filterNot { it.operandFml in assumptions }
 			IFF_LEFT -> assumptions
-				.filterIsInstance<Formula.IFF>()
+				.filterIsInstance<IFF>()
 				.filterNot { it.leftFml in assumptions && it.rightFml in assumptions }
 			IFF_RIGHT -> conclusions
-				.filterIsInstance<Formula.IFF>()
+				.filterIsInstance<IFF>()
 				.filterNot { it.leftFml in assumptions || it.rightFml in conclusions }
 			EXISTS_LEFT -> assumptions
-				.filterIsInstance<Formula.EXISTS>()
+				.filterIsInstance<EXISTS>()
 				.filterNot { assumption -> sequent.freeVars.any { fixedVar -> assumption.substitute(fixedVar) in assumptions } }
 			// TODO: 2021/12/12 関数記号も認めるようになったら修正要
 			ALL_RIGHT -> conclusions
-				.filterIsInstance<Formula.ALL>()
+				.filterIsInstance<ALL>()
 				.filterNot { conclusion -> sequent.freeVars.any { fixedVar -> conclusion.substitute(fixedVar) in conclusions } }
 		}
 	}
@@ -114,14 +115,14 @@ enum class BasicTactic: ITactic {
 		return when (this) {
 			ASSUMPTION -> sequents.replace()
 			AND_LEFT -> {
-				fml as Formula.AND
+				fml as AND
 				val newGoal = goal.copy(
 					assumptions = assumptions.replaceIfDistinct(fml, fml.leftFml, fml.rightFml)
 				)
 				sequents.replace(newGoal)
 			}
 			AND_RIGHT -> {
-				fml as Formula.AND
+				fml as AND
 				val leftGoal = goal.copy(
 					conclusions = conclusions.replace(fml, fml.leftFml)
 				)
@@ -131,7 +132,7 @@ enum class BasicTactic: ITactic {
 				return sequents.replace(leftGoal, rightGoal)
 			}
 			OR_LEFT -> {
-				fml as Formula.OR
+				fml as OR
 				val leftGoal = goal.copy(
 					assumptions = assumptions.replace(fml, fml.leftFml)
 				)
@@ -141,14 +142,14 @@ enum class BasicTactic: ITactic {
 				return sequents.replace(leftGoal, rightGoal)
 			}
 			OR_RIGHT -> {
-				fml as Formula.OR
+				fml as OR
 				val newGoal = goal.copy(
 					conclusions = conclusions.replaceIfDistinct(fml, fml.leftFml, fml.rightFml)
 				)
 				sequents.replace(newGoal)
 			}
 			IMPLIES_LEFT -> {
-				fml as Formula.IMPLIES
+				fml as IMPLIES
 				val newGoal1 = goal.copy(
 					assumptions = assumptions.minus(fml),
 					conclusions = conclusions + fml.leftFml
@@ -159,7 +160,7 @@ enum class BasicTactic: ITactic {
 				return sequents.replace(newGoal1, newGoal2)
 			}
 			IMPLIES_RIGHT -> {
-				fml as Formula.IMPLIES
+				fml as IMPLIES
 				val newGoal = goal.copy(
 					assumptions = assumptions.addIfDistinct(fml.leftFml),
 					conclusions = conclusions.replaceIfDistinct(fml, fml.rightFml)
@@ -167,7 +168,7 @@ enum class BasicTactic: ITactic {
 				return sequents.replace(newGoal)
 			}
 			NOT_LEFT -> {
-				fml as Formula.NOT
+				fml as NOT
 				val newGoal = goal.copy(
 					assumptions = assumptions.minus(fml),
 					conclusions = conclusions + fml.operandFml
@@ -175,7 +176,7 @@ enum class BasicTactic: ITactic {
 				return sequents.replace(newGoal)
 			}
 			NOT_RIGHT -> {
-				fml as Formula.NOT
+				fml as NOT
 				val newGoal = goal.copy(
 					assumptions = assumptions + fml.operandFml,
 					conclusions = conclusions.minus(fml)
@@ -183,16 +184,16 @@ enum class BasicTactic: ITactic {
 				return sequents.replace(newGoal)
 			}
 			IFF_LEFT -> {
-				fml as Formula.IFF
-				val toRight = Formula.IMPLIES(fml.leftFml, fml.rightFml)
-				val toLeft  = Formula.IMPLIES(fml.rightFml, fml.leftFml)
+				fml as IFF
+				val toRight = IMPLIES(fml.leftFml, fml.rightFml)
+				val toLeft  = IMPLIES(fml.rightFml, fml.leftFml)
 				val newGoal = goal.copy(
 					assumptions = goal.assumptions.replaceIfDistinct(fml, toRight, toLeft)
 				)
 				sequents.replace(newGoal)
 			}
 			IFF_RIGHT -> {
-				fml as Formula.IFF
+				fml as IFF
 				val leftGoal = goal.copy(
 					conclusions = conclusions.replace(fml, fml.leftFml)
 				)
@@ -202,7 +203,7 @@ enum class BasicTactic: ITactic {
 				return sequents.replace(leftGoal, rightGoal)
 			}
 			ALL_RIGHT -> {
-				fml as Formula.ALL
+				fml as ALL
 				val newVar = fml.bddVar.getFreshVar(goal.freeVars.toSet())
 				val newConclusion = fml.substitute(newVar)
 				val newGoal = goal.copy(
@@ -211,7 +212,7 @@ enum class BasicTactic: ITactic {
 				return sequents.replace(newGoal)
 			}
 			EXISTS_LEFT -> {
-				fml as Formula.EXISTS
+				fml as EXISTS
 				val newVar = fml.bddVar.getFreshVar(goal.freeVars.toSet())
 				val newAssumption = fml.substitute(newVar)
 				val newGoal = goal.copy(

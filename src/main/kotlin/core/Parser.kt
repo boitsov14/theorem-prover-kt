@@ -1,5 +1,7 @@
 package core
 
+import core.Formula.*
+
 class FormulaParserException(message:String): Exception(message)
 
 fun String.parse(): Formula {
@@ -177,26 +179,26 @@ private fun getFormula(tokens: ArrayDeque<Token>): Formula {
 	val stack = ArrayDeque<Formula>()
 	for (token in tokens) {
 		when(token) {
-			Token.FALSE -> stack.addFirst(Formula.FALSE)
-			Token.TRUE 	-> stack.addFirst(Formula.TRUE)
-			is Token.PREDICATE -> stack.addFirst(Formula.PREDICATE(token.id, token.vars))
+			Token.FALSE -> stack.addFirst(FALSE)
+			Token.TRUE 	-> stack.addFirst(TRUE)
+			is Token.PREDICATE -> stack.addFirst(PREDICATE(token.id, token.vars))
 			is Token.Operator.Unary -> {
 				if (stack.isEmpty()) {
 					throw FormulaParserException("Parse Error")
 				}
 				val fml = stack.removeFirst()
 				when(token) {
-					Token.Operator.Unary.NOT -> stack.addFirst(Formula.NOT(fml))
+					Token.Operator.Unary.NOT -> stack.addFirst(NOT(fml))
 					is Token.Operator.Unary.ALL -> {
 						try {
-							stack.addFirst(Formula.ALL(token.bddVar, fml))
+							stack.addFirst(ALL(token.bddVar, fml))
 						} catch (e: DuplicateBddVarException) {
 							throw FormulaParserException("bounded variable is duplicated.")
 						}
 					}
 					is Token.Operator.Unary.EXISTS -> {
 						try {
-							stack.addFirst(Formula.EXISTS(token.bddVar, fml))
+							stack.addFirst(EXISTS(token.bddVar, fml))
 						} catch (e: DuplicateBddVarException) {
 							throw FormulaParserException("bounded variable is duplicated.")
 						}
@@ -211,10 +213,10 @@ private fun getFormula(tokens: ArrayDeque<Token>): Formula {
 				val leftFml = stack.removeFirst()
 				stack.addFirst(
 					when(token) {
-						Token.Operator.Binary.AND -> 		Formula.AND(leftFml, rightFml)
-						Token.Operator.Binary.OR -> 		Formula.OR(leftFml, rightFml)
-						Token.Operator.Binary.IMPLIES -> 	Formula.IMPLIES(leftFml, rightFml)
-						Token.Operator.Binary.IFF -> 		Formula.IFF(leftFml, rightFml)
+						Token.Operator.Binary.AND 		-> AND(leftFml, rightFml)
+						Token.Operator.Binary.OR 		-> OR(leftFml, rightFml)
+						Token.Operator.Binary.IMPLIES 	-> IMPLIES(leftFml, rightFml)
+						Token.Operator.Binary.IFF 		-> IFF(leftFml, rightFml)
 					}
 				)
 			}

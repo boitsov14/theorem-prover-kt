@@ -1,6 +1,6 @@
 package tacticGame
 
-import core.Formula
+import core.Formula.*
 
 class UnableToProveException: Exception()
 
@@ -8,7 +8,7 @@ fun applyBasicTactic(goal: Goal): IApplyData = when {
 	Tactic0.ASSUMPTION.canApply(goal) -> {
 		Tactic0.ApplyData(Tactic0.ASSUMPTION)
 	}
-	Formula.FALSE in goal.assumptions -> {
+	FALSE in goal.assumptions -> {
 		Tactic0.ApplyData(Tactic0.EXFALSO)
 	}
 	Tactic1WithFml.HAVE_NOT.canApply(goal) -> {
