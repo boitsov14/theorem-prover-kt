@@ -1,6 +1,8 @@
 package tacticGame
 
 import core.Formula.*
+import tacticGame.Tactic0.*
+import tacticGame.Tactic1WithFml.*
 
 fun prove(firstGoals: Goals) {
 	val start = System.currentTimeMillis()
@@ -23,7 +25,7 @@ fun prove(firstGoals: Goals) {
 			println("histories size: ${histories.size}")
 			println("oldGoals size: ${oldGoals.size}")
 			println("duplicate count: $duplicate")
-			if (Tactic0.ApplyData(Tactic0.BY_CONTRA) in history) {
+			if (Tactic0.ApplyData(BY_CONTRA) in history) {
 				println("classic")
 			} else {
 				println("intuitionistic")
@@ -32,9 +34,9 @@ fun prove(firstGoals: Goals) {
 			break
 		}
 		val goal = goals.first()
-		if (Tactic0.LEFT.canApply(goal)) {
-			histories.addFirst(history + Tactic0.ApplyData(Tactic0.RIGHT))
-			histories.addFirst(history + Tactic0.ApplyData(Tactic0.LEFT))
+		if (LEFT.canApply(goal)) {
+			histories.addFirst(history + Tactic0.ApplyData(RIGHT))
+			histories.addFirst(history + Tactic0.ApplyData(LEFT))
 		}
 		oldGoals.add(goals)
 		for (applyData in applyAdvancedTactic(goal)) {
@@ -69,7 +71,7 @@ fun letMeProve(firstGoals: Goals) {
 		when(val tactic = goal.applicableTactics().find { "$it" == tacticStr }!!) {
 			is Tactic0 -> {
 				history.add(Tactic0.ApplyData(tactic))
-				if (tactic == Tactic0.USE_WITHOUT_FIXED_VARS) {
+				if (tactic == USE_WITHOUT_FIXED_VARS) {
 					goal.conclusion as EXISTS
 					println("USE >>> ${goal.conclusion.bddVar}")
 					print("PRESS ENTER >>> ")
@@ -83,19 +85,19 @@ fun letMeProve(firstGoals: Goals) {
 				val assumptionNum = readLine()!!.toInt()
 				val assumption = tactic.availableAssumptions(goal)[assumptionNum]
 				history.add(Tactic1WithFml.ApplyData(tactic, assumption))
-				if (tactic == Tactic1WithFml.HAVE_IMPLIES || tactic == Tactic1WithFml.HAVE_IMPLIES_WITHOUT_LEFT) {
+				if (tactic == HAVE_IMPLIES || tactic == HAVE_IMPLIES_WITHOUT_LEFT) {
 					assumption as IMPLIES
 					println("PAIR >>> ${assumption.leftFml}")
 					print("PRESS ENTER >>> ")
 					readLine()
 				}
-				if (tactic == Tactic1WithFml.HAVE_NOT) {
+				if (tactic == HAVE_NOT) {
 					assumption as NOT
 					println("PAIR >>> ${assumption.operandFml}")
 					print("PRESS ENTER >>> ")
 					readLine()
 				}
-				if (tactic == Tactic1WithFml.HAVE_WITHOUT_FIXED_VARS) {
+				if (tactic == HAVE_WITHOUT_FIXED_VARS) {
 					assumption as ALL
 					println("HAVE >>> ${assumption.bddVar}")
 					print("PRESS ENTER >>> ")
