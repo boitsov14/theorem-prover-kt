@@ -1,8 +1,6 @@
-package prover
+package tacticGame
 
-import formula.*
-import goal.*
-import tactic.*
+import core.Formula
 
 class UnableToProveException: Exception()
 

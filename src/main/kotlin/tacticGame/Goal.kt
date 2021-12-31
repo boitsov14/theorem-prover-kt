@@ -1,6 +1,6 @@
-package goal
+package tacticGame
 
-import formula.*
+import core.*
 
 class DuplicateAssumptionException: Exception()
 

@@ -1,17 +1,4 @@
-package formula
-
-data class Var(private val id: String) {
-	override fun toString() = id
-	fun getUniqueVar(oldVars: Set<Var>): Var {
-		if (this !in oldVars) { return this }
-		var n = 1
-		while (true) {
-			val newVar = Var(this.id + "_$n")
-			if (newVar !in oldVars) { return newVar }
-			n++
-		}
-	}
-}
+package core
 
 class DuplicateBddVarException: Exception()
 
@@ -57,49 +44,49 @@ sealed class Formula {
 	}
 	private fun recursiveToString(): String = when(this) {
 		FALSE 			-> "false"
-		is PREDICATE 	-> id + if (vars.isNotEmpty()) vars.joinToString(separator = " ", prefix = " ") else ""
-		is NOT 			-> "(¬${operandFml.recursiveToString()})"
-		is AND 			-> "(${leftFml.recursiveToString()} ∧ ${rightFml.recursiveToString()})"
-		is OR 			-> "(${leftFml.recursiveToString()} ∨ ${rightFml.recursiveToString()})"
-		is IMPLIES 		-> "(${leftFml.recursiveToString()} → ${rightFml.recursiveToString()})"
-		is IFF 			-> "(${leftFml.recursiveToString()} ↔ ${rightFml.recursiveToString()})"
-		is ALL 			-> "(∀$bddVar, ${operandFml.recursiveToString()})"
-		is EXISTS 		-> "(∃$bddVar, ${operandFml.recursiveToString()})"
+		is PREDICATE -> id + if (vars.isNotEmpty()) vars.joinToString(separator = " ", prefix = " ") else ""
+		is NOT -> "(¬${operandFml.recursiveToString()})"
+		is AND -> "(${leftFml.recursiveToString()} ∧ ${rightFml.recursiveToString()})"
+		is OR -> "(${leftFml.recursiveToString()} ∨ ${rightFml.recursiveToString()})"
+		is IMPLIES -> "(${leftFml.recursiveToString()} → ${rightFml.recursiveToString()})"
+		is IFF -> "(${leftFml.recursiveToString()} ↔ ${rightFml.recursiveToString()})"
+		is ALL -> "(∀$bddVar, ${operandFml.recursiveToString()})"
+		is EXISTS -> "(∃$bddVar, ${operandFml.recursiveToString()})"
 	}
 	final override fun toString(): String = recursiveToString().removeSurrounding("(", ")")
 	val freeVars: Set<Var>
 		get() = when (this) {
 			FALSE 			-> emptySet()
-			is PREDICATE 	-> vars.toSet()
-			is NOT 			-> operandFml.freeVars
-			is AND 			-> leftFml.freeVars + rightFml.freeVars
-			is OR 			-> leftFml.freeVars + rightFml.freeVars
-			is IMPLIES 		-> leftFml.freeVars + rightFml.freeVars
-			is IFF 			-> leftFml.freeVars + rightFml.freeVars
-			is ALL 			-> operandFml.freeVars.minus(bddVar)
-			is EXISTS 		-> operandFml.freeVars.minus(bddVar)
+			is PREDICATE -> vars.toSet()
+			is NOT -> operandFml.freeVars
+			is AND -> leftFml.freeVars + rightFml.freeVars
+			is OR -> leftFml.freeVars + rightFml.freeVars
+			is IMPLIES -> leftFml.freeVars + rightFml.freeVars
+			is IFF -> leftFml.freeVars + rightFml.freeVars
+			is ALL -> operandFml.freeVars.minus(bddVar)
+			is EXISTS -> operandFml.freeVars.minus(bddVar)
 		}
 	val bddVars: Set<Var>
 		get() = when (this) {
 			FALSE 			-> emptySet()
-			is PREDICATE 	-> emptySet()
-			is NOT 			-> operandFml.bddVars
-			is AND 			-> leftFml.bddVars + leftFml.bddVars
-			is OR 			-> leftFml.bddVars + leftFml.bddVars
-			is IMPLIES 		-> leftFml.bddVars + leftFml.bddVars
-			is IFF 			-> leftFml.bddVars + leftFml.bddVars
-			is ALL 			-> operandFml.bddVars + bddVar
-			is EXISTS 		-> operandFml.bddVars + bddVar
+			is PREDICATE -> emptySet()
+			is NOT -> operandFml.bddVars
+			is AND -> leftFml.bddVars + leftFml.bddVars
+			is OR -> leftFml.bddVars + leftFml.bddVars
+			is IMPLIES -> leftFml.bddVars + leftFml.bddVars
+			is IFF -> leftFml.bddVars + leftFml.bddVars
+			is ALL -> operandFml.bddVars + bddVar
+			is EXISTS -> operandFml.bddVars + bddVar
 		}
 	fun replace(oldVar: Var, newVar: Var): Formula = when(this) {
 		FALSE 			-> this
-		is PREDICATE 	-> PREDICATE(id, vars.map { if (it == oldVar) newVar else it })
-		is NOT 			-> NOT		(operandFml.replace(oldVar, newVar))
-		is AND 			-> AND		(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
-		is OR 			-> OR		(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
-		is IMPLIES 		-> IMPLIES	(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
-		is IFF 			-> IFF		(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
-		is ALL 			-> {
+		is PREDICATE -> PREDICATE(id, vars.map { if (it == oldVar) newVar else it })
+		is NOT -> NOT		(operandFml.replace(oldVar, newVar))
+		is AND -> AND		(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
+		is OR -> OR		(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
+		is IMPLIES -> IMPLIES	(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
+		is IFF -> IFF		(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
+		is ALL -> {
 			if (oldVar == bddVar) {
 				this
 			} else if (newVar == bddVar) {
@@ -109,7 +96,7 @@ sealed class Formula {
 				ALL(bddVar, operandFml.replace(oldVar, newVar))
 			}
 		}
-		is EXISTS 		-> {
+		is EXISTS -> {
 			if (oldVar == bddVar) {
 				this
 			} else if (newVar == bddVar) {

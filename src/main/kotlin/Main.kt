@@ -1,10 +1,6 @@
-import parser.*
-
-//import goal.*
-//import console1.*
-
-import sequentGoal.*
-import console2.*
+import core.*
+//import tacticGame.*
+import sequentProver.*
 
 /*
 (all x, P x) to (ex x, P x)

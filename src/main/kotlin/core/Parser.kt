@@ -1,6 +1,4 @@
-package parser
-
-import formula.*
+package core
 
 class FormulaParserException(message:String): Exception(message)
 

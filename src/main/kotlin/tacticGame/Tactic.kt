@@ -1,7 +1,6 @@
-package tactic
+package tacticGame
 
-import formula.*
-import goal.*
+import core.*
 
 sealed interface ITactic {
 	fun canApply(goal: Goal): Boolean

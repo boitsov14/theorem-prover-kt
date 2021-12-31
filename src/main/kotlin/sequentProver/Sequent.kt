@@ -1,6 +1,6 @@
-package sequentGoal
+package sequentProver
 
-import formula.*
+import core.*
 
 class DuplicateAssumptionException: Exception()
 

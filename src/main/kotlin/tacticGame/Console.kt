@@ -1,9 +1,6 @@
-package console1
+package tacticGame
 
-import formula.*
-import goal.*
-import prover.*
-import tactic.*
+import core.Formula
 
 fun prove(firstGoals: Goals) {
 	val start = System.currentTimeMillis()

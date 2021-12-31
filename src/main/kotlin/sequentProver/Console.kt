@@ -1,8 +1,4 @@
-package console2
-
-import sequentGoal.*
-import sequentTactic.*
-import sequentProver.*
+package sequentProver
 
 fun Goals.prove() {
 	val start = System.currentTimeMillis()

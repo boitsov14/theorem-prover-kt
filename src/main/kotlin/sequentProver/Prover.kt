@@ -1,8 +1,6 @@
 package sequentProver
 
-import sequentGoal.*
-import sequentTactic.*
-import sequentTactic.BasicTactic.*
+import sequentProver.BasicTactic.*
 
 // TODO: 2021/12/12 これ他にも使い道ありそう
 // TODO: 2021/12/12 basicではないtacticを定義した際は修正が必要

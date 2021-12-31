@@ -1,7 +1,6 @@
-package sequentTactic
+package sequentProver
 
-import formula.*
-import sequentGoal.*
+import core.*
 
 sealed interface ITactic {
 	fun canApply(goal: Goal): Boolean
