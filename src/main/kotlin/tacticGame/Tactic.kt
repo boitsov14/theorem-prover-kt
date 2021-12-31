@@ -27,19 +27,31 @@ fun History.applyTactics(firstGoals: Goals): Goals = this.fold(firstGoals){ curr
 class IllegalTacticException: Exception()
 
 // Tactic with arity 0.
-enum class Tactic0(private val id: String): ITactic {
-	ASSUMPTION("assumption"),
-	INTRO_IMPLIES("intro"),
-	INTRO_NOT("intro"),
-	INTRO_ALL("intro"),
-	SPLIT_AND("split"),
-	SPLIT_IFF("split"),
-	LEFT("left"),
-	RIGHT("right"),
-	EXFALSO("exfalso"),
-	BY_CONTRA("by_contra"),
-	USE_WITHOUT_FIXED_VARS("use");
-	override fun toString(): String = id
+enum class Tactic0: ITactic {
+	ASSUMPTION,
+	INTRO_IMPLIES,
+	INTRO_NOT,
+	INTRO_ALL,
+	SPLIT_AND,
+	SPLIT_IFF,
+	LEFT,
+	RIGHT,
+	EXFALSO,
+	BY_CONTRA,
+	USE_WITHOUT_FIXED_VARS;
+	override fun toString(): String = when(this) {
+		ASSUMPTION 		-> "assumption"
+		INTRO_IMPLIES 	-> "intro"
+		INTRO_NOT 		-> "intro"
+		INTRO_ALL 		-> "intro"
+		SPLIT_AND 		-> "split"
+		SPLIT_IFF 		-> "split"
+		LEFT 			-> "left"
+		RIGHT 			-> "right"
+		EXFALSO 		-> "exfalso"
+		BY_CONTRA 		-> "by_contra"
+		USE_WITHOUT_FIXED_VARS 	-> "use"
+	}
 	data class ApplyData(val tactic0: Tactic0): IApplyData
 	override fun canApply(goal: Goal): Boolean {
 		val conclusion = goal.conclusion
@@ -145,20 +157,33 @@ enum class Tactic0(private val id: String): ITactic {
 }
 
 // Tactic with one formula.
-enum class Tactic1WithFml(private val id: String): ITactic {
-	APPLY_IMPLIES("apply"),
-	APPLY_NOT("apply"),
-	CASES_AND("cases"),
-	CASES_OR("cases"),
-	CASES_IFF("cases"),
-	CASES_EXISTS("cases"),
-	REVERT("revert"),
-	CLEAR("clear"),
-	HAVE_IMPLIES("have"),
-	HAVE_IMPLIES_WITHOUT_LEFT("have"),
-	HAVE_NOT("have"),
-	HAVE_WITHOUT_FIXED_VARS("have");
-	override fun toString(): String = id
+enum class Tactic1WithFml: ITactic {
+	APPLY_IMPLIES,
+	APPLY_NOT,
+	CASES_AND,
+	CASES_OR,
+	CASES_IFF,
+	CASES_EXISTS,
+	REVERT,
+	CLEAR,
+	HAVE_IMPLIES,
+	HAVE_IMPLIES_WITHOUT_LEFT,
+	HAVE_NOT,
+	HAVE_WITHOUT_FIXED_VARS;
+	override fun toString(): String = when(this) {
+		APPLY_IMPLIES 				-> "apply"
+		APPLY_NOT 					-> "apply"
+		CASES_AND 					-> "cases"
+		CASES_OR 					-> "cases"
+		CASES_IFF 					-> "cases"
+		CASES_EXISTS 				-> "cases"
+		REVERT 						-> "revert"
+		CLEAR 						-> "clear"
+		HAVE_IMPLIES 				-> "have"
+		HAVE_IMPLIES_WITHOUT_LEFT 	-> "have"
+		HAVE_NOT 					-> "have"
+		HAVE_WITHOUT_FIXED_VARS 	-> "have"
+	}
 	data class ApplyData(val tactic1WithFml: Tactic1WithFml, val assumption: Formula): IApplyData
 	override fun canApply(goal: Goal): Boolean = availableAssumptions(goal).isNotEmpty()
 	fun applyTactic(goals: Goals, assumption: Formula): Goals {
@@ -308,14 +333,17 @@ enum class Tactic1WithFml(private val id: String): ITactic {
 }
 
 // Tactic with one variable.
-enum class Tactic1WithVar(private val id: String): ITactic {
-	REVERT("revert"),
-	USE("use");
-	override fun toString(): String = id
+enum class Tactic1WithVar: ITactic {
+	REVERT,
+	USE;
+	override fun toString(): String = when(this) {
+		REVERT 	-> "revert"
+		USE 	-> "use"
+	}
 	data class ApplyData(val tactic1WithVar: Tactic1WithVar, val fixedVar: Var): IApplyData
 	override fun canApply(goal: Goal): Boolean = when(this) {
-		REVERT -> availableFixedVars(goal).isNotEmpty()
-		USE -> goal.conclusion is Formula.EXISTS && availableFixedVars(goal).isNotEmpty()
+		REVERT 	-> availableFixedVars(goal).isNotEmpty()
+		USE 	-> goal.conclusion is Formula.EXISTS && availableFixedVars(goal).isNotEmpty()
 	}
 	fun applyTactic(goals: Goals, fixedVar: Var): Goals {
 		val goal = goals[0]
@@ -355,9 +383,9 @@ enum class Tactic1WithVar(private val id: String): ITactic {
 }
 
 // Tactic with one formula and one variable.
-enum class Tactic2WithVar(private val id: String): ITactic {
-	HAVE("have");
-	override fun toString(): String = id
+enum class Tactic2WithVar: ITactic {
+	HAVE;
+	override fun toString(): String = "have"
 	data class ApplyData(val tactic2WithVar: Tactic2WithVar, val assumption: Formula, val fixedVar: Var): IApplyData
 	override fun canApply(goal: Goal): Boolean = availablePairsOfAssumptionAndFixedVar(goal).isNotEmpty()
 	fun applyTactic(goals: Goals, assumption: Formula, fixedVar: Var): Goals {

@@ -24,21 +24,35 @@ fun History.applyTactics(firstGoals: Goals): Goals = this.fold(firstGoals){ curr
 class IllegalTacticException: Exception()
 
 // Basic Tactic
-enum class BasicTactic(private val id: String): ITactic {
-	ASSUMPTION("assumption"),
-	AND_LEFT("∧L"),
-	AND_RIGHT("∧R"),
-	OR_LEFT("∨L"),
-	OR_RIGHT("∨R"),
-	IMPLIES_LEFT("→L"),
-	IMPLIES_RIGHT("→R"),
-	NOT_LEFT("¬L"),
-	NOT_RIGHT("¬R"),
-	IFF_LEFT("↔L"),
-	IFF_RIGHT("↔R"),
-	ALL_RIGHT("∀R"),
-	EXISTS_LEFT("∃L");
-	override fun toString(): String = id
+enum class BasicTactic: ITactic {
+	ASSUMPTION,
+	AND_LEFT,
+	AND_RIGHT,
+	OR_LEFT,
+	OR_RIGHT,
+	IMPLIES_LEFT,
+	IMPLIES_RIGHT,
+	NOT_LEFT,
+	NOT_RIGHT,
+	IFF_LEFT,
+	IFF_RIGHT,
+	ALL_RIGHT,
+	EXISTS_LEFT;
+	override fun toString(): String = when(this) {
+		ASSUMPTION 		-> "assumption"
+		AND_LEFT 		-> "∧L"
+		AND_RIGHT 		-> "∧R"
+		OR_LEFT 		-> "∨L"
+		OR_RIGHT 		-> "∨R"
+		IMPLIES_LEFT 	-> "→L"
+		IMPLIES_RIGHT 	-> "→R"
+		NOT_LEFT 		-> "¬L"
+		NOT_RIGHT 		-> "¬R"
+		IFF_LEFT 		-> "↔L"
+		IFF_RIGHT 		-> "↔R"
+		ALL_RIGHT 		-> "∀R"
+		EXISTS_LEFT 	-> "∃L"
+	}
 	data class ApplyData(val basicTactic: BasicTactic, val fml: Formula) : IApplyData
 	override fun canApply(goal: Goal): Boolean = availableFmls(goal).isNotEmpty()
 	fun availableFmls(goal: Goal): List<Formula> {
