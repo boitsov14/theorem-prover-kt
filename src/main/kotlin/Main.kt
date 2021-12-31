@@ -18,6 +18,9 @@ not (P and Q and R and S and T and U and V) to (not P or not Q or not R or not S
 (A or B or C or D or E or F or G or X) or (AA or BB or CC or DD or EE or FF or GG or not X)
 (A to B) to (not A or B)
 (A to B) to not not (not A or B)
+(A iff not A) to false
+false to P
+P to true
  */
 
 fun main() {

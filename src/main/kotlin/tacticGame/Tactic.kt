@@ -56,7 +56,7 @@ enum class Tactic0: ITactic {
 	override fun canApply(goal: Goal): Boolean {
 		val conclusion = goal.conclusion
 		return when(this) {
-			ASSUMPTION		-> conclusion in goal.assumptions
+			ASSUMPTION		-> conclusion in goal.assumptions || conclusion == Formula.TRUE
 			INTRO_IMPLIES 	-> conclusion is Formula.IMPLIES
 			INTRO_NOT 		-> conclusion is Formula.NOT
 			INTRO_ALL 		-> conclusion is Formula.ALL

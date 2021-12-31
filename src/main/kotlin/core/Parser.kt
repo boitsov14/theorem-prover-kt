@@ -22,7 +22,8 @@ sealed interface PreToken {
 		IFF('↔'),
 		ALL('∀'),
 		EXISTS('∃'),
-		FALSE('⊥')
+		FALSE('⊥'),
+		TRUE('⊤')
 	}
 	data class PREDICATE(val id: String): PreToken
 	data class VAR(val id: String): PreToken
@@ -47,6 +48,7 @@ sealed interface Token {
 	}
 	data class PREDICATE(val id: String, val vars: List<Var>): Token
 	object FALSE: Token
+	object TRUE: Token
 }
 
 private fun String.replace(oldValues: List<String>, newValue: String): String {
@@ -56,7 +58,8 @@ private fun String.replace(oldValues: List<String>, newValue: String): String {
 }
 
 private fun String.toOneLetter(): String = this
-	.replace(listOf("false", "contradiction"), "⊥")
+	.replace(listOf("true", "tautology", "top"), "⊤")
+	.replace(listOf("false", "contradiction", "bottom"), "⊥")
 	.replace(listOf("not ", "~", "negation "), "¬")
 	.replace(listOf(" and ",""" /\ """, "&"), " ∧ ")
 	.replace(listOf(" or ", """ \/ """, "|"), " ∨ ")
@@ -103,6 +106,7 @@ private fun tokenize(preTokens: ArrayDeque<PreToken>): ArrayDeque<Token> {
 			PreToken.Symbol.IMPLIES 			-> tokens.add(Token.Operator.Binary.IMPLIES)
 			PreToken.Symbol.IFF 				-> tokens.add(Token.Operator.Binary.IFF)
 			PreToken.Symbol.FALSE 				-> tokens.add(Token.FALSE)
+			PreToken.Symbol.TRUE 				-> tokens.add(Token.TRUE)
 			is PreToken.PREDICATE -> {
 				val vars = mutableListOf<Var>()
 				while (preTokens.isNotEmpty() && preTokens.first() is PreToken.VAR) {
@@ -139,6 +143,7 @@ private fun toReversePolishNotation(inputTokens: ArrayDeque<Token>): ArrayDeque<
 	for (token in inputTokens) {
 		when(token) {
 			Token.FALSE -> outputTokens.add(token)
+			Token.TRUE 	-> outputTokens.add(token)
 			is Token.PREDICATE -> outputTokens.add(token)
 			Token.LEFT_PARENTHESIS -> stack.addFirst(token)
 			Token.RIGHT_PARENTHESIS -> {
@@ -173,6 +178,7 @@ private fun getFormula(tokens: ArrayDeque<Token>): Formula {
 	for (token in tokens) {
 		when(token) {
 			Token.FALSE -> stack.addFirst(Formula.FALSE)
+			Token.TRUE 	-> stack.addFirst(Formula.TRUE)
 			is Token.PREDICATE -> stack.addFirst(Formula.PREDICATE(token.id, token.vars))
 			is Token.Operator.Unary -> {
 				if (stack.isEmpty()) {

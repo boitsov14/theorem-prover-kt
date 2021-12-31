@@ -63,7 +63,9 @@ enum class BasicTactic: ITactic {
 		val conclusions = sequent.conclusions
 		return when(this) {
 			ASSUMPTION -> conclusions
-				.filter { it in assumptions }
+				.filter { it in assumptions } +
+					assumptions.filter { it == Formula.FALSE } +
+					conclusions.filter { it == Formula.TRUE }
 			AND_LEFT -> assumptions
 				.filterIsInstance<Formula.AND>()
 				.filterNot { it.leftFml in assumptions && it.rightFml in assumptions }
@@ -182,8 +184,10 @@ enum class BasicTactic: ITactic {
 			}
 			IFF_LEFT -> {
 				fml as Formula.IFF
+				val toRight = Formula.IMPLIES(fml.leftFml, fml.rightFml)
+				val toLeft  = Formula.IMPLIES(fml.rightFml, fml.leftFml)
 				val newGoal = goal.copy(
-					assumptions = assumptions.replaceIfDistinct(fml, fml.leftFml, fml.rightFml)
+					assumptions = goal.assumptions.replaceIfDistinct(fml, toRight, toLeft)
 				)
 				sequents.replace(newGoal)
 			}
