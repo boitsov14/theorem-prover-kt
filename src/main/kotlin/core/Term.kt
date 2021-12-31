@@ -5,7 +5,7 @@ sealed interface Term
 
 data class Var(private val id: String): Term {
 	override fun toString() = id
-	fun getUniqueVar(oldVars: Set<Var>): Var {
+	fun getFreshVar(oldVars: Set<Var>): Var {
 		if (this !in oldVars) { return this }
 		var n = 1
 		while (true) {

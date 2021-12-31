@@ -5,7 +5,7 @@ import core.*
 class DuplicateAssumptionException: Exception()
 class DuplicateConclusionException: Exception()
 
-data class Goal(val assumptions: List<Formula>, val conclusions: List<Formula>) {
+data class Sequent(val assumptions: List<Formula>, val conclusions: List<Formula>) {
 	init {
 		if (assumptions.distinct().size < assumptions.size) { throw DuplicateAssumptionException() }
 		if (conclusions.distinct().size < conclusions.size) { throw DuplicateConclusionException() }
@@ -17,9 +17,9 @@ data class Goal(val assumptions: List<Formula>, val conclusions: List<Formula>) 
 	val freeVars: Set<Var> = (assumptions + conclusions).map { it.freeVars }.flatten().toSet()
 }
 
-typealias Goals = List<Goal>
+typealias Sequents = List<Sequent>
 
-fun Goal.toGoals(): Goals = listOf(this)
+fun Sequent.toGoals(): Sequents = listOf(this)
 // TODO: 2021/12/07 which is better?
 
-fun Goals.replace(vararg newFirstGoals: Goal): Goals = newFirstGoals.toList() + this.drop(1)
+fun Sequents.replace(vararg newFirstSequents: Sequent): Sequents = newFirstSequents.toList() + this.drop(1)

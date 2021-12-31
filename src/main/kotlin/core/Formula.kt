@@ -90,7 +90,7 @@ sealed class Formula {
 			if (oldVar == bddVar) {
 				this
 			} else if (newVar == bddVar) {
-				val newBddVar = bddVar.getUniqueVar(operandFml.bddVars + operandFml.freeVars + newVar)
+				val newBddVar = bddVar.getFreshVar(operandFml.bddVars + operandFml.freeVars + newVar)
 				ALL(newBddVar, operandFml.replace(bddVar, newBddVar).replace(oldVar, newVar))
 			} else {
 				ALL(bddVar, operandFml.replace(oldVar, newVar))
@@ -100,7 +100,7 @@ sealed class Formula {
 			if (oldVar == bddVar) {
 				this
 			} else if (newVar == bddVar) {
-				val newBddVar = bddVar.getUniqueVar(operandFml.bddVars + operandFml.freeVars + newVar)
+				val newBddVar = bddVar.getFreshVar(operandFml.bddVars + operandFml.freeVars + newVar)
 				EXISTS(newBddVar, operandFml.replace(bddVar, newBddVar).replace(oldVar, newVar))
 			} else {
 				EXISTS(bddVar, operandFml.replace(oldVar, newVar))

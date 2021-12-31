@@ -23,8 +23,8 @@ not (P and Q and R and S and T and U and V) to (not P or not Q or not R or not S
 fun main() {
 	print("INPUT A FORMULA >>> ")
 	val fml = readLine()!!.parse()
-	val firstGoals = Goal(listOf(fml)).toGoals()
-	firstGoals.prove()
+	val firstSequents = Sequent(listOf(fml)).toGoals()
+	firstSequents.prove()
 
 	/*
 	val firstGoals = Goal(fml).toGoals()

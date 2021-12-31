@@ -1,6 +1,6 @@
 package sequentProver
 
-fun Goals.prove() {
+fun Sequents.prove() {
 	val start = System.currentTimeMillis()
 	var count = 0
 	val history = mutableListOf<IApplyData>()
@@ -28,6 +28,6 @@ fun Goals.prove() {
 	println("loop count: $count")
 }
 
-fun printGoals(goals: Goals) {
-	goals.forEach { println(it) }
+fun printGoals(sequents: Sequents) {
+	sequents.forEach { println(it) }
 }

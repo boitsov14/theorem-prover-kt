@@ -3,23 +3,23 @@ package sequentProver
 import core.*
 
 sealed interface ITactic {
-	fun canApply(goal: Goal): Boolean
+	fun canApply(sequent: Sequent): Boolean
 }
 
 val allTactics: List<ITactic> = BasicTactic.values().toList()
 // TODO: 2021/10/28 change to set.
 
-fun Goal.applicableTactics() = allTactics.filter { it.canApply(this) }
+fun Sequent.applicableTactics() = allTactics.filter { it.canApply(this) }
 
 sealed interface IApplyData
 
 typealias History = List<IApplyData>
 
-fun IApplyData.applyTactic(goals: Goals): Goals = when(this) {
-	is BasicTactic.ApplyData -> this.basicTactic.applyTactic(goals, this.fml)
+fun IApplyData.applyTactic(sequents: Sequents): Sequents = when(this) {
+	is BasicTactic.ApplyData -> this.basicTactic.applyTactic(sequents, this.fml)
 }
 
-fun History.applyTactics(firstGoals: Goals): Goals = this.fold(firstGoals){ currentGoals, applyData -> applyData.applyTactic(currentGoals)}
+fun History.applyTactics(firstSequents: Sequents): Sequents = this.fold(firstSequents){ currentGoals, applyData -> applyData.applyTactic(currentGoals)}
 
 class IllegalTacticException: Exception()
 
@@ -54,10 +54,10 @@ enum class BasicTactic: ITactic {
 		EXISTS_LEFT 	-> "∃L"
 	}
 	data class ApplyData(val basicTactic: BasicTactic, val fml: Formula) : IApplyData
-	override fun canApply(goal: Goal): Boolean = availableFmls(goal).isNotEmpty()
-	fun availableFmls(goal: Goal): List<Formula> {
-		val assumptions = goal.assumptions
-		val conclusions = goal.conclusions
+	override fun canApply(sequent: Sequent): Boolean = availableFmls(sequent).isNotEmpty()
+	fun availableFmls(sequent: Sequent): List<Formula> {
+		val assumptions = sequent.assumptions
+		val conclusions = sequent.conclusions
 		return when(this) {
 			ASSUMPTION -> conclusions
 				.filter { it in assumptions }
@@ -94,26 +94,26 @@ enum class BasicTactic: ITactic {
 				.filterNot { it.leftFml in assumptions || it.rightFml in conclusions }
 			EXISTS_LEFT -> assumptions
 				.filterIsInstance<Formula.EXISTS>()
-				.filterNot { assumption -> goal.freeVars.any { fixedVar -> assumption.substitute(fixedVar) in assumptions } }
+				.filterNot { assumption -> sequent.freeVars.any { fixedVar -> assumption.substitute(fixedVar) in assumptions } }
 			// TODO: 2021/12/12 関数記号も認めるようになったら修正要
 			ALL_RIGHT -> conclusions
 				.filterIsInstance<Formula.ALL>()
-				.filterNot { conclusion -> goal.freeVars.any { fixedVar -> conclusion.substitute(fixedVar) in conclusions } }
+				.filterNot { conclusion -> sequent.freeVars.any { fixedVar -> conclusion.substitute(fixedVar) in conclusions } }
 		}
 	}
-	fun applyTactic(goals: Goals, fml: Formula): Goals {
-		val goal = goals[0]
+	fun applyTactic(sequents: Sequents, fml: Formula): Sequents {
+		val goal = sequents[0]
 		if (!(this.canApply(goal))) { throw IllegalTacticException() }
 		val assumptions = goal.assumptions
 		val conclusions = goal.conclusions
 		return when (this) {
-			ASSUMPTION -> goals.replace()
+			ASSUMPTION -> sequents.replace()
 			AND_LEFT -> {
 				fml as Formula.AND
 				val newGoal = goal.copy(
 					assumptions = assumptions.replaceIfDistinct(fml, fml.leftFml, fml.rightFml)
 				)
-				goals.replace(newGoal)
+				sequents.replace(newGoal)
 			}
 			AND_RIGHT -> {
 				fml as Formula.AND
@@ -123,7 +123,7 @@ enum class BasicTactic: ITactic {
 				val rightGoal = goal.copy(
 					conclusions = conclusions.replace(fml, fml.rightFml)
 				)
-				return goals.replace(leftGoal, rightGoal)
+				return sequents.replace(leftGoal, rightGoal)
 			}
 			OR_LEFT -> {
 				fml as Formula.OR
@@ -133,14 +133,14 @@ enum class BasicTactic: ITactic {
 				val rightGoal = goal.copy(
 					assumptions = assumptions.replace(fml, fml.rightFml)
 				)
-				return goals.replace(leftGoal, rightGoal)
+				return sequents.replace(leftGoal, rightGoal)
 			}
 			OR_RIGHT -> {
 				fml as Formula.OR
 				val newGoal = goal.copy(
 					conclusions = conclusions.replaceIfDistinct(fml, fml.leftFml, fml.rightFml)
 				)
-				goals.replace(newGoal)
+				sequents.replace(newGoal)
 			}
 			IMPLIES_LEFT -> {
 				fml as Formula.IMPLIES
@@ -151,7 +151,7 @@ enum class BasicTactic: ITactic {
 				val newGoal2 = goal.copy(
 					assumptions = assumptions.replace(fml, fml.rightFml)
 				)
-				return goals.replace(newGoal1, newGoal2)
+				return sequents.replace(newGoal1, newGoal2)
 			}
 			IMPLIES_RIGHT -> {
 				fml as Formula.IMPLIES
@@ -159,7 +159,7 @@ enum class BasicTactic: ITactic {
 					assumptions = assumptions.addIfDistinct(fml.leftFml),
 					conclusions = conclusions.replaceIfDistinct(fml, fml.rightFml)
 				)
-				return goals.replace(newGoal)
+				return sequents.replace(newGoal)
 			}
 			NOT_LEFT -> {
 				fml as Formula.NOT
@@ -167,7 +167,7 @@ enum class BasicTactic: ITactic {
 					assumptions = assumptions.minus(fml),
 					conclusions = conclusions + fml.operandFml
 				)
-				return goals.replace(newGoal)
+				return sequents.replace(newGoal)
 			}
 			NOT_RIGHT -> {
 				fml as Formula.NOT
@@ -175,14 +175,14 @@ enum class BasicTactic: ITactic {
 					assumptions = assumptions + fml.operandFml,
 					conclusions = conclusions.minus(fml)
 				)
-				return goals.replace(newGoal)
+				return sequents.replace(newGoal)
 			}
 			IFF_LEFT -> {
 				fml as Formula.IFF
 				val newGoal = goal.copy(
 					assumptions = assumptions.replaceIfDistinct(fml, fml.leftFml, fml.rightFml)
 				)
-				goals.replace(newGoal)
+				sequents.replace(newGoal)
 			}
 			IFF_RIGHT -> {
 				fml as Formula.IFF
@@ -192,25 +192,25 @@ enum class BasicTactic: ITactic {
 				val rightGoal = goal.copy(
 					conclusions = conclusions.replace(fml, fml.rightFml)
 				)
-				return goals.replace(leftGoal, rightGoal)
+				return sequents.replace(leftGoal, rightGoal)
 			}
 			ALL_RIGHT -> {
 				fml as Formula.ALL
-				val newVar = fml.bddVar.getUniqueVar(goal.freeVars.toSet())
+				val newVar = fml.bddVar.getFreshVar(goal.freeVars.toSet())
 				val newConclusion = fml.substitute(newVar)
 				val newGoal = goal.copy(
 					conclusions = conclusions.replace(fml, newConclusion)
 				)
-				return goals.replace(newGoal)
+				return sequents.replace(newGoal)
 			}
 			EXISTS_LEFT -> {
 				fml as Formula.EXISTS
-				val newVar = fml.bddVar.getUniqueVar(goal.freeVars.toSet())
+				val newVar = fml.bddVar.getFreshVar(goal.freeVars.toSet())
 				val newAssumption = fml.substitute(newVar)
 				val newGoal = goal.copy(
 					assumptions = goal.assumptions.replace(fml, newAssumption)
 				)
-				return goals.replace(newGoal)
+				return sequents.replace(newGoal)
 			}
 		}
 	}

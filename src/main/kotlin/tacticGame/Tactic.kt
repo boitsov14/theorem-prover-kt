@@ -92,7 +92,7 @@ enum class Tactic0: ITactic {
 			}
 			INTRO_ALL -> {
 				conclusion as Formula.ALL
-				val newVar = conclusion.bddVar.getUniqueVar(goal.freeVars.toSet())
+				val newVar = conclusion.bddVar.getFreshVar(goal.freeVars.toSet())
 				val newGoal = goal.copy(
 					conclusion = conclusion.substitute(newVar)
 				)
@@ -232,7 +232,7 @@ enum class Tactic1WithFml: ITactic {
 			}
 			CASES_EXISTS -> {
 				assumption as Formula.EXISTS
-				val newVar = assumption.bddVar.getUniqueVar(goal.freeVars.toSet())
+				val newVar = assumption.bddVar.getFreshVar(goal.freeVars.toSet())
 				val newAssumption = assumption.substitute(newVar)
 				val newGoal = goal.copy(
 					assumptions = goal.assumptions.replace(assumption, newAssumption)
@@ -352,7 +352,7 @@ enum class Tactic1WithVar: ITactic {
 			REVERT -> {
 				val conclusion = goal.conclusion
 				val newConclusion = if (fixedVar in conclusion.bddVars) {
-					val newVar = fixedVar.getUniqueVar(conclusion.bddVars)
+					val newVar = fixedVar.getFreshVar(conclusion.bddVars)
 					val replacedConclusion = conclusion.replace(fixedVar, newVar)
 					Formula.ALL(newVar, replacedConclusion)
 				} else {
