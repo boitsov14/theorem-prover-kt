@@ -152,7 +152,7 @@ enum class BasicTactic: ITactic {
 				fml as IMPLIES
 				val newGoal1 = goal.copy(
 					assumptions = assumptions.minus(fml),
-					conclusions = fml.leftFml + conclusions
+					conclusions = listOf(fml.leftFml) + conclusions
 				)
 				val newGoal2 = goal.copy(
 					assumptions = assumptions.replace(fml, fml.rightFml)
