@@ -133,7 +133,7 @@ fun letMeProve(firstGoals: Goals) {
 
 fun printGoals(goals: Goals) {
 	for (goal in goals) {
-		if (goal.fixedVars.isNotEmpty()) println(goal.fixedVars.joinToString(separator = " ", postfix = " : Fixed"))
+		if (goal.freeVars.isNotEmpty()) println(goal.freeVars.joinToString(separator = " ", postfix = " : Fixed"))
 		goal.assumptions.forEach { println("$it") }
 		println("⊢ " + "${goal.conclusion}")
 	}

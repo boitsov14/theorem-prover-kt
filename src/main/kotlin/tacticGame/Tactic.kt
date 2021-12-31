@@ -53,7 +53,7 @@ enum class Tactic0(private val id: String): ITactic {
 			LEFT, RIGHT		-> conclusion is Formula.OR
 			EXFALSO			-> conclusion != Formula.FALSE
 			BY_CONTRA		-> conclusion != Formula.FALSE && Formula.NOT(conclusion) !in goal.assumptions
-			USE_WITHOUT_FIXED_VARS -> conclusion is Formula.EXISTS && goal.fixedVars.isEmpty()
+			USE_WITHOUT_FIXED_VARS -> conclusion is Formula.EXISTS && goal.freeVars.isEmpty()
 		}
 	}
 	fun applyTactic(goals: Goals): Goals {
@@ -80,9 +80,8 @@ enum class Tactic0(private val id: String): ITactic {
 			}
 			INTRO_ALL -> {
 				conclusion as Formula.ALL
-				val newVar = conclusion.bddVar.getUniqueVar(goal.fixedVars.toSet())
+				val newVar = conclusion.bddVar.getUniqueVar(goal.freeVars.toSet())
 				val newGoal = goal.copy(
-					fixedVars = goal.fixedVars + newVar,
 					conclusion = conclusion.substitute(newVar)
 				)
 				return goals.replace(newGoal)
@@ -137,7 +136,6 @@ enum class Tactic0(private val id: String): ITactic {
 			USE_WITHOUT_FIXED_VARS -> {
 				conclusion as Formula.EXISTS
 				val newGoal = goal.copy(
-					fixedVars = listOf(conclusion.bddVar),
 					conclusion = conclusion.operandFml
 				)
 				return goals.replace(newGoal)
@@ -209,10 +207,9 @@ enum class Tactic1WithFml(private val id: String): ITactic {
 			}
 			CASES_EXISTS -> {
 				assumption as Formula.EXISTS
-				val newVar = assumption.bddVar.getUniqueVar(goal.fixedVars.toSet())
+				val newVar = assumption.bddVar.getUniqueVar(goal.freeVars.toSet())
 				val newAssumption = assumption.substitute(newVar)
 				val newGoal = goal.copy(
-					fixedVars = goal.fixedVars + newVar,
 					assumptions = goal.assumptions.replace(assumption, newAssumption)
 				)
 				return goals.replace(newGoal)
@@ -258,7 +255,6 @@ enum class Tactic1WithFml(private val id: String): ITactic {
 				assumption as Formula.ALL
 				val newAssumption = assumption.operandFml
 				val newGoal = goal.copy(
-					fixedVars = listOf(assumption.bddVar),
 					assumptions = goal.assumptions.addBelow(assumption, newAssumption)
 				)
 				return goals.replace(newGoal)
@@ -285,7 +281,7 @@ enum class Tactic1WithFml(private val id: String): ITactic {
 			.filterNot { it.leftFml in goal.assumptions && it.rightFml in goal.assumptions }
 		CASES_EXISTS -> goal.assumptions
 			.filterIsInstance<Formula.EXISTS>()
-			.filterNot { assumption -> goal.fixedVars.any { fixedVar -> assumption.substitute(fixedVar) in goal.assumptions } }
+			.filterNot { assumption -> goal.freeVars.any { fixedVar -> assumption.substitute(fixedVar) in goal.assumptions } }
 		REVERT, CLEAR -> goal.assumptions
 		HAVE_IMPLIES -> goal.assumptions
 			.filterIsInstance<Formula.IMPLIES>()
@@ -304,7 +300,7 @@ enum class Tactic1WithFml(private val id: String): ITactic {
 				.filterIsInstance<Formula.NOT>()
 				.filter { it.operandFml in goal.assumptions }
 		} else { emptyList() }
-		HAVE_WITHOUT_FIXED_VARS -> if (goal.fixedVars.isEmpty()) {
+		HAVE_WITHOUT_FIXED_VARS -> if (goal.freeVars.isEmpty()) {
 			goal.assumptions
 				.filterIsInstance<Formula.ALL>()
 		} else { emptyList() }
@@ -335,7 +331,6 @@ enum class Tactic1WithVar(private val id: String): ITactic {
 					Formula.ALL(fixedVar, conclusion)
 				}
 				val newGoal = goal.copy(
-					fixedVars = goal.fixedVars.minus(fixedVar),
 					conclusion = newConclusion
 				)
 				goals.replace(newGoal)
@@ -350,12 +345,12 @@ enum class Tactic1WithVar(private val id: String): ITactic {
 		}
 	}
 	// TODO: 2021/11/21 change to set.
-	fun availableFixedVars(goal: Goal): List<Var> = when(this) {
+	fun availableFixedVars(goal: Goal): Set<Var> = when(this) {
 		REVERT -> {
 			val fixedVarsInAssumptions = goal.assumptions.map { it.freeVars }.flatten()
-			goal.fixedVars.filterNot { it in fixedVarsInAssumptions }
+			goal.freeVars.filterNot { it in fixedVarsInAssumptions }.toSet()
 		}
-		USE -> goal.fixedVars
+		USE -> goal.freeVars
 	}
 }
 
@@ -379,7 +374,7 @@ enum class Tactic2WithVar(private val id: String): ITactic {
 		val result = mutableListOf<Pair<Formula, Var>>()
 		val possibleAssumptions = goal.assumptions.filterIsInstance<Formula.ALL>()
 		for (assumption in possibleAssumptions) {
-			for (fixedVar in goal.fixedVars) {
+			for (fixedVar in goal.freeVars) {
 				if (assumption.substitute(fixedVar) !in goal.assumptions) {
 					result.add(Pair(assumption, fixedVar))
 				}
