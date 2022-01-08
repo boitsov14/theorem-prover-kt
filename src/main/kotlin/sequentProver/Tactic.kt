@@ -7,8 +7,7 @@ sealed interface ITactic {
 	fun canApply(sequent: Sequent): Boolean
 }
 
-val allTactics: List<ITactic> = BasicTactic.values().toList()
-// TODO: 2021/10/28 change to set.
+val allTactics: Set<ITactic> = BasicTactic.values().toSet()
 
 fun Sequent.applicableTactics() = allTactics.filter { it.canApply(this) }
 
@@ -104,34 +103,34 @@ enum class BasicTactic: ITactic {
 			AND_LEFT -> {
 				fml as AND
 				val newSequents = sequent.copy(
-					assumptions = assumptions.replaceIfDistinct(fml, fml.leftFml, fml.rightFml)
+					assumptions = assumptions.minus(fml) + fml.leftFml + fml.rightFml
 				)
 				sequents.replaceFirst(newSequents)
 			}
 			AND_RIGHT -> {
 				fml as AND
 				val leftSequent = sequent.copy(
-					conclusions = conclusions.replace(fml, fml.leftFml)
+					conclusions = conclusions.minus(fml) + fml.leftFml
 				)
 				val rightSequent = sequent.copy(
-					conclusions = conclusions.replace(fml, fml.rightFml)
+					conclusions = conclusions.minus(fml) + fml.rightFml
 				)
 				return sequents.replaceFirst(leftSequent, rightSequent)
 			}
 			OR_LEFT -> {
 				fml as OR
 				val leftSequent = sequent.copy(
-					assumptions = assumptions.replace(fml, fml.leftFml)
+					assumptions = assumptions.minus(fml) + fml.leftFml
 				)
 				val rightSequent = sequent.copy(
-					assumptions = assumptions.replace(fml, fml.rightFml)
+					assumptions = assumptions.minus(fml) + fml.rightFml
 				)
 				return sequents.replaceFirst(leftSequent, rightSequent)
 			}
 			OR_RIGHT -> {
 				fml as OR
 				val newSequents = sequent.copy(
-					conclusions = conclusions.replaceIfDistinct(fml, fml.leftFml, fml.rightFml)
+					conclusions = conclusions.minus(fml) + fml.leftFml + fml.rightFml
 				)
 				sequents.replaceFirst(newSequents)
 			}
@@ -139,18 +138,18 @@ enum class BasicTactic: ITactic {
 				fml as IMPLIES
 				val newSequent1 = sequent.copy(
 					assumptions = assumptions.minus(fml),
-					conclusions = listOf(fml.leftFml) + conclusions
+					conclusions = setOf(fml.leftFml) + conclusions
 				)
 				val newSequent2 = sequent.copy(
-					assumptions = assumptions.replace(fml, fml.rightFml)
+					assumptions = assumptions.minus(fml) + fml.rightFml
 				)
 				return sequents.replaceFirst(newSequent1, newSequent2)
 			}
 			IMPLIES_RIGHT -> {
 				fml as IMPLIES
 				val newSequents = sequent.copy(
-					assumptions = assumptions.addIfDistinct(fml.leftFml),
-					conclusions = conclusions.replaceIfDistinct(fml, fml.rightFml)
+					assumptions = assumptions + fml.leftFml,
+					conclusions = conclusions.minus(fml) + fml.rightFml
 				)
 				return sequents.replaceFirst(newSequents)
 			}
@@ -175,35 +174,35 @@ enum class BasicTactic: ITactic {
 				val toRight = IMPLIES(fml.leftFml, fml.rightFml)
 				val toLeft  = IMPLIES(fml.rightFml, fml.leftFml)
 				val newSequents = sequent.copy(
-					assumptions = sequent.assumptions.replaceIfDistinct(fml, toRight, toLeft)
+					assumptions = sequent.assumptions.minus(fml) + toRight + toLeft
 				)
 				sequents.replaceFirst(newSequents)
 			}
 			IFF_RIGHT -> {
 				fml as IFF
 				val leftSequent = sequent.copy(
-					conclusions = conclusions.replace(fml, fml.leftFml)
+					conclusions = conclusions.minus(fml) + fml.leftFml
 				)
 				val rightSequent = sequent.copy(
-					conclusions = conclusions.replace(fml, fml.rightFml)
+					conclusions = conclusions.minus(fml) + fml.rightFml
 				)
 				return sequents.replaceFirst(leftSequent, rightSequent)
 			}
 			ALL_RIGHT -> {
 				fml as ALL
-				val newVar = fml.bddVar.getFreshVar(sequent.freeVars.toSet())
+				val newVar = fml.bddVar.getFreshVar(sequent.freeVars)
 				val newConclusion = fml.substitute(newVar)
 				val newSequents = sequent.copy(
-					conclusions = conclusions.replace(fml, newConclusion)
+					conclusions = conclusions.minus(fml) + newConclusion
 				)
 				return sequents.replaceFirst(newSequents)
 			}
 			EXISTS_LEFT -> {
 				fml as EXISTS
-				val newVar = fml.bddVar.getFreshVar(sequent.freeVars.toSet())
+				val newVar = fml.bddVar.getFreshVar(sequent.freeVars)
 				val newAssumption = fml.substitute(newVar)
 				val newSequents = sequent.copy(
-					assumptions = sequent.assumptions.replace(fml, newAssumption)
+					assumptions = sequent.assumptions.minus(fml) + newAssumption
 				)
 				return sequents.replaceFirst(newSequents)
 			}

@@ -7,8 +7,7 @@ sealed interface ITactic {
 	fun canApply(goal: Goal): Boolean
 }
 
-val allTactics: List<ITactic> = Tactic0.values().toList() + Tactic1WithFml.values() + Tactic1WithVar.values() + Tactic2WithVar.values()
-// TODO: 2021/10/28 change to set.
+val allTactics: Set<ITactic> = Tactic0.values().toSet() + Tactic1WithFml.values() + Tactic1WithVar.values() + Tactic2WithVar.values()
 
 fun Goal.applicableTactics() = allTactics.filter { it.canApply(this) }
 
@@ -67,7 +66,7 @@ enum class Tactic0: ITactic {
 			INTRO_IMPLIES -> {
 				conclusion as IMPLIES
 				val newGoal = goal.copy(
-					assumptions = goal.assumptions.addIfDistinct(conclusion.leftFml),
+					assumptions = goal.assumptions + conclusion.leftFml,
 					conclusion = conclusion.rightFml
 				)
 				return goals.replaceFirst(newGoal)
@@ -75,14 +74,14 @@ enum class Tactic0: ITactic {
 			INTRO_NOT -> {
 				conclusion as NOT
 				val newGoal = goal.copy(
-					assumptions = goal.assumptions.addIfDistinct(conclusion.operandFml),
+					assumptions = goal.assumptions + conclusion.operandFml,
 					conclusion = FALSE
 				)
 				return goals.replaceFirst(newGoal)
 			}
 			INTRO_ALL -> {
 				conclusion as ALL
-				val newVar = conclusion.bddVar.getFreshVar(goal.freeVars.toSet())
+				val newVar = conclusion.bddVar.getFreshVar(goal.freeVars)
 				val newGoal = goal.copy(
 					conclusion = conclusion.substitute(newVar)
 				)
@@ -179,17 +178,17 @@ enum class Tactic1WithFml: ITactic {
 			CASES_AND -> {
 				assumption as AND
 				val newGoal = goal.copy(
-					assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.leftFml, assumption.rightFml)
+					assumptions = goal.assumptions.minus(assumption) + assumption.leftFml + assumption.rightFml
 				)
 				return goals.replaceFirst(newGoal)
 			}
 			CASES_OR -> {
 				assumption as OR
 				val leftGoal	= goal.copy(
-					assumptions = goal.assumptions.replace(assumption, assumption.leftFml)
+					assumptions = goal.assumptions.minus(assumption) + assumption.leftFml
 				)
 				val rightGoal	= goal.copy(
-					assumptions = goal.assumptions.replace(assumption, assumption.rightFml)
+					assumptions = goal.assumptions.minus(assumption) + assumption.rightFml
 				)
 				return goals.replaceFirst(leftGoal, rightGoal)
 			}
@@ -198,16 +197,16 @@ enum class Tactic1WithFml: ITactic {
 				val toRight = IMPLIES(assumption.leftFml, assumption.rightFml)
 				val toLeft  = IMPLIES(assumption.rightFml, assumption.leftFml)
 				val newGoal = goal.copy(
-					assumptions = goal.assumptions.replaceIfDistinct(assumption, toRight, toLeft)
+					assumptions = goal.assumptions.minus(assumption) + toRight + toLeft
 				)
 				return goals.replaceFirst(newGoal)
 			}
 			CASES_EXISTS -> {
 				assumption as EXISTS
-				val newVar = assumption.bddVar.getFreshVar(goal.freeVars.toSet())
+				val newVar = assumption.bddVar.getFreshVar(goal.freeVars)
 				val newAssumption = assumption.substitute(newVar)
 				val newGoal = goal.copy(
-					assumptions = goal.assumptions.replace(assumption, newAssumption)
+					assumptions = goal.assumptions.minus(assumption) + newAssumption
 				)
 				return goals.replaceFirst(newGoal)
 			}
@@ -227,7 +226,7 @@ enum class Tactic1WithFml: ITactic {
 			HAVE_IMPLIES -> {
 				assumption as IMPLIES
 				val newGoal = goal.copy(
-					assumptions = goal.assumptions.replace(assumption, assumption.rightFml)
+					assumptions = goal.assumptions.minus(assumption) + assumption.rightFml
 				)
 				return goals.replaceFirst(newGoal)
 			}
@@ -238,7 +237,7 @@ enum class Tactic1WithFml: ITactic {
 					conclusion = assumption.leftFml
 				)
 				val newGoal2 = goal.copy(
-					assumptions = goal.assumptions.replace(assumption, assumption.rightFml)
+					assumptions = goal.assumptions.minus(assumption) + assumption.rightFml
 				)
 				return goals.replaceFirst(newGoal1, newGoal2)
 			}
@@ -252,38 +251,44 @@ enum class Tactic1WithFml: ITactic {
 				assumption as ALL
 				val newAssumption = assumption.operandFml
 				val newGoal = goal.copy(
-					assumptions = goal.assumptions.addBelow(assumption, newAssumption)
+					assumptions = goal.assumptions + newAssumption
 				)
 				return goals.replaceFirst(newGoal)
 			}
 		}
 	}
-	// TODO: 2021/11/21 change to set.
-	fun availableAssumptions(goal: Goal): List<Formula> = when(this) {
+	fun availableAssumptions(goal: Goal): Set<Formula> = when(this) {
 		APPLY_IMPLIES -> goal.assumptions
 			.filterIsInstance<IMPLIES>()
 			.filter { it.rightFml  == goal.conclusion }
 			.filterNot { it.leftFml == goal.conclusion }
+			.toSet()
 		APPLY_NOT -> goal.assumptions
 			.filterIsInstance<NOT>()
 			.filter { goal.conclusion == FALSE }
+			.toSet()
 		CASES_AND -> goal.assumptions
 			.filterIsInstance<AND>()
 			.filterNot { it.leftFml in goal.assumptions && it.rightFml in goal.assumptions }
+			.toSet()
 		CASES_OR -> goal.assumptions
 			.filterIsInstance<OR>()
 			.filterNot { it.leftFml in goal.assumptions || it.rightFml in goal.assumptions }
+			.toSet()
 		CASES_IFF -> goal.assumptions
 			.filterIsInstance<IFF>()
 			.filterNot { it.leftFml in goal.assumptions && it.rightFml in goal.assumptions }
+			.toSet()
 		CASES_EXISTS -> goal.assumptions
 			.filterIsInstance<EXISTS>()
 			.filterNot { assumption -> goal.freeVars.any { freeVar -> assumption.substitute(freeVar) in goal.assumptions } }
+			.toSet()
 		REVERT, CLEAR -> goal.assumptions
 		HAVE_IMPLIES -> goal.assumptions
 			.filterIsInstance<IMPLIES>()
 			.filter { it.leftFml in goal.assumptions }
 			.filterNot { it.rightFml in goal.assumptions }
+			.toSet()
 		HAVE_IMPLIES_WITHOUT_LEFT -> goal.assumptions
 			.asSequence()
 			.filterIsInstance<IMPLIES>()
@@ -291,16 +296,18 @@ enum class Tactic1WithFml: ITactic {
 			.filterNot { it.leftFml == goal.conclusion }
 			.filterNot { it.rightFml in goal.assumptions }
 			.filterNot { it.rightFml == goal.conclusion }
-			.toList()
+			.toSet()
 		HAVE_NOT -> if (FALSE !in goal.assumptions) {
 			goal.assumptions
 				.filterIsInstance<NOT>()
 				.filter { it.operandFml in goal.assumptions }
-		} else { emptyList() }
+				.toSet()
+		} else { emptySet() }
 		HAVE_WITHOUT_FREE_VARS -> if (goal.freeVars.isEmpty()) {
 			goal.assumptions
 				.filterIsInstance<ALL>()
-		} else { emptyList() }
+				.toSet()
+		} else { emptySet() }
 	}
 }
 
@@ -343,7 +350,6 @@ enum class Tactic1WithVar: ITactic {
 			}
 		}
 	}
-	// TODO: 2021/11/21 change to set.
 	fun availableFreeVars(goal: Goal): Set<Var> = when(this) {
 		REVERT -> {
 			val freeVarsInAssumptions = goal.assumptions.map { it.freeVars }.flatten()
@@ -365,7 +371,7 @@ enum class Tactic2WithVar: ITactic {
 		assumption as ALL
 		val newAssumption = assumption.substitute(freeVar)
 		val newGoal = goal.copy(
-			assumptions = goal.assumptions.addBelow(assumption, newAssumption)
+			assumptions = goal.assumptions + newAssumption
 		)
 		return goals.replaceFirst(newGoal)
 	}

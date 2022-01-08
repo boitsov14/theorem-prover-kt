@@ -2,13 +2,9 @@ package tacticGame
 
 import core.*
 
-class DuplicateAssumptionException: Exception()
-
-data class Goal(val assumptions: List<Formula>, val conclusion: Formula) {
-	init {
-		if (assumptions.distinct().size < assumptions.size) { throw DuplicateAssumptionException() }
-	}
-	constructor(conclusion: Formula) : this(emptyList(), conclusion)
+data class Goal(val assumptions: Set<Formula>, val conclusion: Formula) {
+	constructor(conclusion: Formula) : this(emptySet(), conclusion)
+	// TODO: 2022/01/09 constructorいらないかも
 	override fun toString() = (if (assumptions.isNotEmpty()) assumptions.joinToString(separator = ", ", postfix = " ") else "") + "⊢ " + "$conclusion"
 	val freeVars: Set<Var> = assumptions.map { it.freeVars }.flatten().toSet() + conclusion.freeVars
 	fun toGoals():Goals = listOf(this)

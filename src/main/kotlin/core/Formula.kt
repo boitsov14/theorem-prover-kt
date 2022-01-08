@@ -113,24 +113,3 @@ sealed class Formula {
 		}
 	}
 }
-
-fun List<Formula>.addIfDistinct(newFml: Formula): List<Formula> = if (newFml !in this) this + newFml else this
-
-fun List<Formula>.addBelow(fml: Formula, newFml: Formula): List<Formula> {
-	val first = this.takeWhile { it != fml }
-	val second = this.takeLastWhile { it != fml }
-	return first + fml + newFml + second
-}
-
-fun List<Formula>.replace(removedFml: Formula, newFml: Formula): List<Formula> {
-	val first = this.takeWhile { it != removedFml }
-	val second = this.takeLastWhile { it != removedFml }
-	return first + newFml + second
-}
-
-fun List<Formula>.replaceIfDistinct(removedFml: Formula, vararg newFmls: Formula): List<Formula> {
-	val first = this.takeWhile { it != removedFml }
-	val second = this.takeLastWhile { it != removedFml }
-	val newDistinctFmls = newFmls.distinct().filterNot { it in first + second }
-	return first + newDistinctFmls + second
-}

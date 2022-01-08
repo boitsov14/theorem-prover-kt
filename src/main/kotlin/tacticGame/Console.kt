@@ -82,8 +82,8 @@ fun letMeProve(firstGoals: Goals) {
 				print("AVAILABLE FORMULAS >>> ")
 				println(tactic.availableAssumptions(goal).joinToString())
 				print("SELECT A FORMULA >>> ")
-				val assumptionNum = readLine()!!.toInt()
-				val assumption = tactic.availableAssumptions(goal)[assumptionNum]
+				val assumptionIndex = readLine()!!.toInt()
+				val assumption = tactic.availableAssumptions(goal).elementAt(assumptionIndex)
 				history.add(Tactic1WithFml.ApplyData(tactic, assumption))
 				if (tactic == HAVE_IMPLIES || tactic == HAVE_IMPLIES_WITHOUT_LEFT) {
 					assumption as IMPLIES

@@ -2,15 +2,8 @@ package sequentProver
 
 import core.*
 
-class DuplicateAssumptionException: Exception()
-class DuplicateConclusionException: Exception()
-
-data class Sequent(val assumptions: List<Formula>, val conclusions: List<Formula>) {
-	init {
-		if (assumptions.distinct().size < assumptions.size) { throw DuplicateAssumptionException() }
-		if (conclusions.distinct().size < conclusions.size) { throw DuplicateConclusionException() }
-	}
-	constructor(conclusions: List<Formula>) : this(emptyList(), conclusions)
+data class Sequent(val assumptions: Set<Formula>, val conclusions: Set<Formula>) {
+	constructor(conclusions: Set<Formula>) : this(emptySet(), conclusions)
 	override fun toString() = assumptions.joinToString(separator = ", ") + " ⊢ " + conclusions.joinToString(separator = ", ")
 	// TODO: 2021/12/07 which is better?
 	// = (if (assumptions.isNotEmpty()) assumptions.joinToString(separator = ", ", postfix = " ") else "") + "⊢ " + "$conclusions"
