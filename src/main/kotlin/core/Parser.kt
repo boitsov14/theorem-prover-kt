@@ -2,7 +2,7 @@ package core
 
 import core.Formula.*
 
-class FormulaParserException(message:String): Exception(message)
+class FormulaParserException(message: String): Exception(message)
 
 fun String.parse(): Formula {
 	val chrs = ArrayDeque(this.toOneLetter().toCharArray().toList())
@@ -12,7 +12,7 @@ fun String.parse(): Formula {
 	return getFormula(reversePolishNotation)
 }
 
-sealed interface PreToken {
+private sealed interface PreToken {
 	enum class Symbol(val chr: Char): PreToken {
 		LEFT_PARENTHESIS('('),
 		RIGHT_PARENTHESIS(')'),
@@ -31,7 +31,7 @@ sealed interface PreToken {
 	data class VAR(val id: String): PreToken
 }
 
-sealed interface Token {
+private sealed interface Token {
 	object LEFT_PARENTHESIS: Token
 	object RIGHT_PARENTHESIS: Token
 	sealed interface Operator: Token {
