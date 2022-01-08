@@ -71,7 +71,7 @@ fun letMeProve(firstGoals: Goals) {
 		when(val tactic = goal.applicableTactics().find { "$it" == tacticStr }!!) {
 			is Tactic0 -> {
 				history.add(Tactic0.ApplyData(tactic))
-				if (tactic == USE_WITHOUT_FIXED_VARS) {
+				if (tactic == USE_WITHOUT_FREE_VARS) {
 					goal.conclusion as EXISTS
 					println("USE >>> ${goal.conclusion.bddVar}")
 					print("PRESS ENTER >>> ")
@@ -97,7 +97,7 @@ fun letMeProve(firstGoals: Goals) {
 					print("PRESS ENTER >>> ")
 					readLine()
 				}
-				if (tactic == HAVE_WITHOUT_FIXED_VARS) {
+				if (tactic == HAVE_WITHOUT_FREE_VARS) {
 					assumption as ALL
 					println("HAVE >>> ${assumption.bddVar}")
 					print("PRESS ENTER >>> ")
@@ -106,25 +106,25 @@ fun letMeProve(firstGoals: Goals) {
 			}
 			is Tactic1WithVar -> {
 				print("AVAILABLE VARIABLES >>> ")
-				println(tactic.availableFixedVars(goal).joinToString())
+				println(tactic.availableFreeVars(goal).joinToString())
 				print("SELECT A VARIABLE >>> ")
 				val varStr = readLine()!!
-				val inputVar = tactic.availableFixedVars(goal).find { "$it" == varStr }!!
+				val inputVar = tactic.availableFreeVars(goal).find { "$it" == varStr }!!
 				history.add(Tactic1WithVar.ApplyData(tactic, inputVar))
 			}
 			is Tactic2WithVar -> {
 				print("AVAILABLE FORMULAS >>> ")
-				val possibleAssumptions = tactic.availableAssumptionAndFixedVars(goal).keys
-				println(possibleAssumptions.joinToString())
+				val availableAssumptions = tactic.availableAssumptionAndFreeVars(goal).keys
+				println(availableAssumptions.joinToString())
 				print("SELECT A FORMULA >>> ")
 				val assumptionIndex = readLine()!!.toInt()
-				val assumption = possibleAssumptions.elementAt(assumptionIndex)
+				val assumption = availableAssumptions.elementAt(assumptionIndex)
 				print("AVAILABLE VARIABLES >>> ")
-				val possibleVars = tactic.availableAssumptionAndFixedVars(goal)[assumption]!!
-				println(possibleVars.joinToString())
+				val availableVars = tactic.availableAssumptionAndFreeVars(goal)[assumption]!!
+				println(availableVars.joinToString())
 				print("SELECT A VARIABLE >>> ")
 				val varStr = readLine()!!
-				val inputVar = possibleVars.find { "$it" == varStr }!!
+				val inputVar = availableVars.find { "$it" == varStr }!!
 				history.add(Tactic2WithVar.ApplyData(tactic, assumption, inputVar))
 			}
 		}
@@ -154,6 +154,6 @@ fun printHistory(firstGoals: Goals, history: History) {
 fun IApplyData.getString(): String = when(this) {
 	is Tactic0.ApplyData -> "${this.tactic}"
 	is Tactic1WithFml.ApplyData -> "${this.tactic} ${this.assumption}"
-	is Tactic1WithVar.ApplyData -> "${this.tactic} ${this.fixedVar}"
-	is Tactic2WithVar.ApplyData -> "${this.tactic} ${this.assumption} ${this.fixedVar}"
+	is Tactic1WithVar.ApplyData -> "${this.tactic} ${this.freeVar}"
+	is Tactic2WithVar.ApplyData -> "${this.tactic} ${this.assumption} ${this.freeVar}"
 }

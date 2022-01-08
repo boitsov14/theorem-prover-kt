@@ -21,8 +21,8 @@ typealias History = List<IApplyData>
 fun IApplyData.applyTactic(goals: Goals): Goals = when(this) {
 	is Tactic0.ApplyData 		-> this.tactic.applyTactic(goals)
 	is Tactic1WithFml.ApplyData -> this.tactic.applyTactic(goals, this.assumption)
-	is Tactic1WithVar.ApplyData -> this.tactic.applyTactic(goals, this.fixedVar)
-	is Tactic2WithVar.ApplyData -> this.tactic.applyTactic(goals, this.assumption, this.fixedVar)
+	is Tactic1WithVar.ApplyData -> this.tactic.applyTactic(goals, this.freeVar)
+	is Tactic2WithVar.ApplyData -> this.tactic.applyTactic(goals, this.assumption, this.freeVar)
 }
 
 fun History.applyTactics(firstGoals: Goals): Goals = this.fold(firstGoals){ currentGoals, applyData -> applyData.applyTactic(currentGoals)}
@@ -31,7 +31,7 @@ class IllegalTacticException: Exception()
 
 // Tactic with arity 0.
 enum class Tactic0: ITactic {
-	ASSUMPTION, INTRO_IMPLIES, INTRO_NOT, INTRO_ALL, SPLIT_AND, SPLIT_IFF, LEFT, RIGHT, EXFALSO, BY_CONTRA, USE_WITHOUT_FIXED_VARS;
+	ASSUMPTION, INTRO_IMPLIES, INTRO_NOT, INTRO_ALL, SPLIT_AND, SPLIT_IFF, LEFT, RIGHT, EXFALSO, BY_CONTRA, USE_WITHOUT_FREE_VARS;
 	override fun toString(): String = when(this) {
 		ASSUMPTION 	-> "assumption"
 		INTRO_IMPLIES, INTRO_NOT, INTRO_ALL -> "intro"
@@ -40,7 +40,7 @@ enum class Tactic0: ITactic {
 		RIGHT -> "right"
 		EXFALSO -> "exfalso"
 		BY_CONTRA -> "by_contra"
-		USE_WITHOUT_FIXED_VARS -> "use"
+		USE_WITHOUT_FREE_VARS -> "use"
 	}
 	data class ApplyData(override val tactic: Tactic0): IApplyData
 	override fun canApply(goal: Goal): Boolean {
@@ -55,7 +55,7 @@ enum class Tactic0: ITactic {
 			LEFT, RIGHT		-> conclusion is OR
 			EXFALSO			-> conclusion != FALSE
 			BY_CONTRA		-> conclusion != FALSE && NOT(conclusion) !in goal.assumptions
-			USE_WITHOUT_FIXED_VARS -> conclusion is EXISTS && goal.freeVars.isEmpty()
+			USE_WITHOUT_FREE_VARS -> conclusion is EXISTS && goal.freeVars.isEmpty()
 		}
 	}
 	fun applyTactic(goals: Goals): Goals {
@@ -135,7 +135,7 @@ enum class Tactic0: ITactic {
 				)
 				return goals.replace(newGoal)
 			}
-			USE_WITHOUT_FIXED_VARS -> {
+			USE_WITHOUT_FREE_VARS -> {
 				conclusion as EXISTS
 				val newGoal = goal.copy(
 					conclusion = conclusion.operandFml
@@ -148,13 +148,13 @@ enum class Tactic0: ITactic {
 
 // Tactic with one formula.
 enum class Tactic1WithFml: ITactic {
-	APPLY_IMPLIES, APPLY_NOT, CASES_AND, CASES_OR, CASES_IFF, CASES_EXISTS, REVERT, CLEAR, HAVE_IMPLIES, HAVE_IMPLIES_WITHOUT_LEFT, HAVE_NOT, HAVE_WITHOUT_FIXED_VARS;
+	APPLY_IMPLIES, APPLY_NOT, CASES_AND, CASES_OR, CASES_IFF, CASES_EXISTS, REVERT, CLEAR, HAVE_IMPLIES, HAVE_IMPLIES_WITHOUT_LEFT, HAVE_NOT, HAVE_WITHOUT_FREE_VARS;
 	override fun toString(): String = when(this) {
 		APPLY_IMPLIES, APPLY_NOT -> "apply"
 		CASES_AND, CASES_OR, CASES_IFF, CASES_EXISTS -> "cases"
 		REVERT -> "revert"
 		CLEAR -> "clear"
-		HAVE_IMPLIES, HAVE_IMPLIES_WITHOUT_LEFT, HAVE_NOT, HAVE_WITHOUT_FIXED_VARS -> "have"
+		HAVE_IMPLIES, HAVE_IMPLIES_WITHOUT_LEFT, HAVE_NOT, HAVE_WITHOUT_FREE_VARS -> "have"
 	}
 	data class ApplyData(override val tactic: Tactic1WithFml, val assumption: Formula): IApplyData
 	override fun canApply(goal: Goal): Boolean = availableAssumptions(goal).isNotEmpty()
@@ -248,7 +248,7 @@ enum class Tactic1WithFml: ITactic {
 				)
 				return goals.replace(newGoal)
 			}
-			HAVE_WITHOUT_FIXED_VARS -> {
+			HAVE_WITHOUT_FREE_VARS -> {
 				assumption as ALL
 				val newAssumption = assumption.operandFml
 				val newGoal = goal.copy(
@@ -278,7 +278,7 @@ enum class Tactic1WithFml: ITactic {
 			.filterNot { it.leftFml in goal.assumptions && it.rightFml in goal.assumptions }
 		CASES_EXISTS -> goal.assumptions
 			.filterIsInstance<EXISTS>()
-			.filterNot { assumption -> goal.freeVars.any { fixedVar -> assumption.substitute(fixedVar) in goal.assumptions } }
+			.filterNot { assumption -> goal.freeVars.any { freeVar -> assumption.substitute(freeVar) in goal.assumptions } }
 		REVERT, CLEAR -> goal.assumptions
 		HAVE_IMPLIES -> goal.assumptions
 			.filterIsInstance<IMPLIES>()
@@ -297,7 +297,7 @@ enum class Tactic1WithFml: ITactic {
 				.filterIsInstance<NOT>()
 				.filter { it.operandFml in goal.assumptions }
 		} else { emptyList() }
-		HAVE_WITHOUT_FIXED_VARS -> if (goal.freeVars.isEmpty()) {
+		HAVE_WITHOUT_FREE_VARS -> if (goal.freeVars.isEmpty()) {
 			goal.assumptions
 				.filterIsInstance<ALL>()
 		} else { emptyList() }
@@ -311,23 +311,23 @@ enum class Tactic1WithVar: ITactic {
 		REVERT 	-> "revert"
 		USE 	-> "use"
 	}
-	data class ApplyData(override val tactic: Tactic1WithVar, val fixedVar: Var): IApplyData
+	data class ApplyData(override val tactic: Tactic1WithVar, val freeVar: Var): IApplyData
 	override fun canApply(goal: Goal): Boolean = when(this) {
-		REVERT 	-> availableFixedVars(goal).isNotEmpty()
-		USE 	-> goal.conclusion is EXISTS && availableFixedVars(goal).isNotEmpty()
+		REVERT 	-> availableFreeVars(goal).isNotEmpty()
+		USE 	-> goal.conclusion is EXISTS && availableFreeVars(goal).isNotEmpty()
 	}
-	fun applyTactic(goals: Goals, fixedVar: Var): Goals {
+	fun applyTactic(goals: Goals, freeVar: Var): Goals {
 		val goal = goals[0]
 		if (!(this.canApply(goal))) { throw IllegalTacticException() }
 		return when(this) {
 			REVERT -> {
 				val conclusion = goal.conclusion
-				val newConclusion = if (fixedVar in conclusion.bddVars) {
-					val newVar = fixedVar.getFreshVar(conclusion.bddVars)
-					val replacedConclusion = conclusion.replace(fixedVar, newVar)
+				val newConclusion = if (freeVar in conclusion.bddVars) {
+					val newVar = freeVar.getFreshVar(conclusion.bddVars)
+					val replacedConclusion = conclusion.replace(freeVar, newVar)
 					ALL(newVar, replacedConclusion)
 				} else {
-					ALL(fixedVar, conclusion)
+					ALL(freeVar, conclusion)
 				}
 				val newGoal = goal.copy(
 					conclusion = newConclusion
@@ -337,17 +337,17 @@ enum class Tactic1WithVar: ITactic {
 			USE -> {
 				val conclusion = goal.conclusion as EXISTS
 				val newGoal = goal.copy(
-					conclusion = conclusion.substitute(fixedVar)
+					conclusion = conclusion.substitute(freeVar)
 				)
 				goals.replace(newGoal)
 			}
 		}
 	}
 	// TODO: 2021/11/21 change to set.
-	fun availableFixedVars(goal: Goal): Set<Var> = when(this) {
+	fun availableFreeVars(goal: Goal): Set<Var> = when(this) {
 		REVERT -> {
-			val fixedVarsInAssumptions = goal.assumptions.map { it.freeVars }.flatten()
-			goal.freeVars.filterNot { it in fixedVarsInAssumptions }.toSet()
+			val freeVarsInAssumptions = goal.assumptions.map { it.freeVars }.flatten()
+			goal.freeVars.filterNot { it in freeVarsInAssumptions }.toSet()
 		}
 		USE -> goal.freeVars
 	}
@@ -357,25 +357,25 @@ enum class Tactic1WithVar: ITactic {
 enum class Tactic2WithVar: ITactic {
 	HAVE;
 	override fun toString(): String = "have"
-	data class ApplyData(override val tactic: Tactic2WithVar, val assumption: Formula, val fixedVar: Var): IApplyData
-	override fun canApply(goal: Goal): Boolean = availableAssumptionAndFixedVars(goal).isNotEmpty()
-	fun applyTactic(goals: Goals, assumption: Formula, fixedVar: Var): Goals {
+	data class ApplyData(override val tactic: Tactic2WithVar, val assumption: Formula, val freeVar: Var): IApplyData
+	override fun canApply(goal: Goal): Boolean = availableAssumptionAndFreeVars(goal).isNotEmpty()
+	fun applyTactic(goals: Goals, assumption: Formula, freeVar: Var): Goals {
 		val goal = goals[0]
 		if (!(this.canApply(goal))) { throw IllegalTacticException() }
 		assumption as ALL
-		val newAssumption = assumption.substitute(fixedVar)
+		val newAssumption = assumption.substitute(freeVar)
 		val newGoal = goal.copy(
 			assumptions = goal.assumptions.addBelow(assumption, newAssumption)
 		)
 		return goals.replace(newGoal)
 	}
-	fun availableAssumptionAndFixedVars(goal: Goal): Map<Formula, Set<Var>> {
+	fun availableAssumptionAndFreeVars(goal: Goal): Map<Formula, Set<Var>> {
 		val result = mutableMapOf<Formula, Set<Var>>()
-		val possibleAssumptions = goal.assumptions.filterIsInstance<ALL>()
-		for (assumption in possibleAssumptions) {
-			val availableVars = goal.freeVars.filter { assumption.substitute(it) !in goal.assumptions }.toSet()
-			if (availableVars.isNotEmpty()) {
-				result[assumption] = availableVars
+		val availableAssumptions = goal.assumptions.filterIsInstance<ALL>()
+		for (assumption in availableAssumptions) {
+			val availableFreeVars = goal.freeVars.filter { assumption.substitute(it) !in goal.assumptions }.toSet()
+			if (availableFreeVars.isNotEmpty()) {
+				result[assumption] = availableFreeVars
 			}
 		}
 		return result

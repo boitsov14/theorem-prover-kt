@@ -87,11 +87,11 @@ enum class BasicTactic: ITactic {
 				.filterNot { it.leftFml in assumptions || it.rightFml in conclusions }
 			EXISTS_LEFT -> assumptions
 				.filterIsInstance<EXISTS>()
-				.filterNot { assumption -> sequent.freeVars.any { fixedVar -> assumption.substitute(fixedVar) in assumptions } }
+				.filterNot { assumption -> sequent.freeVars.any { freeVar -> assumption.substitute(freeVar) in assumptions } }
 			// TODO: 2021/12/12 関数記号も認めるようになったら修正要
 			ALL_RIGHT -> conclusions
 				.filterIsInstance<ALL>()
-				.filterNot { conclusion -> sequent.freeVars.any { fixedVar -> conclusion.substitute(fixedVar) in conclusions } }
+				.filterNot { conclusion -> sequent.freeVars.any { freeVar -> conclusion.substitute(freeVar) in conclusions } }
 		}
 	}
 	fun applyTactic(sequents: Sequents, fml: Formula): Sequents {
