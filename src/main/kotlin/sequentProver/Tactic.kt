@@ -22,7 +22,7 @@ fun IApplyData.applyTactic(sequents: Sequents): Sequents = when(this) {
 	is BasicTactic.ApplyData -> this.tactic.applyTactic(sequents, this.fml)
 }
 
-fun History.applyTactics(firstSequents: Sequents): Sequents = this.fold(firstSequents){ currentGoals, applyData -> applyData.applyTactic(currentGoals)}
+fun History.applyTactics(firstSequents: Sequents): Sequents = this.fold(firstSequents){ currentSequents, applyData -> applyData.applyTactic(currentSequents)}
 
 class IllegalTacticException: Exception()
 
@@ -95,117 +95,117 @@ enum class BasicTactic: ITactic {
 		}
 	}
 	fun applyTactic(sequents: Sequents, fml: Formula): Sequents {
-		val goal = sequents[0]
-		if (!(this.canApply(goal))) { throw IllegalTacticException() }
-		val assumptions = goal.assumptions
-		val conclusions = goal.conclusions
+		val sequent = sequents[0]
+		if (!(this.canApply(sequent))) { throw IllegalTacticException() }
+		val assumptions = sequent.assumptions
+		val conclusions = sequent.conclusions
 		return when (this) {
-			ASSUMPTION -> sequents.replace()
+			ASSUMPTION -> sequents.replaceFirst()
 			AND_LEFT -> {
 				fml as AND
-				val newGoal = goal.copy(
+				val newSequents = sequent.copy(
 					assumptions = assumptions.replaceIfDistinct(fml, fml.leftFml, fml.rightFml)
 				)
-				sequents.replace(newGoal)
+				sequents.replaceFirst(newSequents)
 			}
 			AND_RIGHT -> {
 				fml as AND
-				val leftGoal = goal.copy(
+				val leftSequent = sequent.copy(
 					conclusions = conclusions.replace(fml, fml.leftFml)
 				)
-				val rightGoal = goal.copy(
+				val rightSequent = sequent.copy(
 					conclusions = conclusions.replace(fml, fml.rightFml)
 				)
-				return sequents.replace(leftGoal, rightGoal)
+				return sequents.replaceFirst(leftSequent, rightSequent)
 			}
 			OR_LEFT -> {
 				fml as OR
-				val leftGoal = goal.copy(
+				val leftSequent = sequent.copy(
 					assumptions = assumptions.replace(fml, fml.leftFml)
 				)
-				val rightGoal = goal.copy(
+				val rightSequent = sequent.copy(
 					assumptions = assumptions.replace(fml, fml.rightFml)
 				)
-				return sequents.replace(leftGoal, rightGoal)
+				return sequents.replaceFirst(leftSequent, rightSequent)
 			}
 			OR_RIGHT -> {
 				fml as OR
-				val newGoal = goal.copy(
+				val newSequents = sequent.copy(
 					conclusions = conclusions.replaceIfDistinct(fml, fml.leftFml, fml.rightFml)
 				)
-				sequents.replace(newGoal)
+				sequents.replaceFirst(newSequents)
 			}
 			IMPLIES_LEFT -> {
 				fml as IMPLIES
-				val newGoal1 = goal.copy(
+				val newSequent1 = sequent.copy(
 					assumptions = assumptions.minus(fml),
 					conclusions = listOf(fml.leftFml) + conclusions
 				)
-				val newGoal2 = goal.copy(
+				val newSequent2 = sequent.copy(
 					assumptions = assumptions.replace(fml, fml.rightFml)
 				)
-				return sequents.replace(newGoal1, newGoal2)
+				return sequents.replaceFirst(newSequent1, newSequent2)
 			}
 			IMPLIES_RIGHT -> {
 				fml as IMPLIES
-				val newGoal = goal.copy(
+				val newSequents = sequent.copy(
 					assumptions = assumptions.addIfDistinct(fml.leftFml),
 					conclusions = conclusions.replaceIfDistinct(fml, fml.rightFml)
 				)
-				return sequents.replace(newGoal)
+				return sequents.replaceFirst(newSequents)
 			}
 			NOT_LEFT -> {
 				fml as NOT
-				val newGoal = goal.copy(
+				val newSequents = sequent.copy(
 					assumptions = assumptions.minus(fml),
 					conclusions = conclusions + fml.operandFml
 				)
-				return sequents.replace(newGoal)
+				return sequents.replaceFirst(newSequents)
 			}
 			NOT_RIGHT -> {
 				fml as NOT
-				val newGoal = goal.copy(
+				val newSequents = sequent.copy(
 					assumptions = assumptions + fml.operandFml,
 					conclusions = conclusions.minus(fml)
 				)
-				return sequents.replace(newGoal)
+				return sequents.replaceFirst(newSequents)
 			}
 			IFF_LEFT -> {
 				fml as IFF
 				val toRight = IMPLIES(fml.leftFml, fml.rightFml)
 				val toLeft  = IMPLIES(fml.rightFml, fml.leftFml)
-				val newGoal = goal.copy(
-					assumptions = goal.assumptions.replaceIfDistinct(fml, toRight, toLeft)
+				val newSequents = sequent.copy(
+					assumptions = sequent.assumptions.replaceIfDistinct(fml, toRight, toLeft)
 				)
-				sequents.replace(newGoal)
+				sequents.replaceFirst(newSequents)
 			}
 			IFF_RIGHT -> {
 				fml as IFF
-				val leftGoal = goal.copy(
+				val leftSequent = sequent.copy(
 					conclusions = conclusions.replace(fml, fml.leftFml)
 				)
-				val rightGoal = goal.copy(
+				val rightSequent = sequent.copy(
 					conclusions = conclusions.replace(fml, fml.rightFml)
 				)
-				return sequents.replace(leftGoal, rightGoal)
+				return sequents.replaceFirst(leftSequent, rightSequent)
 			}
 			ALL_RIGHT -> {
 				fml as ALL
-				val newVar = fml.bddVar.getFreshVar(goal.freeVars.toSet())
+				val newVar = fml.bddVar.getFreshVar(sequent.freeVars.toSet())
 				val newConclusion = fml.substitute(newVar)
-				val newGoal = goal.copy(
+				val newSequents = sequent.copy(
 					conclusions = conclusions.replace(fml, newConclusion)
 				)
-				return sequents.replace(newGoal)
+				return sequents.replaceFirst(newSequents)
 			}
 			EXISTS_LEFT -> {
 				fml as EXISTS
-				val newVar = fml.bddVar.getFreshVar(goal.freeVars.toSet())
+				val newVar = fml.bddVar.getFreshVar(sequent.freeVars.toSet())
 				val newAssumption = fml.substitute(newVar)
-				val newGoal = goal.copy(
-					assumptions = goal.assumptions.replace(fml, newAssumption)
+				val newSequents = sequent.copy(
+					assumptions = sequent.assumptions.replace(fml, newAssumption)
 				)
-				return sequents.replace(newGoal)
+				return sequents.replaceFirst(newSequents)
 			}
 		}
 	}

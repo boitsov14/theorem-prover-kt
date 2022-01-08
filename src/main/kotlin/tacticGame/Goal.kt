@@ -16,4 +16,4 @@ data class Goal(val assumptions: List<Formula>, val conclusion: Formula) {
 
 typealias Goals = List<Goal>
 
-fun Goals.replace(vararg newFirstGoals: Goal): Goals = newFirstGoals.toList() + this.drop(1)
+fun Goals.replaceFirst(vararg newFirstGoals: Goal): Goals = newFirstGoals.toList() + this.drop(1)

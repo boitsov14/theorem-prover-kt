@@ -26,7 +26,7 @@ P to true
 fun main() {
 	print("INPUT A FORMULA >>> ")
 	val fml = readLine()!!.parse()
-	val firstSequents = Sequent(listOf(fml)).toGoals()
+	val firstSequents = Sequent(listOf(fml)).toSequents()
 	firstSequents.prove()
 
 	/*

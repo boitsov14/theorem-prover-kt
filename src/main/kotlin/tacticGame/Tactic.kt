@@ -63,14 +63,14 @@ enum class Tactic0: ITactic {
 		if (!(this.canApply(goal))) { throw IllegalTacticException() }
 		val conclusion = goal.conclusion
 		when(this) {
-			ASSUMPTION -> return goals.replace()
+			ASSUMPTION -> return goals.replaceFirst()
 			INTRO_IMPLIES -> {
 				conclusion as IMPLIES
 				val newGoal = goal.copy(
 					assumptions = goal.assumptions.addIfDistinct(conclusion.leftFml),
 					conclusion = conclusion.rightFml
 				)
-				return goals.replace(newGoal)
+				return goals.replaceFirst(newGoal)
 			}
 			INTRO_NOT -> {
 				conclusion as NOT
@@ -78,7 +78,7 @@ enum class Tactic0: ITactic {
 					assumptions = goal.assumptions.addIfDistinct(conclusion.operandFml),
 					conclusion = FALSE
 				)
-				return goals.replace(newGoal)
+				return goals.replaceFirst(newGoal)
 			}
 			INTRO_ALL -> {
 				conclusion as ALL
@@ -86,7 +86,7 @@ enum class Tactic0: ITactic {
 				val newGoal = goal.copy(
 					conclusion = conclusion.substitute(newVar)
 				)
-				return goals.replace(newGoal)
+				return goals.replaceFirst(newGoal)
 			}
 			SPLIT_AND -> {
 				conclusion as AND
@@ -96,7 +96,7 @@ enum class Tactic0: ITactic {
 				val right   = goal.copy(
 					conclusion = conclusion.rightFml
 				)
-				return goals.replace(left, right)
+				return goals.replaceFirst(left, right)
 			}
 			SPLIT_IFF -> {
 				conclusion as IFF
@@ -106,41 +106,41 @@ enum class Tactic0: ITactic {
 				val toLeft  = goal.copy(
 					conclusion = IMPLIES(conclusion.rightFml, conclusion.leftFml)
 				)
-				return goals.replace(toRight, toLeft)
+				return goals.replaceFirst(toRight, toLeft)
 			}
 			LEFT -> {
 				conclusion as OR
 				val newGoal = goal.copy(
 					conclusion = conclusion.leftFml
 				)
-				return goals.replace(newGoal)
+				return goals.replaceFirst(newGoal)
 			}
 			RIGHT -> {
 				conclusion as OR
 				val newGoal = goal.copy(
 					conclusion = conclusion.rightFml
 				)
-				return goals.replace(newGoal)
+				return goals.replaceFirst(newGoal)
 			}
 			EXFALSO -> {
 				val newGoal = goal.copy(
 					conclusion = FALSE
 				)
-				return goals.replace(newGoal)
+				return goals.replaceFirst(newGoal)
 			}
 			BY_CONTRA -> {
 				val newGoal = goal.copy(
 					assumptions = goal.assumptions + NOT(conclusion),
 					conclusion = FALSE
 				)
-				return goals.replace(newGoal)
+				return goals.replaceFirst(newGoal)
 			}
 			USE_WITHOUT_FREE_VARS -> {
 				conclusion as EXISTS
 				val newGoal = goal.copy(
 					conclusion = conclusion.operandFml
 				)
-				return goals.replace(newGoal)
+				return goals.replaceFirst(newGoal)
 			}
 		}
 	}
@@ -167,21 +167,21 @@ enum class Tactic1WithFml: ITactic {
 				val newGoal = goal.copy(
 					conclusion = assumption.leftFml
 				)
-				return goals.replace(newGoal)
+				return goals.replaceFirst(newGoal)
 			}
 			APPLY_NOT -> {
 				assumption as NOT
 				val newGoal = goal.copy(
 					conclusion = assumption.operandFml
 				)
-				return goals.replace(newGoal)
+				return goals.replaceFirst(newGoal)
 			}
 			CASES_AND -> {
 				assumption as AND
 				val newGoal = goal.copy(
 					assumptions = goal.assumptions.replaceIfDistinct(assumption, assumption.leftFml, assumption.rightFml)
 				)
-				return goals.replace(newGoal)
+				return goals.replaceFirst(newGoal)
 			}
 			CASES_OR -> {
 				assumption as OR
@@ -191,7 +191,7 @@ enum class Tactic1WithFml: ITactic {
 				val rightGoal	= goal.copy(
 					assumptions = goal.assumptions.replace(assumption, assumption.rightFml)
 				)
-				return goals.replace(leftGoal, rightGoal)
+				return goals.replaceFirst(leftGoal, rightGoal)
 			}
 			CASES_IFF -> {
 				assumption as IFF
@@ -200,7 +200,7 @@ enum class Tactic1WithFml: ITactic {
 				val newGoal = goal.copy(
 					assumptions = goal.assumptions.replaceIfDistinct(assumption, toRight, toLeft)
 				)
-				return goals.replace(newGoal)
+				return goals.replaceFirst(newGoal)
 			}
 			CASES_EXISTS -> {
 				assumption as EXISTS
@@ -209,27 +209,27 @@ enum class Tactic1WithFml: ITactic {
 				val newGoal = goal.copy(
 					assumptions = goal.assumptions.replace(assumption, newAssumption)
 				)
-				return goals.replace(newGoal)
+				return goals.replaceFirst(newGoal)
 			}
 			REVERT -> {
 				val newGoal = goal.copy(
 					assumptions = goal.assumptions.minus(assumption),
 					conclusion = IMPLIES(assumption, goal.conclusion)
 				)
-				return goals.replace(newGoal)
+				return goals.replaceFirst(newGoal)
 			}
 			CLEAR -> {
 				val newGoal = goal.copy(
 					assumptions = goal.assumptions.minus(assumption)
 				)
-				return goals.replace(newGoal)
+				return goals.replaceFirst(newGoal)
 			}
 			HAVE_IMPLIES -> {
 				assumption as IMPLIES
 				val newGoal = goal.copy(
 					assumptions = goal.assumptions.replace(assumption, assumption.rightFml)
 				)
-				return goals.replace(newGoal)
+				return goals.replaceFirst(newGoal)
 			}
 			HAVE_IMPLIES_WITHOUT_LEFT -> {
 				assumption as IMPLIES
@@ -240,13 +240,13 @@ enum class Tactic1WithFml: ITactic {
 				val newGoal2 = goal.copy(
 					assumptions = goal.assumptions.replace(assumption, assumption.rightFml)
 				)
-				return goals.replace(newGoal1, newGoal2)
+				return goals.replaceFirst(newGoal1, newGoal2)
 			}
 			HAVE_NOT -> {
 				val newGoal = goal.copy(
 					assumptions = goal.assumptions + FALSE
 				)
-				return goals.replace(newGoal)
+				return goals.replaceFirst(newGoal)
 			}
 			HAVE_WITHOUT_FREE_VARS -> {
 				assumption as ALL
@@ -254,7 +254,7 @@ enum class Tactic1WithFml: ITactic {
 				val newGoal = goal.copy(
 					assumptions = goal.assumptions.addBelow(assumption, newAssumption)
 				)
-				return goals.replace(newGoal)
+				return goals.replaceFirst(newGoal)
 			}
 		}
 	}
@@ -332,14 +332,14 @@ enum class Tactic1WithVar: ITactic {
 				val newGoal = goal.copy(
 					conclusion = newConclusion
 				)
-				goals.replace(newGoal)
+				goals.replaceFirst(newGoal)
 			}
 			USE -> {
 				val conclusion = goal.conclusion as EXISTS
 				val newGoal = goal.copy(
 					conclusion = conclusion.substitute(freeVar)
 				)
-				goals.replace(newGoal)
+				goals.replaceFirst(newGoal)
 			}
 		}
 	}
@@ -367,7 +367,7 @@ enum class Tactic2WithVar: ITactic {
 		val newGoal = goal.copy(
 			assumptions = goal.assumptions.addBelow(assumption, newAssumption)
 		)
-		return goals.replace(newGoal)
+		return goals.replaceFirst(newGoal)
 	}
 	fun availableAssumptionAndFreeVars(goal: Goal): Map<Formula, Set<Var>> {
 		val result = mutableMapOf<Formula, Set<Var>>()

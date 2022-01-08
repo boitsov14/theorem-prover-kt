@@ -19,7 +19,7 @@ data class Sequent(val assumptions: List<Formula>, val conclusions: List<Formula
 
 typealias Sequents = List<Sequent>
 
-fun Sequent.toGoals(): Sequents = listOf(this)
+fun Sequent.toSequents(): Sequents = listOf(this)
 // TODO: 2021/12/07 which is better?
 
-fun Sequents.replace(vararg newFirstSequents: Sequent): Sequents = newFirstSequents.toList() + this.drop(1)
+fun Sequents.replaceFirst(vararg newFirstSequents: Sequent): Sequents = newFirstSequents.toList() + this.drop(1)

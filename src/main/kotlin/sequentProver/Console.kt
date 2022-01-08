@@ -6,14 +6,14 @@ fun Sequents.prove() {
 	val history = mutableListOf<IApplyData>()
 
 	while (true) {
-		val goals = history.applyTactics(this)
-		printGoals(goals)
-		if (goals.isEmpty()) {
+		val sequents = history.applyTactics(this)
+		printSequents(sequents)
+		if (sequents.isEmpty()) {
 			println("PROOF SUCCEED!")
 			break
 		}
-		val goal = goals.first()
-		val applyData = applyBasicTacticOrNull(goal)
+		val sequent = sequents.first()
+		val applyData = applyBasicTacticOrNull(sequent)
 		if (applyData == null) {
 			println("PROOF FAILED")
 			break
@@ -28,6 +28,6 @@ fun Sequents.prove() {
 	println("loop count: $count")
 }
 
-fun printGoals(sequents: Sequents) {
+fun printSequents(sequents: Sequents) {
 	sequents.forEach { println(it) }
 }
