@@ -12,7 +12,6 @@ val allTactics: List<ITactic> = BasicTactic.values().toList()
 
 fun Sequent.applicableTactics() = allTactics.filter { it.canApply(this) }
 
-// TODO: 2022/01/01 change tacticGame ver?
 sealed interface IApplyData {
 	val tactic: ITactic
 }

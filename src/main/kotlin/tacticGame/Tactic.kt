@@ -12,15 +12,17 @@ val allTactics: List<ITactic> = Tactic0.values().toList() + Tactic1WithFml.value
 
 fun Goal.applicableTactics() = allTactics.filter { it.canApply(this) }
 
-sealed interface IApplyData
+sealed interface IApplyData{
+	val tactic: ITactic
+}
 
 typealias History = List<IApplyData>
 
 fun IApplyData.applyTactic(goals: Goals): Goals = when(this) {
-	is Tactic0.ApplyData 		-> this.tactic0.applyTactic(goals)
-	is Tactic1WithFml.ApplyData -> this.tactic1WithFml.applyTactic(goals, this.assumption)
-	is Tactic1WithVar.ApplyData -> this.tactic1WithVar.applyTactic(goals, this.fixedVar)
-	is Tactic2WithVar.ApplyData -> this.tactic2WithVar.applyTactic(goals, this.assumption, this.fixedVar)
+	is Tactic0.ApplyData 		-> this.tactic.applyTactic(goals)
+	is Tactic1WithFml.ApplyData -> this.tactic.applyTactic(goals, this.assumption)
+	is Tactic1WithVar.ApplyData -> this.tactic.applyTactic(goals, this.fixedVar)
+	is Tactic2WithVar.ApplyData -> this.tactic.applyTactic(goals, this.assumption, this.fixedVar)
 }
 
 fun History.applyTactics(firstGoals: Goals): Goals = this.fold(firstGoals){ currentGoals, applyData -> applyData.applyTactic(currentGoals)}
@@ -40,7 +42,7 @@ enum class Tactic0: ITactic {
 		BY_CONTRA -> "by_contra"
 		USE_WITHOUT_FIXED_VARS -> "use"
 	}
-	data class ApplyData(val tactic0: Tactic0): IApplyData
+	data class ApplyData(override val tactic: Tactic0): IApplyData
 	override fun canApply(goal: Goal): Boolean {
 		val conclusion = goal.conclusion
 		return when(this) {
@@ -154,7 +156,7 @@ enum class Tactic1WithFml: ITactic {
 		CLEAR -> "clear"
 		HAVE_IMPLIES, HAVE_IMPLIES_WITHOUT_LEFT, HAVE_NOT, HAVE_WITHOUT_FIXED_VARS -> "have"
 	}
-	data class ApplyData(val tactic1WithFml: Tactic1WithFml, val assumption: Formula): IApplyData
+	data class ApplyData(override val tactic: Tactic1WithFml, val assumption: Formula): IApplyData
 	override fun canApply(goal: Goal): Boolean = availableAssumptions(goal).isNotEmpty()
 	fun applyTactic(goals: Goals, assumption: Formula): Goals {
 		val goal = goals[0]
@@ -309,7 +311,7 @@ enum class Tactic1WithVar: ITactic {
 		REVERT 	-> "revert"
 		USE 	-> "use"
 	}
-	data class ApplyData(val tactic1WithVar: Tactic1WithVar, val fixedVar: Var): IApplyData
+	data class ApplyData(override val tactic: Tactic1WithVar, val fixedVar: Var): IApplyData
 	override fun canApply(goal: Goal): Boolean = when(this) {
 		REVERT 	-> availableFixedVars(goal).isNotEmpty()
 		USE 	-> goal.conclusion is EXISTS && availableFixedVars(goal).isNotEmpty()
@@ -355,7 +357,7 @@ enum class Tactic1WithVar: ITactic {
 enum class Tactic2WithVar: ITactic {
 	HAVE;
 	override fun toString(): String = "have"
-	data class ApplyData(val tactic2WithVar: Tactic2WithVar, val assumption: Formula, val fixedVar: Var): IApplyData
+	data class ApplyData(override val tactic: Tactic2WithVar, val assumption: Formula, val fixedVar: Var): IApplyData
 	override fun canApply(goal: Goal): Boolean = availablePairsOfAssumptionAndFixedVar(goal).isNotEmpty()
 	fun applyTactic(goals: Goals, assumption: Formula, fixedVar: Var): Goals {
 		val goal = goals[0]

@@ -152,8 +152,8 @@ fun printHistory(firstGoals: Goals, history: History) {
 }
 
 fun IApplyData.getString(): String = when(this) {
-	is Tactic0.ApplyData -> "${this.tactic0}"
-	is Tactic1WithFml.ApplyData -> "${this.tactic1WithFml} ${this.assumption}"
-	is Tactic1WithVar.ApplyData -> "${this.tactic1WithVar} ${this.fixedVar}"
-	is Tactic2WithVar.ApplyData -> "${this.tactic2WithVar} ${this.assumption} ${this.fixedVar}"
+	is Tactic0.ApplyData -> "${this.tactic}"
+	is Tactic1WithFml.ApplyData -> "${this.tactic} ${this.assumption}"
+	is Tactic1WithVar.ApplyData -> "${this.tactic} ${this.fixedVar}"
+	is Tactic2WithVar.ApplyData -> "${this.tactic} ${this.assumption} ${this.fixedVar}"
 }
