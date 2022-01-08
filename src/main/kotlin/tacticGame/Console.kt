@@ -114,13 +114,13 @@ fun letMeProve(firstGoals: Goals) {
 			}
 			is Tactic2WithVar -> {
 				print("AVAILABLE FORMULAS >>> ")
-				val possibleAssumptions = tactic.availablePairsOfAssumptionAndFixedVar(goal).map { it.first }.distinct()
+				val possibleAssumptions = tactic.availableAssumptionAndFixedVars(goal).keys
 				println(possibleAssumptions.joinToString())
 				print("SELECT A FORMULA >>> ")
-				val assumptionNum = readLine()!!.toInt()
-				val assumption = possibleAssumptions[assumptionNum]
+				val assumptionIndex = readLine()!!.toInt()
+				val assumption = possibleAssumptions.elementAt(assumptionIndex)
 				print("AVAILABLE VARIABLES >>> ")
-				val possibleVars = tactic.availablePairsOfAssumptionAndFixedVar(goal).filter { it.first == assumption }.map { it.second }
+				val possibleVars = tactic.availableAssumptionAndFixedVars(goal)[assumption]!!
 				println(possibleVars.joinToString())
 				print("SELECT A VARIABLE >>> ")
 				val varStr = readLine()!!

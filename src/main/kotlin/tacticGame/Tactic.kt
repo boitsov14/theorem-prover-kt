@@ -358,7 +358,7 @@ enum class Tactic2WithVar: ITactic {
 	HAVE;
 	override fun toString(): String = "have"
 	data class ApplyData(override val tactic: Tactic2WithVar, val assumption: Formula, val fixedVar: Var): IApplyData
-	override fun canApply(goal: Goal): Boolean = availablePairsOfAssumptionAndFixedVar(goal).isNotEmpty()
+	override fun canApply(goal: Goal): Boolean = availableAssumptionAndFixedVars(goal).isNotEmpty()
 	fun applyTactic(goals: Goals, assumption: Formula, fixedVar: Var): Goals {
 		val goal = goals[0]
 		if (!(this.canApply(goal))) { throw IllegalTacticException() }
@@ -369,14 +369,13 @@ enum class Tactic2WithVar: ITactic {
 		)
 		return goals.replace(newGoal)
 	}
-	fun availablePairsOfAssumptionAndFixedVar(goal: Goal): List<Pair<Formula, Var>> {
-		val result = mutableListOf<Pair<Formula, Var>>()
+	fun availableAssumptionAndFixedVars(goal: Goal): Map<Formula, Set<Var>> {
+		val result = mutableMapOf<Formula, Set<Var>>()
 		val possibleAssumptions = goal.assumptions.filterIsInstance<ALL>()
 		for (assumption in possibleAssumptions) {
-			for (fixedVar in goal.freeVars) {
-				if (assumption.substitute(fixedVar) !in goal.assumptions) {
-					result.add(Pair(assumption, fixedVar))
-				}
+			val availableVars = goal.freeVars.filter { assumption.substitute(it) !in goal.assumptions }.toSet()
+			if (availableVars.isNotEmpty()) {
+				result[assumption] = availableVars
 			}
 		}
 		return result
