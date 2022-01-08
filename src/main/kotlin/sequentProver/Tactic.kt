@@ -29,19 +29,7 @@ class IllegalTacticException: Exception()
 
 // Basic Tactic
 enum class BasicTactic: ITactic {
-	ASSUMPTION,
-	AND_LEFT,
-	AND_RIGHT,
-	OR_LEFT,
-	OR_RIGHT,
-	IMPLIES_LEFT,
-	IMPLIES_RIGHT,
-	NOT_LEFT,
-	NOT_RIGHT,
-	IFF_LEFT,
-	IFF_RIGHT,
-	ALL_RIGHT,
-	EXISTS_LEFT;
+	ASSUMPTION, AND_LEFT, AND_RIGHT, OR_LEFT, OR_RIGHT, IMPLIES_LEFT, IMPLIES_RIGHT, NOT_LEFT, NOT_RIGHT, IFF_LEFT, IFF_RIGHT, ALL_RIGHT, EXISTS_LEFT;
 	override fun toString(): String = when(this) {
 		ASSUMPTION 		-> "assumption"
 		AND_LEFT 		-> "∧L"

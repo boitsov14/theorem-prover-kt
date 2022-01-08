@@ -29,29 +29,16 @@ class IllegalTacticException: Exception()
 
 // Tactic with arity 0.
 enum class Tactic0: ITactic {
-	ASSUMPTION,
-	INTRO_IMPLIES,
-	INTRO_NOT,
-	INTRO_ALL,
-	SPLIT_AND,
-	SPLIT_IFF,
-	LEFT,
-	RIGHT,
-	EXFALSO,
-	BY_CONTRA,
-	USE_WITHOUT_FIXED_VARS;
+	ASSUMPTION, INTRO_IMPLIES, INTRO_NOT, INTRO_ALL, SPLIT_AND, SPLIT_IFF, LEFT, RIGHT, EXFALSO, BY_CONTRA, USE_WITHOUT_FIXED_VARS;
 	override fun toString(): String = when(this) {
-		ASSUMPTION 		-> "assumption"
-		INTRO_IMPLIES 	-> "intro"
-		INTRO_NOT 		-> "intro"
-		INTRO_ALL 		-> "intro"
-		SPLIT_AND 		-> "split"
-		SPLIT_IFF 		-> "split"
-		LEFT 			-> "left"
-		RIGHT 			-> "right"
-		EXFALSO 		-> "exfalso"
-		BY_CONTRA 		-> "by_contra"
-		USE_WITHOUT_FIXED_VARS 	-> "use"
+		ASSUMPTION 	-> "assumption"
+		INTRO_IMPLIES, INTRO_NOT, INTRO_ALL -> "intro"
+		SPLIT_AND, SPLIT_IFF -> "split"
+		LEFT -> "left"
+		RIGHT -> "right"
+		EXFALSO -> "exfalso"
+		BY_CONTRA -> "by_contra"
+		USE_WITHOUT_FIXED_VARS -> "use"
 	}
 	data class ApplyData(val tactic0: Tactic0): IApplyData
 	override fun canApply(goal: Goal): Boolean {
@@ -159,31 +146,13 @@ enum class Tactic0: ITactic {
 
 // Tactic with one formula.
 enum class Tactic1WithFml: ITactic {
-	APPLY_IMPLIES,
-	APPLY_NOT,
-	CASES_AND,
-	CASES_OR,
-	CASES_IFF,
-	CASES_EXISTS,
-	REVERT,
-	CLEAR,
-	HAVE_IMPLIES,
-	HAVE_IMPLIES_WITHOUT_LEFT,
-	HAVE_NOT,
-	HAVE_WITHOUT_FIXED_VARS;
+	APPLY_IMPLIES, APPLY_NOT, CASES_AND, CASES_OR, CASES_IFF, CASES_EXISTS, REVERT, CLEAR, HAVE_IMPLIES, HAVE_IMPLIES_WITHOUT_LEFT, HAVE_NOT, HAVE_WITHOUT_FIXED_VARS;
 	override fun toString(): String = when(this) {
-		APPLY_IMPLIES 				-> "apply"
-		APPLY_NOT 					-> "apply"
-		CASES_AND 					-> "cases"
-		CASES_OR 					-> "cases"
-		CASES_IFF 					-> "cases"
-		CASES_EXISTS 				-> "cases"
-		REVERT 						-> "revert"
-		CLEAR 						-> "clear"
-		HAVE_IMPLIES 				-> "have"
-		HAVE_IMPLIES_WITHOUT_LEFT 	-> "have"
-		HAVE_NOT 					-> "have"
-		HAVE_WITHOUT_FIXED_VARS 	-> "have"
+		APPLY_IMPLIES, APPLY_NOT -> "apply"
+		CASES_AND, CASES_OR, CASES_IFF, CASES_EXISTS -> "cases"
+		REVERT -> "revert"
+		CLEAR -> "clear"
+		HAVE_IMPLIES, HAVE_IMPLIES_WITHOUT_LEFT, HAVE_NOT, HAVE_WITHOUT_FIXED_VARS -> "have"
 	}
 	data class ApplyData(val tactic1WithFml: Tactic1WithFml, val assumption: Formula): IApplyData
 	override fun canApply(goal: Goal): Boolean = availableAssumptions(goal).isNotEmpty()
@@ -335,8 +304,7 @@ enum class Tactic1WithFml: ITactic {
 
 // Tactic with one variable.
 enum class Tactic1WithVar: ITactic {
-	REVERT,
-	USE;
+	REVERT, USE;
 	override fun toString(): String = when(this) {
 		REVERT 	-> "revert"
 		USE 	-> "use"
