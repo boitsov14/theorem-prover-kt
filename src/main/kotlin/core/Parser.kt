@@ -5,10 +5,16 @@ import core.Formula.*
 class FormulaParserException(message: String): Exception(message)
 
 fun String.parse(): Formula {
+	println(this)
 	val chrs = ArrayDeque(this.toOneLetter().toCharArray().toList())
+	println(chrs)
 	val preTokens = preTokenize(chrs)
+	println(preTokens)
 	val tokens = tokenize(preTokens)
+	println(tokens)
 	val reversePolishNotation = toReversePolishNotation(tokens)
+	println(reversePolishNotation)
+	println(getFormula(reversePolishNotation))
 	return getFormula(reversePolishNotation)
 }
 
@@ -53,22 +59,22 @@ private sealed interface Token {
 	object TRUE: Token
 }
 
-private fun String.replace(oldValues: List<String>, newValue: String): String {
+private fun String.replaceAll(oldValues: List<String>, newValue: String): String {
 	var result = this
 	oldValues.forEach { result = result.replace(it, newValue, true) }
 	return result
 }
 
 private fun String.toOneLetter(): String = this
-	.replace(listOf("true", "tautology", "top"), "⊤")
-	.replace(listOf("false", "contradiction", "bottom"), "⊥")
-	.replace(listOf("not ", "~", "negation "), "¬")
-	.replace(listOf(" and ",""" /\ """, "&"), " ∧ ")
-	.replace(listOf(" or ", """ \/ """, "|"), " ∨ ")
-	.replace(listOf(" implies ", " -> ", " => ", " --> ", " ==> ", " to ", " imply "), " → ")
-	.replace(listOf(" iff ", " <-> ", " <=> ", " <--> ", " <==> ", " if and only if "), " ↔ ")
-	.replace(listOf("forall ", "all "), "∀")
-	.replace(listOf("exists ", "ex "), "∃")
+	.replaceAll(listOf("true", "tautology", "top"), "⊤")
+	.replaceAll(listOf("false", "contradiction", "bottom"), "⊥")
+	.replaceAll(listOf("not ", "~", "negation "), "¬")
+	.replaceAll(listOf(" and ",""" /\ """, "&"), " ∧ ")
+	.replaceAll(listOf(" or ", """ \/ """, "|"), " ∨ ")
+	.replaceAll(listOf(" implies ", " -> ", " => ", " --> ", " ==> ", " to ", " imply "), " → ")
+	.replaceAll(listOf(" iff ", " <-> ", " <=> ", " <--> ", " <==> ", " if and only if "), " ↔ ")
+	.replaceAll(listOf("forall ", "all "), "∀")
+	.replaceAll(listOf("exists ", "ex "), "∃")
 
 private fun preTokenize(inputChrs: ArrayDeque<Char>): ArrayDeque<PreToken> {
 	val preTokens = ArrayDeque<PreToken>()
@@ -96,8 +102,8 @@ private fun preTokenize(inputChrs: ArrayDeque<Char>): ArrayDeque<PreToken> {
 	return preTokens
 }
 
-private fun tokenize(preTokens: ArrayDeque<PreToken>): ArrayDeque<Token> {
-	val tokens = ArrayDeque<Token>()
+private fun tokenize(preTokens: ArrayDeque<PreToken>): List<Token> {
+	val tokens = mutableListOf<Token>()
 	while (preTokens.isNotEmpty()) {
 		when (val preToken = preTokens.removeFirst()) {
 			PreToken.Symbol.LEFT_PARENTHESIS 	-> tokens.add(Token.LEFT_PARENTHESIS)
@@ -139,66 +145,66 @@ private fun tokenize(preTokens: ArrayDeque<PreToken>): ArrayDeque<Token> {
 	return tokens
 }
 
-private fun toReversePolishNotation(inputTokens: ArrayDeque<Token>): ArrayDeque<Token> {
+private fun toReversePolishNotation(inputTokens: List<Token>): List<Token> {
 	val outputTokens = ArrayDeque<Token>()
-	val stack = ArrayDeque<Token>()
+	val stack = mutableListOf<Token>()
 	for (token in inputTokens) {
 		when(token) {
 			Token.FALSE -> outputTokens.add(token)
 			Token.TRUE 	-> outputTokens.add(token)
 			is Token.PREDICATE -> outputTokens.add(token)
-			Token.LEFT_PARENTHESIS -> stack.addFirst(token)
+			Token.LEFT_PARENTHESIS -> stack.add(token)
 			Token.RIGHT_PARENTHESIS -> {
-				while (stack.isNotEmpty() && stack.first() != Token.LEFT_PARENTHESIS) {
-					outputTokens.add(stack.removeFirst())
+				while (stack.isNotEmpty() && stack.last() != Token.LEFT_PARENTHESIS) {
+					outputTokens.add(stack.removeLast())
 				}
 				if (stack.isEmpty()) {
 					throw FormulaParserException("Parenthesis Error")
 				}
-				stack.removeFirst()
+				stack.removeLast()
 			}
-			is Token.Operator.Unary -> stack.addFirst(token)
+			is Token.Operator.Unary -> stack.add(token)
 			is Token.Operator.Binary -> {
 				while (stack.isNotEmpty()
-					&& stack.first() is Token.Operator
-					&& token.precedence < (stack.first() as Token.Operator).precedence) {
-					outputTokens.add(stack.removeFirst())
+					&& stack.last() is Token.Operator
+					&& token.precedence < (stack.last() as Token.Operator).precedence) {
+					outputTokens.add(stack.removeLast())
 				}
-				stack.addFirst(token)
+				stack.add(token)
 			}
 		}
 	}
 	if (Token.LEFT_PARENTHESIS in stack) {
 		throw FormulaParserException("Parenthesis Error")
 	}
-	outputTokens.addAll(stack)
+	outputTokens.addAll(stack.reversed())
 	return outputTokens
 }
 
-private fun getFormula(tokens: ArrayDeque<Token>): Formula {
-	val stack = ArrayDeque<Formula>()
+private fun getFormula(tokens: List<Token>): Formula {
+	val stack = mutableListOf<Formula>()
 	for (token in tokens) {
 		when(token) {
-			Token.FALSE -> stack.addFirst(FALSE)
-			Token.TRUE 	-> stack.addFirst(TRUE)
-			is Token.PREDICATE -> stack.addFirst(PREDICATE(token.id, token.vars))
+			Token.FALSE -> stack.add(FALSE)
+			Token.TRUE 	-> stack.add(TRUE)
+			is Token.PREDICATE -> stack.add(PREDICATE(token.id, token.vars))
 			is Token.Operator.Unary -> {
 				if (stack.isEmpty()) {
 					throw FormulaParserException("Parse Error")
 				}
-				val fml = stack.removeFirst()
+				val fml = stack.removeLast()
 				when(token) {
-					Token.Operator.Unary.NOT -> stack.addFirst(NOT(fml))
+					Token.Operator.Unary.NOT -> stack.add(NOT(fml))
 					is Token.Operator.Unary.ALL -> {
 						try {
-							stack.addFirst(ALL(token.bddVar, fml))
+							stack.add(ALL(token.bddVar, fml))
 						} catch (e: DuplicateBddVarException) {
 							throw FormulaParserException("bounded variable is duplicated.")
 						}
 					}
 					is Token.Operator.Unary.EXISTS -> {
 						try {
-							stack.addFirst(EXISTS(token.bddVar, fml))
+							stack.add(EXISTS(token.bddVar, fml))
 						} catch (e: DuplicateBddVarException) {
 							throw FormulaParserException("bounded variable is duplicated.")
 						}
@@ -209,9 +215,9 @@ private fun getFormula(tokens: ArrayDeque<Token>): Formula {
 				if (stack.size < 2) {
 					throw FormulaParserException("Parse Error")
 				}
-				val rightFml = stack.removeFirst()
-				val leftFml = stack.removeFirst()
-				stack.addFirst(
+				val rightFml = stack.removeLast()
+				val leftFml = stack.removeLast()
+				stack.add(
 					when(token) {
 						Token.Operator.Binary.AND 		-> AND(leftFml, rightFml)
 						Token.Operator.Binary.OR 		-> OR(leftFml, rightFml)
@@ -226,5 +232,5 @@ private fun getFormula(tokens: ArrayDeque<Token>): Formula {
 	if (stack.size != 1) {
 		throw FormulaParserException("Parse Error")
 	}
-	return stack.first()
+	return stack.last()
 }
