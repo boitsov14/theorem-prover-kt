@@ -1,5 +1,7 @@
 package core
 
+import core.Term.*
+
 class DuplicateBddVarException: Exception()
 
 sealed class Formula {
