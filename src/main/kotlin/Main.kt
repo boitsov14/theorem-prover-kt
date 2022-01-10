@@ -21,6 +21,11 @@ not (P and Q and R and S and T and U and V) to (not P or not Q or not R or not S
 (A iff not A) to false
 false to P
 P to true
+(forall x. P(x)) implies (forall x. R(x) and Q(x)) implies S(a) implies exists x. (P(x) and Q(x) and R(x))
+(forall x. P(x)) and (forall x. Q(x)) implies exists x. (P(x) and Q(x))
+exists x. P(x) and Q(x) implies Q(x) and P(x)
+(exists y. forall x. P(x,y)) implies forall x. exists y. P(x,y)
+A & B | A & ~B | ~A & B | ~A & ~B
  */
 
 fun main() {

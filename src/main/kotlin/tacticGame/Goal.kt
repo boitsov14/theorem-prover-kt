@@ -1,6 +1,7 @@
 package tacticGame
 
 import core.*
+import core.Term.*
 
 data class Goal(val assumptions: Set<Formula>, val conclusion: Formula) {
 	constructor(conclusion: Formula) : this(emptySet(), conclusion)

@@ -1,6 +1,7 @@
 package sequentProver
 
 import core.*
+import core.Term.*
 
 data class Sequent(val assumptions: Set<Formula>, val conclusions: Set<Formula>) {
 	constructor(conclusions: Set<Formula>) : this(emptySet(), conclusions)

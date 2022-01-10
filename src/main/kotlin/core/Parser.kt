@@ -1,6 +1,7 @@
 package core
 
 import core.Formula.*
+import core.Term.*
 
 class FormulaParserException(message: String): Exception(message)
 

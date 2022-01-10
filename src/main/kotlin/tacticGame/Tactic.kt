@@ -2,6 +2,7 @@ package tacticGame
 
 import core.*
 import core.Formula.*
+import core.Term.*
 
 sealed interface ITactic {
 	fun canApply(goal: Goal): Boolean
