@@ -7,9 +7,8 @@ sealed interface ITactic {
 	fun canApply(sequent: Sequent): Boolean
 }
 
-val allTactics: Set<ITactic> = BasicTactic.values().toSet()
-
-fun Sequent.applicableTactics() = allTactics.filter { it.canApply(this) }
+//val allTactics: Set<ITactic> = BasicTactic.values().toSet()
+//fun Sequent.applicableTactics() = allTactics.filter { it.canApply(this) }
 
 sealed interface IApplyData {
 	val tactic: ITactic
@@ -18,15 +17,215 @@ sealed interface IApplyData {
 typealias History = List<IApplyData>
 
 fun IApplyData.applyTactic(sequents: Sequents): Sequents = when(this) {
-	is BasicTactic.ApplyData -> this.tactic.applyTactic(sequents, this.fml)
+	//is BasicTactic.ApplyData -> this.tactic.applyTactic(sequents, this.fml)
+	AXIOM.ApplyData -> TODO()
+	is UnaryTactic.ApplyData -> TODO()
+	is BinaryTactic.ApplyData -> TODO()
 }
 
 fun History.applyTactics(firstSequents: Sequents): Sequents = this.fold(firstSequents){ currentSequents, applyData -> applyData.applyTactic(currentSequents)}
 
 class IllegalTacticException: Exception()
 
+object AXIOM: ITactic {
+	override fun toString(): String = "axiom"
+	override fun canApply(sequent: Sequent): Boolean = (sequent.assumptions intersect sequent.conclusions).isNotEmpty() || TRUE in sequent.conclusions || FALSE in sequent.assumptions
+	object ApplyData: IApplyData { override val tactic = AXIOM }
+}
+
+enum class UnaryTactic: ITactic {
+	AND_LEFT, OR_RIGHT, IMPLIES_RIGHT, NOT_LEFT, NOT_RIGHT, IFF_LEFT, ALL_RIGHT, EXISTS_LEFT;
+	override fun toString(): String = when(this) {
+		AND_LEFT -> "∧L"
+		OR_RIGHT -> "∨R"
+		IMPLIES_RIGHT -> "→R"
+		NOT_LEFT -> "¬L"
+		NOT_RIGHT -> "¬R"
+		IFF_LEFT -> "↔L"
+		ALL_RIGHT -> "∀R"
+		EXISTS_LEFT -> "∃L"
+	}
+	data class ApplyData(override val tactic: UnaryTactic, val fml: Formula) : IApplyData
+	override fun canApply(sequent: Sequent): Boolean = availableFmls(sequent).isNotEmpty()
+	fun availableFmls(sequent: Sequent): List<Formula> {
+		val assumptions = sequent.assumptions
+		val conclusions = sequent.conclusions
+		return when(this) {
+			AND_LEFT -> assumptions
+				.filterIsInstance<AND>()
+				.filterNot { it.leftFml in assumptions && it.rightFml in assumptions }
+			OR_RIGHT -> conclusions
+				.filterIsInstance<OR>()
+				.filterNot { it.leftFml in conclusions && it.rightFml in conclusions }
+			IMPLIES_RIGHT -> conclusions
+				.filterIsInstance<IMPLIES>()
+				.filterNot { it.leftFml in assumptions && it.rightFml in conclusions }
+			NOT_LEFT -> assumptions
+				.filterIsInstance<NOT>()
+				.filterNot { it.operandFml in conclusions }
+			NOT_RIGHT -> conclusions
+				.filterIsInstance<NOT>()
+				.filterNot { it.operandFml in assumptions }
+			IFF_LEFT -> assumptions
+				.filterIsInstance<IFF>()
+				.filterNot { it.leftFml in assumptions && it.rightFml in assumptions }
+			EXISTS_LEFT -> assumptions
+				.filterIsInstance<EXISTS>()
+				.filterNot { assumption -> sequent.freeVars.any { freeVar -> assumption.substitute(freeVar) in assumptions } }
+			// TODO: 2021/12/12 関数記号も認めるようになったら修正要
+			ALL_RIGHT -> conclusions
+				.filterIsInstance<ALL>()
+				.filterNot { conclusion -> sequent.freeVars.any { freeVar -> conclusion.substitute(freeVar) in conclusions } }
+		}
+	}
+	fun applyTactic(sequent: Sequent, fml: Formula): Sequent {
+		if (!(this.canApply(sequent))) { throw IllegalTacticException() }
+		val assumptions = sequent.assumptions
+		val conclusions = sequent.conclusions
+		return when (this) {
+			AND_LEFT -> {
+				fml as AND
+				sequent.copy(
+					assumptions = assumptions.minus(fml) + fml.leftFml + fml.rightFml
+				)
+			}
+			OR_RIGHT -> {
+				fml as OR
+				sequent.copy(
+					conclusions = conclusions.minus(fml) + fml.leftFml + fml.rightFml
+				)
+			}
+			IMPLIES_RIGHT -> {
+				fml as IMPLIES
+				sequent.copy(
+					assumptions = assumptions + fml.leftFml,
+					conclusions = conclusions.minus(fml) + fml.rightFml
+				)
+			}
+			NOT_LEFT -> {
+				fml as NOT
+				sequent.copy(
+					assumptions = assumptions.minus(fml),
+					conclusions = conclusions + fml.operandFml
+				)
+			}
+			NOT_RIGHT -> {
+				fml as NOT
+				sequent.copy(
+					assumptions = assumptions + fml.operandFml,
+					conclusions = conclusions.minus(fml)
+				)
+			}
+			IFF_LEFT -> {
+				fml as IFF
+				val toRight = IMPLIES(fml.leftFml, fml.rightFml)
+				val toLeft  = IMPLIES(fml.rightFml, fml.leftFml)
+				sequent.copy(
+					assumptions = sequent.assumptions.minus(fml) + toRight + toLeft
+				)
+			}
+			ALL_RIGHT -> {
+				fml as ALL
+				val newVar = fml.bddVar.getFreshVar(sequent.freeVars)
+				val newConclusion = fml.substitute(newVar)
+				sequent.copy(
+					conclusions = conclusions.minus(fml) + newConclusion
+				)
+			}
+			EXISTS_LEFT -> {
+				fml as EXISTS
+				val newVar = fml.bddVar.getFreshVar(sequent.freeVars)
+				val newAssumption = fml.substitute(newVar)
+				sequent.copy(
+					assumptions = sequent.assumptions.minus(fml) + newAssumption
+				)
+			}
+		}
+	}
+}
+
+enum class BinaryTactic: ITactic {
+	AND_RIGHT, OR_LEFT, IMPLIES_LEFT, IFF_RIGHT;
+	override fun toString(): String = when(this) {
+		AND_RIGHT -> "∧R"
+		OR_LEFT -> "∨L"
+		IMPLIES_LEFT -> "→L"
+		IFF_RIGHT -> "↔R"
+	}
+	data class ApplyData(override val tactic: BinaryTactic, val fml: Formula) : IApplyData
+	override fun canApply(sequent: Sequent): Boolean = availableFmls(sequent).isNotEmpty()
+	fun availableFmls(sequent: Sequent): List<Formula> {
+		val assumptions = sequent.assumptions
+		val conclusions = sequent.conclusions
+		return when(this) {
+			AND_RIGHT -> conclusions
+				.filterIsInstance<AND>()
+				.filterNot { it.leftFml in conclusions || it.rightFml in conclusions }
+			OR_LEFT -> assumptions
+				.filterIsInstance<OR>()
+				.filterNot { it.leftFml in assumptions || it.rightFml in assumptions }
+			IMPLIES_LEFT -> assumptions
+				.filterIsInstance<IMPLIES>()
+				.filterNot { it.leftFml in conclusions }
+				.filterNot { it.rightFml in assumptions }
+			IFF_RIGHT -> conclusions
+				.filterIsInstance<IFF>()
+				.filterNot { it.leftFml in assumptions || it.rightFml in conclusions }
+		}
+	}
+	fun applyTactic(sequent: Sequent, fml: Formula): Pair<Sequent, Sequent> {
+		if (!(this.canApply(sequent))) { throw IllegalTacticException() }
+		val assumptions = sequent.assumptions
+		val conclusions = sequent.conclusions
+		return when (this) {
+			AND_RIGHT -> {
+				fml as AND
+				val leftSequent = sequent.copy(
+					conclusions = conclusions.minus(fml) + fml.leftFml
+				)
+				val rightSequent = sequent.copy(
+					conclusions = conclusions.minus(fml) + fml.rightFml
+				)
+				leftSequent to rightSequent
+			}
+			OR_LEFT -> {
+				fml as OR
+				val leftSequent = sequent.copy(
+					assumptions = assumptions.minus(fml) + fml.leftFml
+				)
+				val rightSequent = sequent.copy(
+					assumptions = assumptions.minus(fml) + fml.rightFml
+				)
+				leftSequent to rightSequent
+			}
+			IMPLIES_LEFT -> {
+				fml as IMPLIES
+				val newSequent1 = sequent.copy(
+					assumptions = assumptions.minus(fml),
+					conclusions = setOf(fml.leftFml) + conclusions
+				)
+				val newSequent2 = sequent.copy(
+					assumptions = assumptions.minus(fml) + fml.rightFml
+				)
+				newSequent1 to newSequent2
+			}
+			IFF_RIGHT -> {
+				fml as IFF
+				val leftSequent = sequent.copy(
+					conclusions = conclusions.minus(fml) + fml.leftFml
+				)
+				val rightSequent = sequent.copy(
+					conclusions = conclusions.minus(fml) + fml.rightFml
+				)
+				leftSequent to rightSequent
+			}
+		}
+	}
+}
+
+// TODO: 2022/01/10 delete this class.
 // Basic Tactic
-enum class BasicTactic: ITactic {
+private enum class BasicTactic: ITactic {
 	ASSUMPTION, AND_LEFT, AND_RIGHT, OR_LEFT, OR_RIGHT, IMPLIES_LEFT, IMPLIES_RIGHT, NOT_LEFT, NOT_RIGHT, IFF_LEFT, IFF_RIGHT, ALL_RIGHT, EXISTS_LEFT;
 	override fun toString(): String = when(this) {
 		ASSUMPTION 		-> "assumption"
@@ -43,7 +242,7 @@ enum class BasicTactic: ITactic {
 		ALL_RIGHT 		-> "∀R"
 		EXISTS_LEFT 	-> "∃L"
 	}
-	data class ApplyData(override val tactic: BasicTactic, val fml: Formula) : IApplyData
+	//data class ApplyData(override val tactic: BasicTactic, val fml: Formula) : IApplyData
 	override fun canApply(sequent: Sequent): Boolean = availableFmls(sequent).isNotEmpty()
 	fun availableFmls(sequent: Sequent): List<Formula> {
 		val assumptions = sequent.assumptions
@@ -102,10 +301,10 @@ enum class BasicTactic: ITactic {
 			ASSUMPTION -> sequents.replaceFirst()
 			AND_LEFT -> {
 				fml as AND
-				val newSequents = sequent.copy(
+				val newSequent = sequent.copy(
 					assumptions = assumptions.minus(fml) + fml.leftFml + fml.rightFml
 				)
-				sequents.replaceFirst(newSequents)
+				sequents.replaceFirst(newSequent)
 			}
 			AND_RIGHT -> {
 				fml as AND
@@ -129,10 +328,10 @@ enum class BasicTactic: ITactic {
 			}
 			OR_RIGHT -> {
 				fml as OR
-				val newSequents = sequent.copy(
+				val newSequent = sequent.copy(
 					conclusions = conclusions.minus(fml) + fml.leftFml + fml.rightFml
 				)
-				sequents.replaceFirst(newSequents)
+				sequents.replaceFirst(newSequent)
 			}
 			IMPLIES_LEFT -> {
 				fml as IMPLIES
@@ -147,36 +346,36 @@ enum class BasicTactic: ITactic {
 			}
 			IMPLIES_RIGHT -> {
 				fml as IMPLIES
-				val newSequents = sequent.copy(
+				val newSequent = sequent.copy(
 					assumptions = assumptions + fml.leftFml,
 					conclusions = conclusions.minus(fml) + fml.rightFml
 				)
-				return sequents.replaceFirst(newSequents)
+				return sequents.replaceFirst(newSequent)
 			}
 			NOT_LEFT -> {
 				fml as NOT
-				val newSequents = sequent.copy(
+				val newSequent = sequent.copy(
 					assumptions = assumptions.minus(fml),
 					conclusions = conclusions + fml.operandFml
 				)
-				return sequents.replaceFirst(newSequents)
+				return sequents.replaceFirst(newSequent)
 			}
 			NOT_RIGHT -> {
 				fml as NOT
-				val newSequents = sequent.copy(
+				val newSequent = sequent.copy(
 					assumptions = assumptions + fml.operandFml,
 					conclusions = conclusions.minus(fml)
 				)
-				return sequents.replaceFirst(newSequents)
+				return sequents.replaceFirst(newSequent)
 			}
 			IFF_LEFT -> {
 				fml as IFF
 				val toRight = IMPLIES(fml.leftFml, fml.rightFml)
 				val toLeft  = IMPLIES(fml.rightFml, fml.leftFml)
-				val newSequents = sequent.copy(
+				val newSequent = sequent.copy(
 					assumptions = sequent.assumptions.minus(fml) + toRight + toLeft
 				)
-				sequents.replaceFirst(newSequents)
+				sequents.replaceFirst(newSequent)
 			}
 			IFF_RIGHT -> {
 				fml as IFF
@@ -192,19 +391,19 @@ enum class BasicTactic: ITactic {
 				fml as ALL
 				val newVar = fml.bddVar.getFreshVar(sequent.freeVars)
 				val newConclusion = fml.substitute(newVar)
-				val newSequents = sequent.copy(
+				val newSequent = sequent.copy(
 					conclusions = conclusions.minus(fml) + newConclusion
 				)
-				return sequents.replaceFirst(newSequents)
+				return sequents.replaceFirst(newSequent)
 			}
 			EXISTS_LEFT -> {
 				fml as EXISTS
 				val newVar = fml.bddVar.getFreshVar(sequent.freeVars)
 				val newAssumption = fml.substitute(newVar)
-				val newSequents = sequent.copy(
+				val newSequent = sequent.copy(
 					assumptions = sequent.assumptions.minus(fml) + newAssumption
 				)
-				return sequents.replaceFirst(newSequents)
+				return sequents.replaceFirst(newSequent)
 			}
 		}
 	}
