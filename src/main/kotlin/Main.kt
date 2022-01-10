@@ -31,8 +31,8 @@ A & B | A & ~B | ~A & B | ~A & ~B
 fun main() {
 	print("INPUT A FORMULA >>> ")
 	val fml = readLine()!!.parse()
-	val firstSequents = Sequent(setOf(fml)).toSequents()
-	firstSequents.prove()
+	val firstSequent = Sequent(setOf(fml))
+	firstSequent.prove()
 
 	/*
 	val firstGoals = Goal(fml).toGoals()

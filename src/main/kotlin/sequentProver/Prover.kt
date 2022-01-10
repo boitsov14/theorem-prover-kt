@@ -1,9 +1,5 @@
 package sequentProver
 
-import sequentProver.*
-import sequentProver.UnaryTactic.*
-import sequentProver.BinaryTactic.*
-
 /*
 val allBasicTactics = listOf(AXIOM, IMPLIES_RIGHT, NOT_RIGHT, NOT_LEFT, OR_RIGHT, AND_LEFT, IFF_LEFT, OR_LEFT, AND_RIGHT, IFF_RIGHT, ALL_RIGHT, EXISTS_LEFT, IMPLIES_LEFT)
 
@@ -29,5 +25,5 @@ fun applyUnaryTacticOrNull(sequent: Sequent): IApplyData0? {
 fun applyBinaryTacticOrNull(sequent: Sequent): Pair<IApplyData0, IApplyData0>? {
 	val tactic = BinaryTactic.values().find { it.canApply(sequent) } ?: return null
 	val fml = tactic.availableFmls(sequent).first()
-	return ApplyData0(tactic, fml, true) to ApplyData0(tactic, fml, false)
+	return BinaryTactic.ApplyData0(tactic, fml, true) to BinaryTactic.ApplyData0(tactic, fml, false)
 }
