@@ -14,23 +14,37 @@ sealed interface IApplyData {
 	val tactic: ITactic
 }
 
-typealias History = List<IApplyData>
-
-fun IApplyData.applyTactic(sequents: Sequents): Sequents = when(this) {
-	//is BasicTactic.ApplyData -> this.tactic.applyTactic(sequents, this.fml)
-	AXIOM.ApplyData -> TODO()
-	is UnaryTactic.ApplyData -> TODO()
-	is BinaryTactic.ApplyData -> TODO()
+sealed interface IApplyData0 {
+	val tactic: ITactic
 }
 
-fun History.applyTactics(firstSequents: Sequents): Sequents = this.fold(firstSequents){ currentSequents, applyData -> applyData.applyTactic(currentSequents)}
+typealias History = List<IApplyData>
+typealias History0 = List<IApplyData0>
+
+fun IApplyData.applyTactic(sequents: Sequents): Sequents {
+	val sequent = sequents[0]
+	return when(this) {
+		AXIOM.ApplyData -> sequents.drop(1)
+		is UnaryTactic.ApplyData -> this.tactic.applyTactic(sequent, fml).toSequents() + sequents.drop(1)
+		is BinaryTactic.ApplyData -> this.tactic.applyTactic(sequent, fml).toList() + sequents.drop(1)
+	}
+}
+
+fun IApplyData0.applyTactic(sequent: Sequent): Sequent = when(this) {
+	AXIOM.ApplyData -> throw IllegalTacticException()
+	is UnaryTactic.ApplyData -> this.tactic.applyTactic(sequent, fml)
+	is BinaryTactic.ApplyData0 -> if (isFirst) { this.tactic.applyTactic(sequent, fml).first } else { this.tactic.applyTactic(sequent, fml).second }
+}
+
+fun History.applyTactics(firstSequents: Sequents): Sequents = this.fold(firstSequents){ sequents, applyData -> applyData.applyTactic(sequents)}
+fun History0.applyTactics(firstSequent: Sequent): Sequent = this.fold(firstSequent){ sequent, applyData0 -> applyData0.applyTactic(sequent)}
 
 class IllegalTacticException: Exception()
 
 object AXIOM: ITactic {
 	override fun toString(): String = "axiom"
 	override fun canApply(sequent: Sequent): Boolean = (sequent.assumptions intersect sequent.conclusions).isNotEmpty() || TRUE in sequent.conclusions || FALSE in sequent.assumptions
-	object ApplyData: IApplyData { override val tactic = AXIOM }
+	object ApplyData: IApplyData, IApplyData0 { override val tactic = AXIOM }
 }
 
 enum class UnaryTactic: ITactic {
@@ -45,7 +59,7 @@ enum class UnaryTactic: ITactic {
 		ALL_RIGHT -> "∀R"
 		EXISTS_LEFT -> "∃L"
 	}
-	data class ApplyData(override val tactic: UnaryTactic, val fml: Formula) : IApplyData
+	data class ApplyData(override val tactic: UnaryTactic, val fml: Formula) : IApplyData, IApplyData0
 	override fun canApply(sequent: Sequent): Boolean = availableFmls(sequent).isNotEmpty()
 	fun availableFmls(sequent: Sequent): List<Formula> {
 		val assumptions = sequent.assumptions
@@ -153,6 +167,7 @@ enum class BinaryTactic: ITactic {
 		IFF_RIGHT -> "↔R"
 	}
 	data class ApplyData(override val tactic: BinaryTactic, val fml: Formula) : IApplyData
+	data class ApplyData0(override val tactic: BinaryTactic, val fml: Formula, val isFirst: Boolean) : IApplyData0
 	override fun canApply(sequent: Sequent): Boolean = availableFmls(sequent).isNotEmpty()
 	fun availableFmls(sequent: Sequent): List<Formula> {
 		val assumptions = sequent.assumptions
