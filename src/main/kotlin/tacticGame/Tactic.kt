@@ -82,9 +82,9 @@ enum class Tactic0: ITactic {
 			}
 			INTRO_ALL -> {
 				conclusion as ALL
-				val newVar = conclusion.bddVar.getFreshVar(goal.freeVars)
+				val freshVar = conclusion.bddVar.getFreshVar(goal.freeVars)
 				val newGoal = goal.copy(
-					conclusion = conclusion.substitute(newVar)
+					conclusion = conclusion.substitute(freshVar)
 				)
 				return goals.replaceFirst(newGoal)
 			}
@@ -204,8 +204,8 @@ enum class Tactic1WithFml: ITactic {
 			}
 			CASES_EXISTS -> {
 				assumption as EXISTS
-				val newVar = assumption.bddVar.getFreshVar(goal.freeVars)
-				val newAssumption = assumption.substitute(newVar)
+				val freshVar = assumption.bddVar.getFreshVar(goal.freeVars)
+				val newAssumption = assumption.substitute(freshVar)
 				val newGoal = goal.copy(
 					assumptions = goal.assumptions.minus(assumption) + newAssumption
 				)
@@ -331,9 +331,9 @@ enum class Tactic1WithVar: ITactic {
 			REVERT -> {
 				val conclusion = goal.conclusion
 				val newConclusion = if (freeVar in conclusion.bddVars) {
-					val newVar = freeVar.getFreshVar(conclusion.bddVars)
-					val replacedConclusion = conclusion.replace(freeVar, newVar)
-					ALL(newVar, replacedConclusion)
+					val freshVar = freeVar.getFreshVar(conclusion.bddVars)
+					val replacedConclusion = conclusion.replace(freeVar, freshVar)
+					ALL(freshVar, replacedConclusion)
 				} else {
 					ALL(freeVar, conclusion)
 				}

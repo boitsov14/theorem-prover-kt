@@ -36,6 +36,7 @@ sealed class Term {
 		get() = when (this) {
 			is Var -> setOf(this)
 			is UnificationTerm -> availableVars
+			// TODO: 2022/01/17 availableVarsにするかemptySetにするか
 			is Function -> terms.map { it.freeVars }.flatten().toSet()
 		}
 	val unificationTerm: Set<UnificationTerm>

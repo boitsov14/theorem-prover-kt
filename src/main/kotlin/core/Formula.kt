@@ -91,6 +91,19 @@ sealed class Formula {
 			is ALL 			-> operandFml.bddVars + bddVar
 			is EXISTS 		-> operandFml.bddVars + bddVar
 		}
+	val unificationTerms: Set<UnificationTerm>
+		get() = when (this) {
+			TRUE 			-> emptySet()
+			FALSE 			-> emptySet()
+			is PREDICATE 	-> terms.map { it.unificationTerm }.flatten().toSet()
+			is NOT 			-> operandFml.unificationTerms
+			is AND 			-> leftFml.unificationTerms + rightFml.unificationTerms
+			is OR 			-> leftFml.unificationTerms + rightFml.unificationTerms
+			is IMPLIES 		-> leftFml.unificationTerms + rightFml.unificationTerms
+			is IFF 			-> leftFml.unificationTerms + rightFml.unificationTerms
+			is ALL 			-> operandFml.unificationTerms
+			is EXISTS 		-> operandFml.unificationTerms
+		}
 	fun replace(oldVar: Var, newTerm: Term): Formula = when(this) {
 		TRUE 			-> this
 		FALSE 			-> this

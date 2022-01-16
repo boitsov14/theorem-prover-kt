@@ -2,6 +2,7 @@ package sequentProver
 
 import core.*
 import core.Formula.*
+import core.Term.*
 
 sealed interface ITactic {
 	fun canApply(sequent: Sequent): Boolean
@@ -85,49 +86,48 @@ enum class UnaryTactic: ITactic {
 				.filterNot { it.leftFml in assumptions && it.rightFml in assumptions }
 			EXISTS_LEFT -> assumptions
 				.filterIsInstance<EXISTS>()
-				.filterNot { assumption -> sequent.freeVars.any { freeVar -> assumption.substitute(freeVar) in assumptions } }
+				//.filterNot { assumption -> sequent.freeVars.any { freeVar -> assumption.substitute(freeVar) in assumptions } }
 			// TODO: 2021/12/12 関数記号も認めるようになったら修正要
+			// TODO: 2022/01/17 unification使って表現できる？
 			ALL_RIGHT -> conclusions
 				.filterIsInstance<ALL>()
-				.filterNot { conclusion -> sequent.freeVars.any { freeVar -> conclusion.substitute(freeVar) in conclusions } }
+				//.filterNot { conclusion -> sequent.freeVars.any { freeVar -> conclusion.substitute(freeVar) in conclusions } }
 		}
 	}
 	fun applyTactic(sequent: Sequent, fml: Formula): Sequent {
 		if (!(this.canApply(sequent))) { throw IllegalTacticException() }
-		val assumptions = sequent.assumptions
-		val conclusions = sequent.conclusions
 		return when (this) {
 			AND_LEFT -> {
 				fml as AND
 				sequent.copy(
-					assumptions = assumptions.minus(fml) + fml.leftFml + fml.rightFml
+					assumptions = sequent.assumptions.minus(fml) + fml.leftFml + fml.rightFml
 				)
 			}
 			OR_RIGHT -> {
 				fml as OR
 				sequent.copy(
-					conclusions = conclusions.minus(fml) + fml.leftFml + fml.rightFml
+					conclusions = sequent.conclusions.minus(fml) + fml.leftFml + fml.rightFml
 				)
 			}
 			IMPLIES_RIGHT -> {
 				fml as IMPLIES
 				sequent.copy(
-					assumptions = assumptions + fml.leftFml,
-					conclusions = conclusions.minus(fml) + fml.rightFml
+					assumptions = sequent.assumptions + fml.leftFml,
+					conclusions = sequent.conclusions.minus(fml) + fml.rightFml
 				)
 			}
 			NOT_LEFT -> {
 				fml as NOT
 				sequent.copy(
-					assumptions = assumptions.minus(fml),
-					conclusions = conclusions + fml.operandFml
+					assumptions = sequent.assumptions.minus(fml),
+					conclusions = sequent.conclusions + fml.operandFml
 				)
 			}
 			NOT_RIGHT -> {
 				fml as NOT
 				sequent.copy(
-					assumptions = assumptions + fml.operandFml,
-					conclusions = conclusions.minus(fml)
+					assumptions = sequent.assumptions + fml.operandFml,
+					conclusions = sequent.conclusions.minus(fml)
 				)
 			}
 			IFF_LEFT -> {
@@ -140,16 +140,16 @@ enum class UnaryTactic: ITactic {
 			}
 			ALL_RIGHT -> {
 				fml as ALL
-				val newVar = fml.bddVar.getFreshVar(sequent.freeVars)
-				val newConclusion = fml.substitute(newVar)
+				val freshVar = fml.bddVar.getFreshVar(sequent.freeVars)
+				val newConclusion = fml.substitute(freshVar)
 				sequent.copy(
-					conclusions = conclusions.minus(fml) + newConclusion
+					conclusions = sequent.conclusions.minus(fml) + newConclusion
 				)
 			}
 			EXISTS_LEFT -> {
 				fml as EXISTS
-				val newVar = fml.bddVar.getFreshVar(sequent.freeVars)
-				val newAssumption = fml.substitute(newVar)
+				val freshVar = fml.bddVar.getFreshVar(sequent.freeVars)
+				val newAssumption = fml.substitute(freshVar)
 				sequent.copy(
 					assumptions = sequent.assumptions.minus(fml) + newAssumption
 				)
@@ -169,24 +169,20 @@ enum class BinaryTactic: ITactic {
 	data class ApplyData(override val tactic: BinaryTactic, val fml: Formula) : IApplyData
 	data class ApplyData0(override val tactic: BinaryTactic, val fml: Formula, val isFirst: Boolean) : IApplyData0
 	override fun canApply(sequent: Sequent): Boolean = availableFmls(sequent).isNotEmpty()
-	fun availableFmls(sequent: Sequent): List<Formula> {
-		val assumptions = sequent.assumptions
-		val conclusions = sequent.conclusions
-		return when(this) {
-			AND_RIGHT -> conclusions
-				.filterIsInstance<AND>()
-				.filterNot { it.leftFml in conclusions || it.rightFml in conclusions }
-			OR_LEFT -> assumptions
-				.filterIsInstance<OR>()
-				.filterNot { it.leftFml in assumptions || it.rightFml in assumptions }
-			IMPLIES_LEFT -> assumptions
-				.filterIsInstance<IMPLIES>()
-				.filterNot { it.leftFml in conclusions }
-				.filterNot { it.rightFml in assumptions }
-			IFF_RIGHT -> conclusions
-				.filterIsInstance<IFF>()
-				.filterNot { it.leftFml in assumptions || it.rightFml in conclusions }
-		}
+	fun availableFmls(sequent: Sequent): List<Formula> = when(this) {
+		AND_RIGHT -> sequent.conclusions
+			.filterIsInstance<AND>()
+			.filterNot { it.leftFml in sequent.conclusions || it.rightFml in sequent.conclusions }
+		OR_LEFT -> sequent.assumptions
+			.filterIsInstance<OR>()
+			.filterNot { it.leftFml in sequent.assumptions || it.rightFml in sequent.assumptions }
+		IMPLIES_LEFT -> sequent.assumptions
+			.filterIsInstance<IMPLIES>()
+			.filterNot { it.leftFml in sequent.conclusions }
+			.filterNot { it.rightFml in sequent.assumptions }
+		IFF_RIGHT -> sequent.conclusions
+			.filterIsInstance<IFF>()
+			.filterNot { it.leftFml in sequent.assumptions || it.rightFml in sequent.conclusions }
 	}
 	fun applyTactic(sequent: Sequent, fml: Formula): Pair<Sequent, Sequent> {
 		if (!(this.canApply(sequent))) { throw IllegalTacticException() }
@@ -233,6 +229,74 @@ enum class BinaryTactic: ITactic {
 					conclusions = conclusions.minus(fml) + fml.rightFml
 				)
 				leftSequent to rightSequent
+			}
+		}
+	}
+}
+
+enum class UnificationTermTactic: ITactic {
+	EXISTS_RIGHT, ALL_LEFT;
+	override fun toString(): String = when(this) {
+		EXISTS_RIGHT -> "∃R"
+		ALL_LEFT -> "∀L"
+	}
+	data class ApplyData(override val tactic: UnificationTermTactic, val fml: Formula) : IApplyData, IApplyData0
+	override fun canApply(sequent: Sequent): Boolean = this.availableFmls(sequent).isNotEmpty()
+	fun availableFmls(sequent: Sequent): List<Formula> = when(this) {
+		EXISTS_RIGHT -> sequent.conclusions.filterIsInstance<EXISTS>()
+		ALL_LEFT -> sequent.conclusions.filterIsInstance<ALL>()
+	}
+	fun applyTactic(sequent: Sequent, fml: Formula, allUnificationTerms: Set<UnificationTerm>): Sequent {
+		if (!(this.canApply(sequent))) { throw IllegalTacticException() }
+		return when(this) {
+			EXISTS_RIGHT -> {
+				fml as EXISTS
+				val unificationTerm = UnificationTerm("t", sequent.freeVars).getFreshUnificationTerm(allUnificationTerms)
+				val newConclusion = fml.substitute(unificationTerm)
+				sequent.copy(
+					conclusions = sequent.conclusions.minus(fml) + newConclusion
+				)
+			}
+			ALL_LEFT -> {
+				fml as ALL
+				val unificationTerm = UnificationTerm("t", sequent.freeVars).getFreshUnificationTerm(allUnificationTerms)
+				val newConclusion = fml.substitute(unificationTerm)
+				sequent.copy(
+					assumptions = sequent.conclusions.minus(fml) + newConclusion
+				)
+			}
+		}
+	}
+}
+
+enum class TermTactic: ITactic {
+	EXISTS_RIGHT, ALL_LEFT;
+	override fun toString(): String = when(this) {
+		EXISTS_RIGHT -> "∃R"
+		ALL_LEFT -> "∀L"
+	}
+	data class ApplyData(override val tactic: TermTactic, val fml: Formula, val term: Term) : IApplyData, IApplyData0
+	override fun canApply(sequent: Sequent): Boolean = this.availableFmls(sequent).isNotEmpty()
+	fun availableFmls(sequent: Sequent): List<Formula> = when(this) {
+		EXISTS_RIGHT -> sequent.conclusions.filterIsInstance<EXISTS>()
+		ALL_LEFT -> sequent.conclusions.filterIsInstance<ALL>()
+	}
+	fun applyTactic(sequent: Sequent, fml: Formula, term: Term): Sequent {
+		if (!(this.canApply(sequent))) { throw IllegalTacticException() }
+		return when(this) {
+			EXISTS_RIGHT -> {
+				fml as EXISTS
+				val newConclusion = fml.substitute(term)
+				sequent.copy(
+					conclusions = sequent.conclusions.minus(fml) + newConclusion
+				)
+			}
+			ALL_LEFT -> {
+				fml as ALL
+				val newConclusion = fml.substitute(term)
+				sequent.copy(
+					assumptions = sequent.conclusions.minus(fml) + newConclusion
+				)
 			}
 		}
 	}
