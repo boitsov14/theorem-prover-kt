@@ -217,7 +217,7 @@ enum class BinaryTactic: ITactic {
 				fml as IMPLIES
 				val newSequent1 = sequent.copy(
 					assumptions = assumptions.minus(fml),
-					conclusions = setOf(fml.leftFml) + conclusions
+					conclusions = conclusions + fml.leftFml
 				)
 				val newSequent2 = sequent.copy(
 					assumptions = assumptions.minus(fml) + fml.rightFml
