@@ -1,13 +1,14 @@
 package core
 
 import core.Term.*
+import java.lang.IllegalArgumentException
 
 class DuplicateBddVarException: Exception()
 
 sealed class Formula {
 	object TRUE: Formula()
 	object FALSE: Formula()
-	data class PREDICATE(val id: String, val vars: List<Var>): Formula()
+	data class PREDICATE(val id: String, val terms: List<Term>): Formula()
 	data class NOT(val operandFml: Formula): Formula()
 	data class AND(val leftFml: Formula, val rightFml: Formula): Formula()
 	data class OR(val leftFml: Formula, val rightFml: Formula): Formula()
@@ -17,7 +18,7 @@ sealed class Formula {
 		init {
 			if (bddVar in operandFml.bddVars) { throw DuplicateBddVarException() }
 		}
-		fun substitute(newVar: Var): Formula = operandFml.replace(bddVar, newVar)
+		fun substitute(newTerm: Term): Formula = operandFml.replace(bddVar, newTerm)
 		override fun equals(other: Any?): Boolean {
 			if (this === other) return true
 			if (javaClass != other?.javaClass) return false
@@ -33,7 +34,7 @@ sealed class Formula {
 		init {
 			if (bddVar in operandFml.bddVars) { throw DuplicateBddVarException() }
 		}
-		fun substitute(newVar: Var): Formula = operandFml.replace(bddVar, newVar)
+		fun substitute(newTerm: Term): Formula = operandFml.replace(bddVar, newTerm)
 		override fun equals(other: Any?): Boolean {
 			if (this === other) return true
 			if (javaClass != other?.javaClass) return false
@@ -48,7 +49,7 @@ sealed class Formula {
 	private fun recToString(): String = when(this) {
 		TRUE 			-> "true"
 		FALSE 			-> "false"
-		is PREDICATE 	-> id + if (vars.isNotEmpty()) vars.joinToString(separator = ",", prefix = "(", postfix = ")") else ""
+		is PREDICATE 	-> id + if (terms.isNotEmpty()) terms.joinToString(separator = ",", prefix = "(", postfix = ")") else ""
 		is NOT 			-> "¬${operandFml.recToString()}"
 		is AND 			-> {
 			val rightFmlStr = if (rightFml is AND) rightFml.recToString().removeSurrounding("(", ")") else rightFml.recToString()
@@ -68,7 +69,7 @@ sealed class Formula {
 		get() = when (this) {
 			TRUE 			-> emptySet()
 			FALSE 			-> emptySet()
-			is PREDICATE 	-> vars.toSet()
+			is PREDICATE 	-> terms.map { it.freeVars }.flatten().toSet()
 			is NOT 			-> operandFml.freeVars
 			is AND 			-> leftFml.freeVars + rightFml.freeVars
 			is OR 			-> leftFml.freeVars + rightFml.freeVars
@@ -90,34 +91,69 @@ sealed class Formula {
 			is ALL 			-> operandFml.bddVars + bddVar
 			is EXISTS 		-> operandFml.bddVars + bddVar
 		}
-	fun replace(oldVar: Var, newVar: Var): Formula = when(this) {
+	fun replace(oldVar: Var, newTerm: Term): Formula = when(this) {
 		TRUE 			-> this
 		FALSE 			-> this
-		is PREDICATE 	-> PREDICATE(id, vars.map { if (it == oldVar) newVar else it })
-		is NOT 			-> NOT		(operandFml.replace(oldVar, newVar))
-		is AND 			-> AND		(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
-		is OR 			-> OR		(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
-		is IMPLIES 		-> IMPLIES	(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
-		is IFF 			-> IFF		(leftFml.replace(oldVar, newVar), rightFml.replace(oldVar, newVar))
+		is PREDICATE 	-> PREDICATE(id, terms.map { it.replace(oldVar, newTerm) })
+		is NOT 			-> NOT		(operandFml.replace(oldVar, newTerm))
+		is AND 			-> AND		(leftFml.replace(oldVar, newTerm), rightFml.replace(oldVar, newTerm))
+		is OR 			-> OR		(leftFml.replace(oldVar, newTerm), rightFml.replace(oldVar, newTerm))
+		is IMPLIES 		-> IMPLIES	(leftFml.replace(oldVar, newTerm), rightFml.replace(oldVar, newTerm))
+		is IFF 			-> IFF		(leftFml.replace(oldVar, newTerm), rightFml.replace(oldVar, newTerm))
 		is ALL -> {
 			if (oldVar == bddVar) {
 				this
-			} else if (newVar == bddVar) {
-				val newBddVar = bddVar.getFreshVar(operandFml.bddVars + operandFml.freeVars + newVar)
-				ALL(newBddVar, operandFml.replace(bddVar, newBddVar).replace(oldVar, newVar))
+			} else if (bddVar in newTerm.freeVars) {
+				val newBddVar = bddVar.getFreshVar(operandFml.bddVars + operandFml.freeVars + newTerm.freeVars)
+				ALL(newBddVar, operandFml.replace(bddVar, newBddVar).replace(oldVar, newTerm))
 			} else {
-				ALL(bddVar, operandFml.replace(oldVar, newVar))
+				ALL(bddVar, operandFml.replace(oldVar, newTerm))
 			}
 		}
 		is EXISTS -> {
 			if (oldVar == bddVar) {
 				this
-			} else if (newVar == bddVar) {
-				val newBddVar = bddVar.getFreshVar(operandFml.bddVars + operandFml.freeVars + newVar)
-				EXISTS(newBddVar, operandFml.replace(bddVar, newBddVar).replace(oldVar, newVar))
+			} else if (bddVar in newTerm.freeVars) {
+				val newBddVar = bddVar.getFreshVar(operandFml.bddVars + operandFml.freeVars + newTerm.freeVars)
+				EXISTS(newBddVar, operandFml.replace(bddVar, newBddVar).replace(oldVar, newTerm))
 			} else {
-				EXISTS(bddVar, operandFml.replace(oldVar, newVar))
+				EXISTS(bddVar, operandFml.replace(oldVar, newTerm))
+			}
+		}
+	}
+	fun replace(oldUnificationTerm: UnificationTerm, newTerm: Term): Formula = when(this) {
+		TRUE -> this
+		FALSE -> this
+		is PREDICATE -> PREDICATE(id, terms.map { it.replace(oldUnificationTerm, newTerm) })
+		is NOT 			-> NOT		(operandFml.replace(oldUnificationTerm, newTerm))
+		is AND 			-> AND		(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
+		is OR 			-> OR		(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
+		is IMPLIES 		-> IMPLIES	(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
+		is IFF 			-> IFF		(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
+		is ALL -> {
+			// TODO: 2022/01/17 bddVar in oldUnificationTerm.freeVarsのときどうする？ そんなケースはない？
+			if (!(oldUnificationTerm.availableVars.containsAll(newTerm.freeVars))) {
+				throw IllegalArgumentException()
+			}
+			// TODO: 2022/01/17 ここのifとelse一緒にする？
+			if (bddVar in newTerm.freeVars) {
+				val newBddVar = bddVar.getFreshVar(operandFml.bddVars + operandFml.freeVars + newTerm.freeVars)
+				ALL(newBddVar, operandFml.replace(bddVar, newBddVar).replace(oldUnificationTerm, newTerm))
+			} else {
+				ALL(bddVar, operandFml.replace(oldUnificationTerm, newTerm))
+			}
+		}
+		is EXISTS -> {
+			if (!(oldUnificationTerm.availableVars.containsAll(newTerm.freeVars))) {
+				throw IllegalArgumentException()
+			}
+			if (bddVar in newTerm.freeVars) {
+				val newBddVar = bddVar.getFreshVar(operandFml.bddVars + operandFml.freeVars + newTerm.freeVars)
+				EXISTS(newBddVar, operandFml.replace(bddVar, newBddVar).replace(oldUnificationTerm, newTerm))
+			} else {
+				EXISTS(bddVar, operandFml.replace(oldUnificationTerm, newTerm))
 			}
 		}
 	}
 }
+
