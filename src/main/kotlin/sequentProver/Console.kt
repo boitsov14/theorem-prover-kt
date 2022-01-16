@@ -1,4 +1,7 @@
 package sequentProver
+
+import core.Formula
+
 /*
 fun Sequents.prove() {
 	val start = System.currentTimeMillis()
@@ -37,6 +40,9 @@ fun printSequents(sequents: Sequents) {
 fun Sequent.prove() {
 	val start = System.currentTimeMillis()
 	var count = 0
+	var currentUnificationTermSubstitutedCountMax = 0
+	val unificationTermSubstitutedCountMax = 5
+	var allUnificationTermsSize = 0
 	val duplicateHistories = mutableListOf<History0>(emptyList())
 
 	while (true) {
@@ -48,6 +54,7 @@ fun Sequent.prove() {
 		}
 		val history = duplicateHistories[index]
 		val sequent = history.applyTactics(this)
+		println(sequent)
 		if (AXIOM.canApply(sequent)) {
 			duplicateHistories[index] = history + AXIOM.ApplyData
 			println(">>> $AXIOM")
@@ -67,8 +74,52 @@ fun Sequent.prove() {
 			println(">>> ${binaryApplyData.first.tactic}")
 			continue
 		}
-		println("PROOF FAILED")
-		break
+		var unProvable = true
+		val remainedDuplicateHistories = duplicateHistories.filterNot { it.lastOrNull() == AXIOM.ApplyData }
+		for (remainedHistory in remainedDuplicateHistories) {
+			val remainedSequent = remainedHistory.applyTactics(this)
+			if (remainedSequent.conclusions.filterIsInstance<Formula.EXISTS>().isNotEmpty()) {
+				unProvable = false
+				break
+			}
+			if (remainedSequent.assumptions.filterIsInstance<Formula.ALL>().isNotEmpty()) {
+				unProvable = false
+				break
+			}
+		}
+		if (unProvable) {
+			println("UNPROVABLE")
+			break
+		}
+		var temIndex = index
+		while (true) {
+			val tempHistory = duplicateHistories[temIndex]
+			val tepSequent = tempHistory.applyTactics(this)
+			val unificationTermApplyData = applyUnificationTermTacticOrNull(tepSequent, allUnificationTermsSize, currentUnificationTermSubstitutedCountMax)
+			if (unificationTermApplyData == null) {
+				while (true) {
+					temIndex++
+					if (temIndex == duplicateHistories.size) {
+						currentUnificationTermSubstitutedCountMax++
+						temIndex = index
+						break
+					}
+					if (duplicateHistories[temIndex].lastOrNull() != AXIOM.ApplyData) {
+						continue
+					}
+					break
+				}
+			} else {
+				allUnificationTermsSize++
+				duplicateHistories[index] = history + unificationTermApplyData
+				println(">>> ${unificationTermApplyData.tactic}")
+				break
+			}
+		}
+		if (currentUnificationTermSubstitutedCountMax > unificationTermSubstitutedCountMax) {
+			println("PROOF FAILED")
+			break
+		}
 		//printSequents(sequent)
 	}
 	val end = System.currentTimeMillis()
@@ -92,6 +143,8 @@ fun History0.toHistory(): History = this.map {
 		AXIOM.ApplyData -> it as IApplyData
 		is UnaryTactic.ApplyData -> it
 		is BinaryTactic.ApplyData0 -> BinaryTactic.ApplyData(it.tactic, it.fml)
+		is UnificationTermTactic.ApplyData -> it
+		is TermTactic.ApplyData -> it
 	}
 }
 

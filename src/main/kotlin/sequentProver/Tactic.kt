@@ -26,15 +26,19 @@ fun IApplyData.applyTactic(sequents: Sequents): Sequents {
 	val sequent = sequents[0]
 	return when(this) {
 		AXIOM.ApplyData -> sequents.drop(1)
-		is UnaryTactic.ApplyData -> this.tactic.applyTactic(sequent, fml).toSequents() + sequents.drop(1)
-		is BinaryTactic.ApplyData -> this.tactic.applyTactic(sequent, fml).toList() + sequents.drop(1)
+		is UnaryTactic.ApplyData -> tactic.applyTactic(sequent, fml).toSequents() + sequents.drop(1)
+		is BinaryTactic.ApplyData -> tactic.applyTactic(sequent, fml).toList() + sequents.drop(1)
+		is UnificationTermTactic.ApplyData -> tactic.applyTactic(sequent, fml, allUnificationTermsSize).toSequents() + sequents.drop(1)
+		is TermTactic.ApplyData -> tactic.applyTactic(sequent, fml, term).toSequents() + sequents.drop(1)
 	}
 }
 
 fun IApplyData0.applyTactic(sequent: Sequent): Sequent = when(this) {
 	AXIOM.ApplyData -> throw IllegalTacticException()
-	is UnaryTactic.ApplyData -> this.tactic.applyTactic(sequent, fml)
-	is BinaryTactic.ApplyData0 -> if (isFirst) { this.tactic.applyTactic(sequent, fml).first } else { this.tactic.applyTactic(sequent, fml).second }
+	is UnaryTactic.ApplyData -> tactic.applyTactic(sequent, fml)
+	is BinaryTactic.ApplyData0 -> if (isFirst) { tactic.applyTactic(sequent, fml).first } else { tactic.applyTactic(sequent, fml).second }
+	is UnificationTermTactic.ApplyData -> tactic.applyTactic(sequent, fml, allUnificationTermsSize)
+	is TermTactic.ApplyData -> tactic.applyTactic(sequent, fml, term)
 }
 
 fun History.applyTactics(firstSequents: Sequents): Sequents = this.fold(firstSequents){ sequents, applyData -> applyData.applyTactic(sequents)}
@@ -240,29 +244,31 @@ enum class UnificationTermTactic: ITactic {
 		EXISTS_RIGHT -> "∃R"
 		ALL_LEFT -> "∀L"
 	}
-	data class ApplyData(override val tactic: UnificationTermTactic, val fml: Formula) : IApplyData, IApplyData0
+	data class ApplyData(override val tactic: UnificationTermTactic, val fml: Formula, val allUnificationTermsSize: Int) : IApplyData, IApplyData0
 	override fun canApply(sequent: Sequent): Boolean = this.availableFmls(sequent).isNotEmpty()
 	fun availableFmls(sequent: Sequent): List<Formula> = when(this) {
 		EXISTS_RIGHT -> sequent.conclusions.filterIsInstance<EXISTS>()
-		ALL_LEFT -> sequent.conclusions.filterIsInstance<ALL>()
+		ALL_LEFT -> sequent.assumptions.filterIsInstance<ALL>()
 	}
-	fun applyTactic(sequent: Sequent, fml: Formula, allUnificationTerms: Set<UnificationTerm>): Sequent {
+	fun applyTactic(sequent: Sequent, fml: Formula, allUnificationTermsSize: Int): Sequent {
 		if (!(this.canApply(sequent))) { throw IllegalTacticException() }
 		return when(this) {
 			EXISTS_RIGHT -> {
 				fml as EXISTS
-				val unificationTerm = UnificationTerm("t", sequent.freeVars).getFreshUnificationTerm(allUnificationTerms)
+				val unificationTerm = UnificationTerm("t_$allUnificationTermsSize", sequent.freeVars)
 				val newConclusion = fml.substitute(unificationTerm)
+				val newFml = fml.copy(unificationTermSubstitutedCount = fml.unificationTermSubstitutedCount + 1)
 				sequent.copy(
-					conclusions = sequent.conclusions.minus(fml) + newConclusion
+					conclusions = sequent.conclusions.map { if (it == fml) newFml else it }.toSet() + newConclusion
 				)
 			}
 			ALL_LEFT -> {
 				fml as ALL
-				val unificationTerm = UnificationTerm("t", sequent.freeVars).getFreshUnificationTerm(allUnificationTerms)
+				val unificationTerm = UnificationTerm("t_$allUnificationTermsSize", sequent.freeVars)
 				val newConclusion = fml.substitute(unificationTerm)
+				val newFml = fml.copy(unificationTermSubstitutedCount = fml.unificationTermSubstitutedCount + 1)
 				sequent.copy(
-					assumptions = sequent.conclusions.minus(fml) + newConclusion
+					assumptions = sequent.assumptions.map { if (it == fml) newFml else it }.toSet() + newConclusion
 				)
 			}
 		}

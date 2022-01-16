@@ -334,6 +334,7 @@ enum class Tactic1WithVar: ITactic {
 					val freshVar = freeVar.getFreshVar(conclusion.bddVars)
 					val replacedConclusion = conclusion.replace(freeVar, freshVar)
 					ALL(freshVar, replacedConclusion)
+					// TODO: 2022/01/17 countの修正？
 				} else {
 					ALL(freeVar, conclusion)
 				}

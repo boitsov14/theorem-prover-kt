@@ -14,7 +14,7 @@ sealed class Formula {
 	data class OR(val leftFml: Formula, val rightFml: Formula): Formula()
 	data class IMPLIES(val leftFml: Formula, val rightFml: Formula): Formula()
 	data class IFF(val leftFml: Formula, val rightFml: Formula): Formula()
-	data class ALL(val bddVar: Var, val operandFml: Formula): Formula() {
+	data class ALL(val bddVar: Var, val operandFml: Formula, val unificationTermSubstitutedCount: Int = 0): Formula() {
 		init {
 			if (bddVar in operandFml.bddVars) { throw DuplicateBddVarException() }
 		}
@@ -30,7 +30,7 @@ sealed class Formula {
 			return javaClass.hashCode()
 		}
 	}
-	data class EXISTS(val bddVar: Var, val operandFml: Formula): Formula() {
+	data class EXISTS(val bddVar: Var, val operandFml: Formula, val unificationTermSubstitutedCount: Int = 0): Formula() {
 		init {
 			if (bddVar in operandFml.bddVars) { throw DuplicateBddVarException() }
 		}
@@ -118,9 +118,14 @@ sealed class Formula {
 				this
 			} else if (bddVar in newTerm.freeVars) {
 				val newBddVar = bddVar.getFreshVar(operandFml.bddVars + operandFml.freeVars + newTerm.freeVars)
-				ALL(newBddVar, operandFml.replace(bddVar, newBddVar).replace(oldVar, newTerm))
+				this.copy(
+					bddVar = newBddVar,
+					operandFml = operandFml.replace(bddVar, newBddVar).replace(oldVar, newTerm)
+				)
 			} else {
-				ALL(bddVar, operandFml.replace(oldVar, newTerm))
+				this.copy(
+					operandFml = operandFml.replace(oldVar, newTerm)
+				)
 			}
 		}
 		is EXISTS -> {
@@ -128,9 +133,14 @@ sealed class Formula {
 				this
 			} else if (bddVar in newTerm.freeVars) {
 				val newBddVar = bddVar.getFreshVar(operandFml.bddVars + operandFml.freeVars + newTerm.freeVars)
-				EXISTS(newBddVar, operandFml.replace(bddVar, newBddVar).replace(oldVar, newTerm))
+				this.copy(
+					bddVar = newBddVar,
+					operandFml = operandFml.replace(bddVar, newBddVar).replace(oldVar, newTerm)
+				)
 			} else {
-				EXISTS(bddVar, operandFml.replace(oldVar, newTerm))
+				this.copy(
+					operandFml = operandFml.replace(oldVar, newTerm)
+				)
 			}
 		}
 	}
@@ -151,9 +161,14 @@ sealed class Formula {
 			// TODO: 2022/01/17 ここのifとelse一緒にする？
 			if (bddVar in newTerm.freeVars) {
 				val newBddVar = bddVar.getFreshVar(operandFml.bddVars + operandFml.freeVars + newTerm.freeVars)
-				ALL(newBddVar, operandFml.replace(bddVar, newBddVar).replace(oldUnificationTerm, newTerm))
+				this.copy(
+					bddVar = newBddVar,
+					operandFml = operandFml.replace(bddVar, newBddVar).replace(oldUnificationTerm, newTerm)
+				)
 			} else {
-				ALL(bddVar, operandFml.replace(oldUnificationTerm, newTerm))
+				this.copy(
+					operandFml = operandFml.replace(oldUnificationTerm, newTerm)
+				)
 			}
 		}
 		is EXISTS -> {
@@ -162,9 +177,14 @@ sealed class Formula {
 			}
 			if (bddVar in newTerm.freeVars) {
 				val newBddVar = bddVar.getFreshVar(operandFml.bddVars + operandFml.freeVars + newTerm.freeVars)
-				EXISTS(newBddVar, operandFml.replace(bddVar, newBddVar).replace(oldUnificationTerm, newTerm))
+				this.copy(
+					bddVar = newBddVar,
+					operandFml = operandFml.replace(bddVar, newBddVar).replace(oldUnificationTerm, newTerm)
+				)
 			} else {
-				EXISTS(bddVar, operandFml.replace(oldUnificationTerm, newTerm))
+				this.copy(
+					operandFml = operandFml.replace(oldUnificationTerm, newTerm)
+				)
 			}
 		}
 	}

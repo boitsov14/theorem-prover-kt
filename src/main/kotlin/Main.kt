@@ -26,17 +26,20 @@ P to true
 exists x. P(x) and Q(x) implies Q(x) and P(x)
 (exists y. forall x. P(x,y)) implies forall x. exists y. P(x,y)
 A & B | A & ~B | ~A & B | ~A & ~B
+(ex y, all x, P x y) to (all x, ex y, P x y)
  */
 
 fun main() {
+	/*
 	while (true) {
 		print("INPUT A FORMULA >>> ")
 		val fml = readLine()!!.parse()
 	}
-	//print("INPUT A FORMULA >>> ")
-	//val fml = readLine()!!.parse()
-	//val firstSequent = Sequent(setOf(fml))
-	//firstSequent.prove()
+	 */
+	print("INPUT A FORMULA >>> ")
+	val fml = readLine()!!.parse()
+	val firstSequent = Sequent(emptySet(),setOf(fml))
+	firstSequent.prove()
 
 	/*
 	val firstGoals = Goal(fml).toGoals()
