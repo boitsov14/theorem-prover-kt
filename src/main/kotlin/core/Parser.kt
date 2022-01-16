@@ -21,8 +21,8 @@ fun String.parse(): Formula {
 
 private sealed interface PreToken {
 	enum class Symbol(val chr: Char): PreToken {
-		LEFT_PARENTHESIS('('),
-		RIGHT_PARENTHESIS(')'),
+		LP('('),
+		RP(')'),
 		COMMA(','),
 		NOT('¬'),
 		AND('∧'),
@@ -39,8 +39,8 @@ private sealed interface PreToken {
 }
 
 private sealed interface Token {
-	object LEFT_PARENTHESIS: Token
-	object RIGHT_PARENTHESIS: Token
+	object LP: Token
+	object RP: Token
 	sealed interface Operator: Token {
 		val precedence: Int
 		enum class Binary(override val precedence: Int): Operator {
@@ -60,22 +60,26 @@ private sealed interface Token {
 	object TRUE: Token
 }
 
-private fun String.replaceAll(oldValues: List<String>, newValue: String): String {
+private fun String.toOneLetter(): String {
 	var result = this
-	oldValues.forEach { result = result.replace(it, newValue, true) }
+	oneLetterMap.forEach { (key, values) -> values.forEach { value -> result = result.replace(value, key, true) } }
 	return result
 }
 
-private fun String.toOneLetter(): String = this
-	.replaceAll(listOf("true", "tautology", "top"), "⊤")
-	.replaceAll(listOf("false", "contradiction", "bottom"), "⊥")
-	.replaceAll(listOf("not ", "~", "negation "), "¬")
-	.replaceAll(listOf(" and ",""" /\ """, "&"), " ∧ ")
-	.replaceAll(listOf(" or ", """ \/ """, "|"), " ∨ ")
-	.replaceAll(listOf(" implies ", " -> ", " => ", " --> ", " ==> ", " to ", " imply "), " → ")
-	.replaceAll(listOf(" iff ", " <-> ", " <=> ", " <--> ", " <==> ", " if and only if "), " ↔ ")
-	.replaceAll(listOf("forall ", "all "), "∀")
-	.replaceAll(listOf("exists ", "ex "), "∃")
+private val oneLetterMap = mapOf(
+	"T" to setOf("true", "tautology", "top"),
+	"⊥" to setOf("false", "contradiction", "bottom"),
+	"¬" to setOf("not ", "~", "negation ", "\\neg ", "neg "),
+	"∧" to setOf(" \\land ", " and ", "/\\", "&&", "&"),
+	"∨" to setOf(" \\or ", " or ", "\\/", "||", "|"),
+	"↔" to setOf(" \\iff ", " iff ", "<-->", "<==>", "<->", "<=>", "if and only if"),
+	"→" to setOf(" \\to ", " implies ", "-->", "==>", "->", "=>", " to ", " imply "),
+	"∀" to setOf("\\forall ", "forall ", "all "),
+	"∃" to setOf("\\exists ", "exists ", "ex "),
+	"(" to setOf("（"),
+	")" to setOf("）"),
+	"⊢" to setOf("\\vdash", "vdash", "proves")
+)
 
 private fun preTokenize(inputChrs: ArrayDeque<Char>): ArrayDeque<PreToken> {
 	val preTokens = ArrayDeque<PreToken>()
@@ -107,8 +111,8 @@ private fun tokenize(preTokens: ArrayDeque<PreToken>): List<Token> {
 	val tokens = mutableListOf<Token>()
 	while (preTokens.isNotEmpty()) {
 		when (val preToken = preTokens.removeFirst()) {
-			PreToken.Symbol.LEFT_PARENTHESIS 	-> tokens.add(Token.LEFT_PARENTHESIS)
-			PreToken.Symbol.RIGHT_PARENTHESIS 	-> tokens.add(Token.RIGHT_PARENTHESIS)
+			PreToken.Symbol.LP 	-> tokens.add(Token.LP)
+			PreToken.Symbol.RP 	-> tokens.add(Token.RP)
 			PreToken.Symbol.NOT 				-> tokens.add(Token.Operator.Unary.NOT)
 			PreToken.Symbol.AND 				-> tokens.add(Token.Operator.Binary.AND)
 			PreToken.Symbol.OR 					-> tokens.add(Token.Operator.Binary.OR)
@@ -154,9 +158,9 @@ private fun toReversePolishNotation(inputTokens: List<Token>): List<Token> {
 			Token.FALSE -> outputTokens.add(token)
 			Token.TRUE 	-> outputTokens.add(token)
 			is Token.PREDICATE -> outputTokens.add(token)
-			Token.LEFT_PARENTHESIS -> stack.add(token)
-			Token.RIGHT_PARENTHESIS -> {
-				while (stack.isNotEmpty() && stack.last() != Token.LEFT_PARENTHESIS) {
+			Token.LP -> stack.add(token)
+			Token.RP -> {
+				while (stack.isNotEmpty() && stack.last() != Token.LP) {
 					outputTokens.add(stack.removeLast())
 				}
 				if (stack.isEmpty()) {
@@ -175,7 +179,7 @@ private fun toReversePolishNotation(inputTokens: List<Token>): List<Token> {
 			}
 		}
 	}
-	if (Token.LEFT_PARENTHESIS in stack) {
+	if (Token.LP in stack) {
 		throw FormulaParserException("Parenthesis Error")
 	}
 	outputTokens.addAll(stack.reversed())
