@@ -29,10 +29,14 @@ A & B | A & ~B | ~A & B | ~A & ~B
  */
 
 fun main() {
-	print("INPUT A FORMULA >>> ")
-	val fml = readLine()!!.parse()
-	val firstSequent = Sequent(setOf(fml))
-	firstSequent.prove()
+	while (true) {
+		print("INPUT A FORMULA >>> ")
+		val fml = readLine()!!.parse()
+	}
+	//print("INPUT A FORMULA >>> ")
+	//val fml = readLine()!!.parse()
+	//val firstSequent = Sequent(setOf(fml))
+	//firstSequent.prove()
 
 	/*
 	val firstGoals = Goal(fml).toGoals()

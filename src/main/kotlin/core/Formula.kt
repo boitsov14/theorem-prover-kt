@@ -45,19 +45,25 @@ sealed class Formula {
 			return javaClass.hashCode()
 		}
 	}
-	private fun recursiveToString(): String = when(this) {
+	private fun recToString(): String = when(this) {
 		TRUE 			-> "true"
 		FALSE 			-> "false"
-		is PREDICATE 	-> id + if (vars.isNotEmpty()) vars.joinToString(separator = " ", prefix = " ") else ""
-		is NOT 			-> "(¬${operandFml.recursiveToString()})"
-		is AND 			-> "(${leftFml.recursiveToString()} ∧ ${rightFml.recursiveToString()})"
-		is OR 			-> "(${leftFml.recursiveToString()} ∨ ${rightFml.recursiveToString()})"
-		is IMPLIES 		-> "(${leftFml.recursiveToString()} → ${rightFml.recursiveToString()})"
-		is IFF 			-> "(${leftFml.recursiveToString()} ↔ ${rightFml.recursiveToString()})"
-		is ALL 			-> "(∀$bddVar, ${operandFml.recursiveToString()})"
-		is EXISTS 		-> "(∃$bddVar, ${operandFml.recursiveToString()})"
+		is PREDICATE 	-> id + if (vars.isNotEmpty()) vars.joinToString(separator = ",", prefix = "(", postfix = ")") else ""
+		is NOT 			-> "¬${operandFml.recToString()}"
+		is AND 			-> {
+			val rightFmlStr = if (rightFml is AND) rightFml.recToString().removeSurrounding("(", ")") else rightFml.recToString()
+			"(${leftFml.recToString()} ∧ $rightFmlStr)"
+		}
+		is OR 			-> {
+			val rightFmlStr = if (rightFml is OR) rightFml.recToString().removeSurrounding("(", ")") else rightFml.recToString()
+			"(${leftFml.recToString()} ∨ $rightFmlStr)"
+		}
+		is IMPLIES 		-> "(${leftFml.recToString()} → ${rightFml.recToString()})"
+		is IFF 			-> "(${leftFml.recToString()} ↔ ${rightFml.recToString()})"
+		is ALL 			-> "∀$bddVar${operandFml.recToString()}"
+		is EXISTS 		-> "∃$bddVar${operandFml.recToString()}"
 	}
-	final override fun toString(): String = recursiveToString().removeSurrounding("(", ")")
+	final override fun toString(): String = recToString().removeSurrounding("(", ")")
 	val freeVars: Set<Var>
 		get() = when (this) {
 			TRUE 			-> emptySet()
