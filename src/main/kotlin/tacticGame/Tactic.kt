@@ -84,7 +84,7 @@ enum class Tactic0: ITactic {
 				conclusion as ALL
 				val freshVar = conclusion.bddVar.getFreshVar(goal.freeVars)
 				val newGoal = goal.copy(
-					conclusion = conclusion.substitute(freshVar)
+					conclusion = conclusion.instantiate(freshVar)
 				)
 				return goals.replaceFirst(newGoal)
 			}
@@ -205,7 +205,7 @@ enum class Tactic1WithFml: ITactic {
 			CASES_EXISTS -> {
 				assumption as EXISTS
 				val freshVar = assumption.bddVar.getFreshVar(goal.freeVars)
-				val newAssumption = assumption.substitute(freshVar)
+				val newAssumption = assumption.instantiate(freshVar)
 				val newGoal = goal.copy(
 					assumptions = goal.assumptions.minus(assumption) + newAssumption
 				)
@@ -282,7 +282,7 @@ enum class Tactic1WithFml: ITactic {
 			.toSet()
 		CASES_EXISTS -> goal.assumptions
 			.filterIsInstance<EXISTS>()
-			.filterNot { assumption -> goal.freeVars.any { freeVar -> assumption.substitute(freeVar) in goal.assumptions } }
+			.filterNot { assumption -> goal.freeVars.any { freeVar -> assumption.instantiate(freeVar) in goal.assumptions } }
 			.toSet()
 		REVERT, CLEAR -> goal.assumptions
 		HAVE_IMPLIES -> goal.assumptions
@@ -346,7 +346,7 @@ enum class Tactic1WithVar: ITactic {
 			USE -> {
 				val conclusion = goal.conclusion as EXISTS
 				val newGoal = goal.copy(
-					conclusion = conclusion.substitute(freeVar)
+					conclusion = conclusion.instantiate(freeVar)
 				)
 				goals.replaceFirst(newGoal)
 			}
@@ -371,7 +371,7 @@ enum class Tactic2WithVar: ITactic {
 		val goal = goals[0]
 		if (!(this.canApply(goal))) { throw IllegalTacticException() }
 		assumption as ALL
-		val newAssumption = assumption.substitute(freeVar)
+		val newAssumption = assumption.instantiate(freeVar)
 		val newGoal = goal.copy(
 			assumptions = goal.assumptions + newAssumption
 		)
@@ -381,7 +381,7 @@ enum class Tactic2WithVar: ITactic {
 		val result = mutableMapOf<Formula, Set<Var>>()
 		val availableAssumptions = goal.assumptions.filterIsInstance<ALL>()
 		for (assumption in availableAssumptions) {
-			val availableFreeVars = goal.freeVars.filter { assumption.substitute(it) !in goal.assumptions }.toSet()
+			val availableFreeVars = goal.freeVars.filter { assumption.instantiate(it) !in goal.assumptions }.toSet()
 			if (availableFreeVars.isNotEmpty()) {
 				result[assumption] = availableFreeVars
 			}

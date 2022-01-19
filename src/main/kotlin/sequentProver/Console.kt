@@ -36,13 +36,14 @@ fun printSequents(sequents: Sequents) {
 }
  */
 
+const val max = 5
+// TODO: 2022/01/20 そのうち消す
 
 fun Sequent.prove() {
 	val start = System.currentTimeMillis()
 	var count = 0
-	var currentUnificationTermSubstitutedCountMax = 0
-	val unificationTermSubstitutedCountMax = 5
-	var allUnificationTermsSize = 0
+	var unificationTermInstantiationMaxCount = 0
+	var unificationTermIndex = 0
 	val duplicateHistories = mutableListOf<History0>(emptyList())
 
 	while (true) {
@@ -95,12 +96,12 @@ fun Sequent.prove() {
 		while (true) {
 			val tempHistory = duplicateHistories[temIndex]
 			val tepSequent = tempHistory.applyTactics(this)
-			val unificationTermApplyData = applyUnificationTermTacticOrNull(tepSequent, allUnificationTermsSize, currentUnificationTermSubstitutedCountMax)
+			val unificationTermApplyData = applyUnificationTermTacticOrNull(tepSequent, unificationTermIndex, unificationTermInstantiationMaxCount)
 			if (unificationTermApplyData == null) {
 				while (true) {
 					temIndex++
 					if (temIndex == duplicateHistories.size) {
-						currentUnificationTermSubstitutedCountMax++
+						unificationTermInstantiationMaxCount++
 						temIndex = index
 						break
 					}
@@ -110,13 +111,13 @@ fun Sequent.prove() {
 					break
 				}
 			} else {
-				allUnificationTermsSize++
+				unificationTermIndex++
 				duplicateHistories[index] = history + unificationTermApplyData
 				println(">>> ${unificationTermApplyData.tactic}")
 				break
 			}
 		}
-		if (currentUnificationTermSubstitutedCountMax > unificationTermSubstitutedCountMax) {
+		if (unificationTermInstantiationMaxCount > max) {
 			println("PROOF FAILED")
 			break
 		}

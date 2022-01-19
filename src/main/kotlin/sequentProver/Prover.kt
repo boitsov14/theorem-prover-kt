@@ -30,15 +30,15 @@ fun applyBinaryTacticOrNull(sequent: Sequent): Pair<IApplyData0, IApplyData0>? {
 	return BinaryTactic.ApplyData0(tactic, fml, true) to BinaryTactic.ApplyData0(tactic, fml, false)
 }
 
-fun applyUnificationTermTacticOrNull(sequent: Sequent, allUnificationTermsSize: Int, currentUnificationTermSubstitutedCountMax : Int): IApplyData0? {
-	val availableEXISTSFmls = sequent.conclusions.filterIsInstance<Formula.EXISTS>().filter { it.unificationTermSubstitutedCount <= currentUnificationTermSubstitutedCountMax }
-	val availableALLFmls = sequent.assumptions.filterIsInstance<Formula.ALL>().filter { it.unificationTermSubstitutedCount <= currentUnificationTermSubstitutedCountMax }
+fun applyUnificationTermTacticOrNull(sequent: Sequent, unificationTermIndex: Int, unificationTermInstantiationMaxCount : Int): IApplyData0? {
+	val availableEXISTSFmls = sequent.conclusions.filterIsInstance<Formula.EXISTS>().filter { it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount }
+	val availableALLFmls = sequent.assumptions.filterIsInstance<Formula.ALL>().filter { it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount }
 	return if (availableEXISTSFmls.isNotEmpty()) {
 		val fml = availableEXISTSFmls.first()
-		UnificationTermTactic.ApplyData(UnificationTermTactic.EXISTS_RIGHT, fml, allUnificationTermsSize)
+		UnificationTermTactic.ApplyData(UnificationTermTactic.EXISTS_RIGHT, fml, unificationTermIndex)
 	} else if (availableALLFmls.isNotEmpty()) {
 		val fml = availableALLFmls.first()
-		UnificationTermTactic.ApplyData(UnificationTermTactic.ALL_LEFT, fml, allUnificationTermsSize)
+		UnificationTermTactic.ApplyData(UnificationTermTactic.ALL_LEFT, fml, unificationTermIndex)
 	} else {
 		null
 	}

@@ -28,7 +28,7 @@ fun IApplyData.applyTactic(sequents: Sequents): Sequents {
 		AXIOM.ApplyData -> sequents.drop(1)
 		is UnaryTactic.ApplyData -> tactic.applyTactic(sequent, fml).toSequents() + sequents.drop(1)
 		is BinaryTactic.ApplyData -> tactic.applyTactic(sequent, fml).toList() + sequents.drop(1)
-		is UnificationTermTactic.ApplyData -> tactic.applyTactic(sequent, fml, allUnificationTermsSize).toSequents() + sequents.drop(1)
+		is UnificationTermTactic.ApplyData -> tactic.applyTactic(sequent, fml, unificationTermIndex).toSequents() + sequents.drop(1)
 		is TermTactic.ApplyData -> tactic.applyTactic(sequent, fml, term).toSequents() + sequents.drop(1)
 	}
 }
@@ -37,7 +37,7 @@ fun IApplyData0.applyTactic(sequent: Sequent): Sequent = when(this) {
 	AXIOM.ApplyData -> throw IllegalTacticException()
 	is UnaryTactic.ApplyData -> tactic.applyTactic(sequent, fml)
 	is BinaryTactic.ApplyData0 -> if (isFirst) { tactic.applyTactic(sequent, fml).first } else { tactic.applyTactic(sequent, fml).second }
-	is UnificationTermTactic.ApplyData -> tactic.applyTactic(sequent, fml, allUnificationTermsSize)
+	is UnificationTermTactic.ApplyData -> tactic.applyTactic(sequent, fml, unificationTermIndex)
 	is TermTactic.ApplyData -> tactic.applyTactic(sequent, fml, term)
 }
 
@@ -145,7 +145,7 @@ enum class UnaryTactic: ITactic {
 			ALL_RIGHT -> {
 				fml as ALL
 				val freshVar = fml.bddVar.getFreshVar(sequent.freeVars)
-				val newConclusion = fml.substitute(freshVar)
+				val newConclusion = fml.instantiate(freshVar)
 				sequent.copy(
 					conclusions = sequent.conclusions.minus(fml) + newConclusion
 				)
@@ -153,7 +153,7 @@ enum class UnaryTactic: ITactic {
 			EXISTS_LEFT -> {
 				fml as EXISTS
 				val freshVar = fml.bddVar.getFreshVar(sequent.freeVars)
-				val newAssumption = fml.substitute(freshVar)
+				val newAssumption = fml.instantiate(freshVar)
 				sequent.copy(
 					assumptions = sequent.assumptions.minus(fml) + newAssumption
 				)
@@ -244,29 +244,29 @@ enum class UnificationTermTactic: ITactic {
 		EXISTS_RIGHT -> "∃R"
 		ALL_LEFT -> "∀L"
 	}
-	data class ApplyData(override val tactic: UnificationTermTactic, val fml: Formula, val allUnificationTermsSize: Int) : IApplyData, IApplyData0
+	data class ApplyData(override val tactic: UnificationTermTactic, val fml: Formula, val unificationTermIndex: Int) : IApplyData, IApplyData0
 	override fun canApply(sequent: Sequent): Boolean = this.availableFmls(sequent).isNotEmpty()
 	fun availableFmls(sequent: Sequent): List<Formula> = when(this) {
 		EXISTS_RIGHT -> sequent.conclusions.filterIsInstance<EXISTS>()
 		ALL_LEFT -> sequent.assumptions.filterIsInstance<ALL>()
 	}
-	fun applyTactic(sequent: Sequent, fml: Formula, allUnificationTermsSize: Int): Sequent {
+	fun applyTactic(sequent: Sequent, fml: Formula, unificationTermIndex: Int): Sequent {
 		if (!(this.canApply(sequent))) { throw IllegalTacticException() }
 		return when(this) {
 			EXISTS_RIGHT -> {
 				fml as EXISTS
-				val unificationTerm = UnificationTerm("t_$allUnificationTermsSize", sequent.freeVars)
-				val newConclusion = fml.substitute(unificationTerm)
-				val newFml = fml.copy(unificationTermSubstitutedCount = fml.unificationTermSubstitutedCount + 1)
+				val unificationTerm = UnificationTerm("t_$unificationTermIndex", sequent.freeVars)
+				val newConclusion = fml.instantiate(unificationTerm)
+				val newFml = fml.copy(unificationTermInstantiationCount = fml.unificationTermInstantiationCount + 1)
 				sequent.copy(
 					conclusions = sequent.conclusions.map { if (it == fml) newFml else it }.toSet() + newConclusion
 				)
 			}
 			ALL_LEFT -> {
 				fml as ALL
-				val unificationTerm = UnificationTerm("t_$allUnificationTermsSize", sequent.freeVars)
-				val newConclusion = fml.substitute(unificationTerm)
-				val newFml = fml.copy(unificationTermSubstitutedCount = fml.unificationTermSubstitutedCount + 1)
+				val unificationTerm = UnificationTerm("t_$unificationTermIndex", sequent.freeVars)
+				val newConclusion = fml.instantiate(unificationTerm)
+				val newFml = fml.copy(unificationTermInstantiationCount = fml.unificationTermInstantiationCount + 1)
 				sequent.copy(
 					assumptions = sequent.assumptions.map { if (it == fml) newFml else it }.toSet() + newConclusion
 				)
@@ -292,14 +292,14 @@ enum class TermTactic: ITactic {
 		return when(this) {
 			EXISTS_RIGHT -> {
 				fml as EXISTS
-				val newConclusion = fml.substitute(term)
+				val newConclusion = fml.instantiate(term)
 				sequent.copy(
 					conclusions = sequent.conclusions.minus(fml) + newConclusion
 				)
 			}
 			ALL_LEFT -> {
 				fml as ALL
-				val newConclusion = fml.substitute(term)
+				val newConclusion = fml.instantiate(term)
 				sequent.copy(
 					assumptions = sequent.conclusions.minus(fml) + newConclusion
 				)
@@ -370,11 +370,11 @@ private enum class BasicTactic: ITactic {
 				.filterNot { it.leftFml in assumptions || it.rightFml in conclusions }
 			EXISTS_LEFT -> assumptions
 				.filterIsInstance<EXISTS>()
-				.filterNot { assumption -> sequent.freeVars.any { freeVar -> assumption.substitute(freeVar) in assumptions } }
+				.filterNot { assumption -> sequent.freeVars.any { freeVar -> assumption.instantiate(freeVar) in assumptions } }
 			// TODO: 2021/12/12 関数記号も認めるようになったら修正要
 			ALL_RIGHT -> conclusions
 				.filterIsInstance<ALL>()
-				.filterNot { conclusion -> sequent.freeVars.any { freeVar -> conclusion.substitute(freeVar) in conclusions } }
+				.filterNot { conclusion -> sequent.freeVars.any { freeVar -> conclusion.instantiate(freeVar) in conclusions } }
 		}
 	}
 	fun applyTactic(sequents: Sequents, fml: Formula): Sequents {
@@ -475,7 +475,7 @@ private enum class BasicTactic: ITactic {
 			ALL_RIGHT -> {
 				fml as ALL
 				val newVar = fml.bddVar.getFreshVar(sequent.freeVars)
-				val newConclusion = fml.substitute(newVar)
+				val newConclusion = fml.instantiate(newVar)
 				val newSequent = sequent.copy(
 					conclusions = conclusions.minus(fml) + newConclusion
 				)
@@ -484,7 +484,7 @@ private enum class BasicTactic: ITactic {
 			EXISTS_LEFT -> {
 				fml as EXISTS
 				val newVar = fml.bddVar.getFreshVar(sequent.freeVars)
-				val newAssumption = fml.substitute(newVar)
+				val newAssumption = fml.instantiate(newVar)
 				val newSequent = sequent.copy(
 					assumptions = sequent.assumptions.minus(fml) + newAssumption
 				)
