@@ -45,25 +45,30 @@ fun Sequent.prove() {
 	var unificationTermInstantiationMaxCount = 0
 	var unificationTermIndex = 0
 	val duplicateHistories = mutableListOf<History0>(emptyList())
+	val sequents = mutableListOf<Sequent?>(this)
 
 	while (true) {
 		count++
-		val index = duplicateHistories.indexOfFirst { it.lastOrNull() != AXIOM.ApplyData }
+		val index = sequents.indexOfFirst { it != null }
+		//val index = duplicateHistories.indexOfFirst { it.lastOrNull() != AXIOM.ApplyData }
 		if (index == -1) {
 			println("PROOF SUCCEED!")
 			break
 		}
 		val history = duplicateHistories[index]
-		val sequent = history.applyTactics(this)
+		val sequent = sequents[index] as Sequent
+		//val sequent = history.applyTactics(this)
 		println(sequent)
 		if (AXIOM.canApply(sequent)) {
 			duplicateHistories[index] = history + AXIOM.ApplyData
+			sequents[index] = null
 			println(">>> $AXIOM")
 			continue
 		}
 		val unaryApplyData = applyUnaryTacticOrNull(sequent)
 		if (unaryApplyData != null) {
 			duplicateHistories[index] = history + unaryApplyData
+			sequents[index] = unaryApplyData.applyTactic(sequent)
 			println(">>> ${unaryApplyData.tactic}")
 			continue
 		}
@@ -72,9 +77,15 @@ fun Sequent.prove() {
 			duplicateHistories.removeAt(index)
 			duplicateHistories.add(index, history + binaryApplyData.first)
 			duplicateHistories.add(index + 1, history + binaryApplyData.second)
+			sequents.removeAt(index)
+			sequents.add(index, binaryApplyData.first.applyTactic(sequent))
+			sequents.add(index + 1, binaryApplyData.second.applyTactic(sequent))
 			println(">>> ${binaryApplyData.first.tactic}")
 			continue
 		}
+		val unProvable = sequents.filterNotNull().none { it.assumptions.filterIsInstance<Formula.ALL>().isNotEmpty()
+				|| it.conclusions.filterIsInstance<Formula.EXISTS>().isNotEmpty() }
+		/*
 		var unProvable = true
 		val remainedDuplicateHistories = duplicateHistories.filterNot { it.lastOrNull() == AXIOM.ApplyData }
 		for (remainedHistory in remainedDuplicateHistories) {
@@ -88,6 +99,7 @@ fun Sequent.prove() {
 				break
 			}
 		}
+		 */
 		if (unProvable) {
 			println("UNPROVABLE")
 			break
@@ -111,9 +123,9 @@ fun Sequent.prove() {
 					break
 				}
 			} else {
-				unificationTermIndex++
 				duplicateHistories[index] = history + unificationTermApplyData
 				println(">>> ${unificationTermApplyData.tactic}")
+				unificationTermIndex++
 				break
 			}
 		}
@@ -134,8 +146,8 @@ fun Sequent.prove() {
 	val history = getOneLineProof(duplicateHistories)
 	for ((index, applyData) in history.withIndex()) {
 		println(">>> ${applyData.tactic}")
-		val sequents = history.take(index + 1).applyTactics(this.toSequents())
-		sequents.forEach { println(it) }
+		val sequents0 = history.take(index + 1).applyTactics(this.toSequents())
+		sequents0.forEach { println(it) }
 	}
 }
 
