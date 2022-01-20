@@ -11,7 +11,7 @@ fun String.parse(): Formula {
 	println(chrs)
 	val preTokens = preTokenize(chrs)
 	println(preTokens)
-	val tokens = tokenize(preTokens)
+	val tokens = tokenize0(preTokens)
 	println(tokens)
 	val reversePolishNotation = toReversePolishNotation(tokens)
 	println(reversePolishNotation)
@@ -54,7 +54,7 @@ private sealed interface Token {
 			data class EXISTS(val bddVar: Var): Unary { override val precedence = 4 }
 		}
 	}
-	data class PREDICATE(val id: String, val vars: List<Var>): Token
+	data class PREDICATE(val id: String, val terms: List<Term>): Token
 	object FALSE: Token
 	object TRUE: Token
 }
@@ -106,7 +106,94 @@ private fun preTokenize(inputChrs: ArrayDeque<Char>): ArrayDeque<PreToken> {
 	return preTokens
 }
 
-private fun tokenize(preTokens: ArrayDeque<PreToken>): List<Token> {
+@OptIn(ExperimentalStdlibApi::class)
+private fun String.getIdEndPos(startPos: Int): Int {
+	if (!(this[startPos].isLetter())) throw IllegalArgumentException()
+	val regex = "[a-zA-Z0-9_]+".toRegex()
+	val str = regex.matchAt(this, startPos)!!.value
+	return startPos + str.length - 1
+}
+
+private fun String.getParenthesisEndPos(startPos: Int): Int? {
+	if (this[startPos] != '(') throw IllegalArgumentException()
+	var counter = 0
+	var pos = startPos
+	while (pos < this.length) {
+		when(this[pos]) {
+			'(' -> counter++
+			')' -> counter--
+		}
+		if (counter == 0) return pos
+		pos++
+	}
+	return null
+}
+
+private fun String.toTerms(): List<Term> {}
+
+
+private fun String.tokenize(): List<Token> {
+	val tokens = mutableListOf<Token>()
+	var index = 0
+	while (index < this.length) {
+		when(this[index]) {
+			' ' -> {}
+			'(' -> tokens.add(Token.LP)
+			')' -> tokens.add(Token.RP)
+			'¬' -> tokens.add(Token.Operator.Unary.NOT)
+			'∧' -> tokens.add(Token.Operator.Binary.AND)
+			'∨' -> tokens.add(Token.Operator.Binary.OR)
+			'→' -> tokens.add(Token.Operator.Binary.IMPLIES)
+			'↔' -> tokens.add(Token.Operator.Binary.IFF)
+			'⊥' -> tokens.add(Token.FALSE)
+			'⊤' -> tokens.add(Token.TRUE)
+			'∀' -> {
+				if (!(index < this.lastIndex && this[index + 1].isLetter())) {
+					throw FormulaParserException("Quantifier must be used in the form '∀x'")
+				}
+				val endPos = this.getIdEndPos(index + 1)
+				val bddVar = Var(this.substring(index + 1, endPos + 1))
+				tokens.add(Token.Operator.Unary.ALL(bddVar))
+				index = endPos
+			}
+			'∃' -> {
+				if (!(index < this.lastIndex && this[index + 1].isLetter())) {
+					throw FormulaParserException("Quantifier must be used in the form '∃x'")
+				}
+				val endPos = this.getIdEndPos(index + 1)
+				val bddVar = Var(this.substring(index + 1, endPos + 1))
+				tokens.add(Token.Operator.Unary.EXISTS(bddVar))
+				index = endPos
+			}
+			in ('A'..'Z')+('a'..'z') -> {
+				val idEndPos = this.getIdEndPos(index)
+				val id = this.substring(index, idEndPos + 1)
+				index = idEndPos
+				/*
+				while (index < this.length && this[index] == ' ') {
+					index++
+				}
+				if (index == this.length)
+				 */
+				// TODO: 2022/01/21 述語と項の間に空白がある場合の対処
+				if (index + 1 < this.length && this[index + 1] == '(') {
+					val parenthesisEndPos = this.getParenthesisEndPos(index + 1) ?: throw FormulaParserException("Parenthesis Error")
+					val termsStr = this.substring(index + 2, parenthesisEndPos)
+					val terms = termsStr.toTerms()
+					tokens.add(Token.PREDICATE(id, terms))
+					index = parenthesisEndPos
+				} else {
+					tokens.add(Token.PREDICATE(id, emptyList()))
+				}
+			}
+			else -> throw FormulaParserException("Illegal Argument >> ${this[index]}")
+		}
+		index++
+	}
+	return tokens
+}
+
+private fun tokenize0(preTokens: ArrayDeque<PreToken>): List<Token> {
 	val tokens = mutableListOf<Token>()
 	while (preTokens.isNotEmpty()) {
 		when (val preToken = preTokens.removeFirst()) {
@@ -190,7 +277,7 @@ private fun getFormula(tokens: List<Token>): Formula {
 		when(token) {
 			Token.FALSE -> stack.add(FALSE)
 			Token.TRUE 	-> stack.add(TRUE)
-			is Token.PREDICATE -> stack.add(PREDICATE(token.id, token.vars))
+			is Token.PREDICATE -> stack.add(PREDICATE(token.id, token.terms))
 			is Token.Operator.Unary -> {
 				if (stack.isEmpty()) {
 					throw FormulaParserException("Parse Error")
