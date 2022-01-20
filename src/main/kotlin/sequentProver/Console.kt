@@ -49,6 +49,8 @@ fun Sequent.prove() {
 
 	while (true) {
 		count++
+		sequents.forEach { println(it) }
+
 		/*
 		val index = sequents.indexOfFirst { it != null }
 		//val index = duplicateHistories.indexOfFirst { it.lastOrNull() != AXIOM.ApplyData }
@@ -145,6 +147,21 @@ fun Sequent.prove() {
 			println("UNPROVABLE")
 			break
 		}
+
+		val unificationTacticIndex = sequents.indexOfFirst { it != null && applyUnificationTermTacticOrNull(it, unificationTermIndex, unificationTermInstantiationMaxCount) != null }
+		if (unificationTacticIndex != -1) {
+			val oldSequent = sequents[unificationTacticIndex]!!
+			val unificationTermApplyData = applyUnificationTermTacticOrNull(oldSequent, unificationTermIndex, unificationTermInstantiationMaxCount)!!
+			histories[unificationTacticIndex] = histories[unificationTacticIndex] + unificationTermApplyData
+			sequents[unificationTacticIndex] = unificationTermApplyData.applyTactic(oldSequent)
+			unificationTermIndex++
+			println(">>> ${unificationTermApplyData.tactic}")
+		} else {
+			unificationTermInstantiationMaxCount++
+			println(">>> unificationTermMax: $unificationTermInstantiationMaxCount")
+		}
+
+		/*
 		var temIndex = index
 		while (true) {
 			val tempHistory = histories[temIndex]
@@ -170,7 +187,9 @@ fun Sequent.prove() {
 				break
 			}
 		}
-		if (unificationTermInstantiationMaxCount > max) {
+		*/
+
+		if (unificationTermInstantiationMaxCount == max) {
 			println("PROOF FAILED")
 			break
 		}
@@ -180,6 +199,8 @@ fun Sequent.prove() {
 	val time = end - start
 	println("Completed in $time ms")
 	println("loop count: $count")
+
+	if (sequents.filterNotNull().isNotEmpty()) return
 
 	println("-----------------------------------")
 	println(this)

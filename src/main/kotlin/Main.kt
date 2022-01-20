@@ -27,6 +27,7 @@ exists x. P(x) and Q(x) implies Q(x) and P(x)
 (exists y. forall x. P(x,y)) implies forall x. exists y. P(x,y)
 A & B | A & ~B | ~A & B | ~A & ~B
 (ex y, all x, P x y) to (all x, ex y, P x y)
+(ex x, P x) and Q and R
  */
 
 fun main() {
