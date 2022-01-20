@@ -7,6 +7,19 @@ class FormulaParserException(message: String): Exception(message)
 
 fun String.parse(): Formula {
 	println(this)
+	val str = this.toOneLetter()
+	println(str)
+	val tokens = str.tokenize()
+	println(tokens)
+	val reversePolishNotation = tokens.toReversePolishNotation()
+	println(reversePolishNotation)
+	println(reversePolishNotation.getFormula())
+	return reversePolishNotation.getFormula()
+}
+
+/*
+fun String.parse(): Formula {
+	println(this)
 	val chrs = ArrayDeque(this.toOneLetter().toCharArray().toList())
 	println(chrs)
 	val preTokens = preTokenize(chrs)
@@ -18,6 +31,7 @@ fun String.parse(): Formula {
 	println(getFormula(reversePolishNotation))
 	return getFormula(reversePolishNotation)
 }
+ */
 
 private sealed interface PreToken {
 	enum class Symbol(val chr: Char): PreToken {
@@ -108,7 +122,7 @@ private fun preTokenize(inputChrs: ArrayDeque<Char>): ArrayDeque<PreToken> {
 
 @OptIn(ExperimentalStdlibApi::class)
 private fun String.getIdEndPos(startPos: Int): Int {
-	if (!(this[startPos].isLetter())) throw IllegalArgumentException()
+	if (!(this[startPos].isLetter())) throw FormulaParserException("Illegal Argument >> ${this[startPos]}")
 	val regex = "[a-zA-Z0-9_]+".toRegex()
 	val str = regex.matchAt(this, startPos)!!.value
 	return startPos + str.length - 1
@@ -129,8 +143,31 @@ private fun String.getParenthesisEndPos(startPos: Int): Int? {
 	return null
 }
 
-private fun String.toTerms(): List<Term> {}
-
+private fun String.toTerms(): List<Term> {
+	if (this.isEmpty()) return emptyList()
+	if (!(this.first().isLetter())) throw FormulaParserException("Illegal Argument >> ${this.first()}")
+	val firstTerm: Term
+	val firstTermEndPos: Int
+	val idEndPos = this.getIdEndPos(0)
+	val id = this.substring(0, idEndPos + 1)
+	if (idEndPos + 1 < this.length && this[idEndPos + 1] == '(') {
+		val parenthesisEndPos = this.getParenthesisEndPos(idEndPos + 1) ?: throw FormulaParserException("Parenthesis Error")
+		val operandTermsStr = this.substring(idEndPos + 2, parenthesisEndPos)
+		val operandTerms = operandTermsStr.toTerms()
+		firstTerm = Function(id, operandTerms)
+		firstTermEndPos = parenthesisEndPos
+	} else {
+		firstTerm = Var(id)
+		firstTermEndPos = idEndPos
+	}
+	if (firstTermEndPos + 2 < this.length && this[firstTermEndPos + 1] == ',') {
+		return listOf(firstTerm) + this.drop(firstTermEndPos + 2).toTerms()
+	}
+	if (firstTermEndPos == this.lastIndex) {
+		return listOf(firstTerm)
+	}
+	throw FormulaParserException("Illegal Argument >> ${this[firstTermEndPos + 1]}")
+}
 
 private fun String.tokenize(): List<Token> {
 	val tokens = mutableListOf<Token>()
@@ -169,13 +206,7 @@ private fun String.tokenize(): List<Token> {
 				val idEndPos = this.getIdEndPos(index)
 				val id = this.substring(index, idEndPos + 1)
 				index = idEndPos
-				/*
-				while (index < this.length && this[index] == ' ') {
-					index++
-				}
-				if (index == this.length)
-				 */
-				// TODO: 2022/01/21 述語と項の間に空白がある場合の対処
+				// TODO: 2022/01/21 述語とtermsのかっこの間に空白がある場合の対処
 				if (index + 1 < this.length && this[index + 1] == '(') {
 					val parenthesisEndPos = this.getParenthesisEndPos(index + 1) ?: throw FormulaParserException("Parenthesis Error")
 					val termsStr = this.substring(index + 2, parenthesisEndPos)
@@ -235,10 +266,10 @@ private fun tokenize0(preTokens: ArrayDeque<PreToken>): List<Token> {
 	return tokens
 }
 
-private fun toReversePolishNotation(inputTokens: List<Token>): List<Token> {
+private fun List<Token>.toReversePolishNotation(): List<Token> {
 	val outputTokens = ArrayDeque<Token>()
 	val stack = mutableListOf<Token>()
-	for (token in inputTokens) {
+	for (token in this) {
 		when(token) {
 			Token.FALSE -> outputTokens.add(token)
 			Token.TRUE 	-> outputTokens.add(token)
@@ -271,9 +302,9 @@ private fun toReversePolishNotation(inputTokens: List<Token>): List<Token> {
 	return outputTokens
 }
 
-private fun getFormula(tokens: List<Token>): Formula {
+private fun List<Token>.getFormula(): Formula {
 	val stack = mutableListOf<Formula>()
-	for (token in tokens) {
+	for (token in this) {
 		when(token) {
 			Token.FALSE -> stack.add(FALSE)
 			Token.TRUE 	-> stack.add(TRUE)
