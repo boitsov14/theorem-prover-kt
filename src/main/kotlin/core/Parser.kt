@@ -23,7 +23,6 @@ private sealed interface PreToken {
 	enum class Symbol(val chr: Char): PreToken {
 		LP('('),
 		RP(')'),
-		COMMA(','),
 		NOT('¬'),
 		AND('∧'),
 		OR('∨'),
@@ -44,15 +43,15 @@ private sealed interface Token {
 	sealed interface Operator: Token {
 		val precedence: Int
 		enum class Binary(override val precedence: Int): Operator {
-			AND(4),
-			OR(3),
-			IMPLIES(2),
-			IFF(1)
+			AND(3),
+			OR(2),
+			IMPLIES(1),
+			IFF(0)
 		}
 		sealed interface Unary: Operator {
-			object NOT: Unary {	override val precedence = 5 }
-			data class ALL(val bddVar: Var): Unary { override val precedence = 0 }
-			data class EXISTS(val bddVar: Var): Unary { override val precedence = 0 }
+			object NOT: Unary {	override val precedence = 4 }
+			data class ALL(val bddVar: Var): Unary { override val precedence = 4 }
+			data class EXISTS(val bddVar: Var): Unary { override val precedence = 4 }
 		}
 	}
 	data class PREDICATE(val id: String, val vars: List<Var>): Token
@@ -130,12 +129,11 @@ private fun tokenize(preTokens: ArrayDeque<PreToken>): List<Token> {
 				tokens.add(predicate)
 			}
 			PreToken.Symbol.ALL, PreToken.Symbol.EXISTS -> {
-				if (!(preTokens.size >= 2 && preTokens[0] is PreToken.VAR && preTokens[1] == PreToken.Symbol.COMMA)) {
+				if (!(preTokens.size >= 1 && preTokens[0] is PreToken.VAR)) {
 					throw FormulaParserException("Parse Error with quantifier")
 				}
 				val preTokenVar = preTokens.removeFirst() as PreToken.VAR
 				val bddVar = Var(preTokenVar.id)
-				preTokens.removeFirst()
 				tokens.add(
 					when(preToken) {
 						PreToken.Symbol.ALL 	-> Token.Operator.Unary.ALL(bddVar)
