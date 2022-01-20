@@ -7,7 +7,7 @@ class FormulaParserException(message: String): Exception(message)
 
 fun String.parse(): Formula {
 	println(this)
-	val str = this.toOneLetter()
+	val str = this.toOneLetter().trimWhiteSpaces()
 	println(str)
 	val tokens = str.tokenize()
 	println(tokens)
@@ -91,8 +91,16 @@ private val oneLetterMap = mapOf(
 	"∃" to setOf("\\exists ", "exists ", "ex "),
 	"(" to setOf("（"),
 	")" to setOf("）"),
-	"⊢" to setOf("\\vdash", "vdash", "proves")
+	"⊢" to setOf("\\vdash", "vdash", "proves"),
+	" " to setOf("　")
 )
+
+private fun String.trimWhiteSpaces(): String = this
+	.replace("\\s*[(]\\s*".toRegex(), "(")
+	.replace("\\s*[)]\\s*".toRegex(), ")")
+	.replace("\\s*[,]\\s*".toRegex(), ",")
+	.replace("[∀]\\s*".toRegex(), "∀")
+	.replace("[∃]\\s*".toRegex(), "∃")
 
 private fun preTokenize(inputChrs: ArrayDeque<Char>): ArrayDeque<PreToken> {
 	val preTokens = ArrayDeque<PreToken>()
@@ -206,7 +214,6 @@ private fun String.tokenize(): List<Token> {
 				val idEndPos = this.getIdEndPos(index)
 				val id = this.substring(index, idEndPos + 1)
 				index = idEndPos
-				// TODO: 2022/01/21 述語とtermsのかっこの間に空白がある場合の対処
 				if (index + 1 < this.length && this[index + 1] == '(') {
 					val parenthesisEndPos = this.getParenthesisEndPos(index + 1) ?: throw FormulaParserException("Parenthesis Error")
 					val termsStr = this.substring(index + 2, parenthesisEndPos)
