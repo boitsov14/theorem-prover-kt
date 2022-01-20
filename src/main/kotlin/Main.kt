@@ -30,6 +30,10 @@ A & B | A & ~B | ~A & B | ~A & ~B
 (ex x, P x) and Q and R
 A and B and C and D and E to E and D and C and B and A
 (all x, P x) to (ex x, P x)
+P(a) to all x (P(x) to P(f(x))) to P(f(f(a)))
+p(y,f(x,z),veryLongNameFunction(veryLongNameVariable,z,z,z,z,z))
+all x p( y ,f ( x , z ) ,  veryLongNameFunction (  veryLongNameVariable , z , z , z , z , z )    )
+P, P to Q proves Q
  */
 
 fun main() {
@@ -40,8 +44,8 @@ fun main() {
 	}
 	 */
 	print("INPUT A FORMULA >>> ")
-	val fml = readLine()!!.parse()
-	val firstSequent = Sequent(emptySet(),setOf(fml))
+	val firstSequent = readLine()!!.parseToSequent()
+	//val firstSequent = Sequent(emptySet(),setOf(fml))
 	firstSequent.prove()
 
 	/*

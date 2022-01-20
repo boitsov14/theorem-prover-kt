@@ -5,7 +5,7 @@ import core.Term.*
 
 class FormulaParserException(message: String): Exception(message)
 
-fun String.parse(): Formula = this.toOneLetter().trimWhiteSpaces().tokenize().toReversePolishNotation().getFormula()
+fun String.parseToFormula(): Formula = this.toOneLetter().trimWhiteSpaces().tokenize().toReversePolishNotation().getFormula()
 
 /*
 fun String.parse(): Formula {
