@@ -5,6 +5,9 @@ import core.Term.*
 
 class FormulaParserException(message: String): Exception(message)
 
+fun String.parse(): Formula = this.toOneLetter().trimWhiteSpaces().tokenize().toReversePolishNotation().getFormula()
+
+/*
 fun String.parse(): Formula {
 	println(this)
 	val str = this.toOneLetter().trimWhiteSpaces()
@@ -16,40 +19,7 @@ fun String.parse(): Formula {
 	println(reversePolishNotation.getFormula())
 	return reversePolishNotation.getFormula()
 }
-
-/*
-fun String.parse(): Formula {
-	println(this)
-	val chrs = ArrayDeque(this.toOneLetter().toCharArray().toList())
-	println(chrs)
-	val preTokens = preTokenize(chrs)
-	println(preTokens)
-	val tokens = tokenize0(preTokens)
-	println(tokens)
-	val reversePolishNotation = toReversePolishNotation(tokens)
-	println(reversePolishNotation)
-	println(getFormula(reversePolishNotation))
-	return getFormula(reversePolishNotation)
-}
- */
-
-private sealed interface PreToken {
-	enum class Symbol(val chr: Char): PreToken {
-		LP('('),
-		RP(')'),
-		NOT('¬'),
-		AND('∧'),
-		OR('∨'),
-		IMPLIES('→'),
-		IFF('↔'),
-		ALL('∀'),
-		EXISTS('∃'),
-		FALSE('⊥'),
-		TRUE('⊤')
-	}
-	data class PREDICATE(val id: String): PreToken
-	data class VAR(val id: String): PreToken
-}
+*/
 
 private sealed interface Token {
 	object LP: Token
@@ -101,32 +71,6 @@ private fun String.trimWhiteSpaces(): String = this
 	.replace("\\s*[,]\\s*".toRegex(), ",")
 	.replace("[∀]\\s*".toRegex(), "∀")
 	.replace("[∃]\\s*".toRegex(), "∃")
-
-private fun preTokenize(inputChrs: ArrayDeque<Char>): ArrayDeque<PreToken> {
-	val preTokens = ArrayDeque<PreToken>()
-	while (inputChrs.isNotEmpty()) {
-		when (val currentChr = inputChrs.removeFirst()) {
-			in PreToken.Symbol.values().map { it.chr } -> preTokens.add(PreToken.Symbol.values().find { it.chr == currentChr }!!)
-			' ' -> {}
-			in ('A'..'Z')+('a'..'z') -> {
-				val chrs = mutableListOf(currentChr)
-				while (inputChrs.isNotEmpty() && (inputChrs.first().isLetterOrDigit() || inputChrs.first() == '_')) {
-					chrs.add(inputChrs.removeFirst())
-				}
-				val str = String(chrs.toCharArray())
-				preTokens.add(
-					when(currentChr) {
-						in ('A'..'Z') -> PreToken.PREDICATE(str)
-						in ('a'..'z') -> PreToken.VAR(str)
-						else -> throw IllegalArgumentException()
-					}
-				)
-			}
-			else -> throw FormulaParserException("Illegal Argument >> $currentChr")
-		}
-	}
-	return preTokens
-}
 
 @OptIn(ExperimentalStdlibApi::class)
 private fun String.getIdEndPos(startPos: Int): Int {
@@ -227,48 +171,6 @@ private fun String.tokenize(): List<Token> {
 			else -> throw FormulaParserException("Illegal Argument >> ${this[index]}")
 		}
 		index++
-	}
-	return tokens
-}
-
-private fun tokenize0(preTokens: ArrayDeque<PreToken>): List<Token> {
-	val tokens = mutableListOf<Token>()
-	while (preTokens.isNotEmpty()) {
-		when (val preToken = preTokens.removeFirst()) {
-			PreToken.Symbol.LP 	-> tokens.add(Token.LP)
-			PreToken.Symbol.RP 	-> tokens.add(Token.RP)
-			PreToken.Symbol.NOT 				-> tokens.add(Token.Operator.Unary.NOT)
-			PreToken.Symbol.AND 				-> tokens.add(Token.Operator.Binary.AND)
-			PreToken.Symbol.OR 					-> tokens.add(Token.Operator.Binary.OR)
-			PreToken.Symbol.IMPLIES 			-> tokens.add(Token.Operator.Binary.IMPLIES)
-			PreToken.Symbol.IFF 				-> tokens.add(Token.Operator.Binary.IFF)
-			PreToken.Symbol.FALSE 				-> tokens.add(Token.FALSE)
-			PreToken.Symbol.TRUE 				-> tokens.add(Token.TRUE)
-			is PreToken.PREDICATE -> {
-				val vars = mutableListOf<Var>()
-				while (preTokens.isNotEmpty() && preTokens.first() is PreToken.VAR) {
-					val preTokenVar = preTokens.removeFirst() as PreToken.VAR
-					vars.add(Var(preTokenVar.id))
-				}
-				val predicate = Token.PREDICATE(preToken.id, vars)
-				tokens.add(predicate)
-			}
-			PreToken.Symbol.ALL, PreToken.Symbol.EXISTS -> {
-				if (!(preTokens.size >= 1 && preTokens[0] is PreToken.VAR)) {
-					throw FormulaParserException("Parse Error with quantifier")
-				}
-				val preTokenVar = preTokens.removeFirst() as PreToken.VAR
-				val bddVar = Var(preTokenVar.id)
-				tokens.add(
-					when(preToken) {
-						PreToken.Symbol.ALL 	-> Token.Operator.Unary.ALL(bddVar)
-						PreToken.Symbol.EXISTS 	-> Token.Operator.Unary.EXISTS(bddVar)
-						else -> throw IllegalArgumentException()
-					}
-				)
-			}
-			else -> throw FormulaParserException("Parse Error")
-		}
 	}
 	return tokens
 }
