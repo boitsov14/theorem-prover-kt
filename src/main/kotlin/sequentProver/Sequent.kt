@@ -17,5 +17,3 @@ typealias Sequents = List<Sequent>
 fun Sequent.toSequents(): Sequents = listOf(this)
 // TODO: 2021/12/07 which is better?
 // TODO: 2022/01/17 そもそも必要なのか
-
-fun Sequents.replaceFirst(vararg newFirstSequents: Sequent): Sequents = newFirstSequents.toList() + this.drop(1)

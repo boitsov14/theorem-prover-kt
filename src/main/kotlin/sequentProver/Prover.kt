@@ -2,22 +2,7 @@ package sequentProver
 
 import core.Formula
 
-/*
-val allBasicTactics = listOf(AXIOM, IMPLIES_RIGHT, NOT_RIGHT, NOT_LEFT, OR_RIGHT, AND_LEFT, IFF_LEFT, OR_LEFT, AND_RIGHT, IFF_RIGHT, ALL_RIGHT, EXISTS_LEFT, IMPLIES_LEFT)
-
-fun applyBasicTacticOrNull(sequent: Sequent): IApplyData? {
-	val tactic = allBasicTactics.find { it.canApply(sequent) } ?: return null
-	val fml = tactic.availableFmls(sequent).first()
-	return ApplyData(tactic, fml)
-}
-*/
-
-fun applyAxiomOrNull(sequent: Sequent): IApplyData0? = if (AXIOM.canApply(sequent)) {
-	AXIOM.ApplyData
-} else {
-	null
-}
-
+// TODO: 2022/01/21 これらは必要なのか
 fun applyUnaryTacticOrNull(sequent: Sequent): IApplyData0? {
 	val tactic = UnaryTactic.values().find { it.canApply(sequent) } ?: return null
 	val fml = tactic.availableFmls(sequent).first()
