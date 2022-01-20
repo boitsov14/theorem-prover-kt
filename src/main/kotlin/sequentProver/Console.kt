@@ -205,7 +205,7 @@ fun Sequent.prove() {
 	println("-----------------------------------")
 	println(this)
 
-	val history = getOneLineProof(histories)
+	val history = histories.getOneLineProof()
 	for ((index, applyData) in history.withIndex()) {
 		println(">>> ${applyData.tactic}")
 		val sequents0 = history.take(index + 1).applyTactics(this.toSequents())
@@ -213,7 +213,7 @@ fun Sequent.prove() {
 	}
 }
 
-fun History0.toHistory(): History = this.map {
+private fun History0.toHistory(): History = this.map {
 	when(it) {
 		AXIOM.ApplyData -> it as IApplyData
 		is UnaryTactic.ApplyData -> it
@@ -223,13 +223,10 @@ fun History0.toHistory(): History = this.map {
 	}
 }
 
-fun getOneLineProof(duplicateHistories: List<History0>): History {
-	val result = mutableListOf<IApplyData>()
-	val firstHistory0 = duplicateHistories.first()
-	result.addAll(firstHistory0.toHistory())
-	for ((index, history0) in duplicateHistories.drop(1).withIndex()) {
-		val oldHistory0 = duplicateHistories[index]
-		val differIndex = oldHistory0.zip(history0).indexOfFirst { it.first != it.second }
+private fun List<History0>.getOneLineProof(): History {
+	val result = this.first().toHistory().toMutableList()
+	for ((index, history0) in this.drop(1).withIndex()) {
+		val differIndex = this[index].zip(history0).indexOfFirst { it.first != it.second }
 		result.addAll(history0.drop(differIndex + 1).toHistory())
 	}
 	return result
