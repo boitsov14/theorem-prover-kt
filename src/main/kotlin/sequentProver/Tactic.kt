@@ -241,14 +241,14 @@ enum class BinaryTactic: ITactic {
 enum class UnificationTermTactic: ITactic {
 	EXISTS_RIGHT, ALL_LEFT;
 	override fun toString(): String = when(this) {
-		EXISTS_RIGHT -> "∃R"
-		ALL_LEFT -> "∀L"
+		EXISTS_RIGHT 	-> "∃R"
+		ALL_LEFT 		-> "∀L"
 	}
 	data class ApplyData(override val tactic: UnificationTermTactic, val fml: Formula, val unificationTermIndex: Int) : IApplyData, IApplyData0
 	override fun canApply(sequent: Sequent): Boolean = this.availableFmls(sequent).isNotEmpty()
-	fun availableFmls(sequent: Sequent): List<Formula> = when(this) {
-		EXISTS_RIGHT -> sequent.conclusions.filterIsInstance<EXISTS>()
-		ALL_LEFT -> sequent.assumptions.filterIsInstance<ALL>()
+	private fun availableFmls(sequent: Sequent): List<Formula> = when(this) {
+		EXISTS_RIGHT 	-> sequent.conclusions.filterIsInstance<EXISTS>()
+		ALL_LEFT 		-> sequent.assumptions.filterIsInstance<ALL>()
 	}
 	fun applyTactic(sequent: Sequent, fml: Formula, unificationTermIndex: Int): Sequent {
 		if (!(this.canApply(sequent))) { throw IllegalTacticException() }

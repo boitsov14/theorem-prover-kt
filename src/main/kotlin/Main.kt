@@ -28,6 +28,8 @@ exists x. P(x) and Q(x) implies Q(x) and P(x)
 A & B | A & ~B | ~A & B | ~A & ~B
 (ex y, all x, P x y) to (all x, ex y, P x y)
 (ex x, P x) and Q and R
+A and B and C and D and E to E and D and C and B and A
+(all x, P x) to (ex x, P x)
  */
 
 fun main() {
