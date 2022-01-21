@@ -44,6 +44,11 @@ fun IApplyData0.applyTactic(sequent: Sequent): Sequent = when(this) {
 fun History.applyTactics(firstSequents: Sequents): Sequents = this.fold(firstSequents){ sequents, applyData -> applyData.applyTactic(sequents)}
 fun History0.applyTactics(firstSequent: Sequent): Sequent = this.fold(firstSequent){ sequent, applyData0 -> applyData0.applyTactic(sequent)}
 
+fun IApplyData0.toApplyData(): IApplyData = when(this) {
+	is BinaryTactic.ApplyData0 -> BinaryTactic.ApplyData(this.tactic, this.fml)
+	else -> this as IApplyData
+}
+
 class IllegalTacticException: Exception()
 
 object AXIOM: ITactic {

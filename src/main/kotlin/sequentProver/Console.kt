@@ -2,7 +2,7 @@ package sequentProver
 
 import core.Formula
 
-const val max = 5
+const val max = 3
 // TODO: 2022/01/20 そのうち消す
 
 fun Sequent.prove() {
@@ -81,6 +81,19 @@ fun Sequent.prove() {
 	println("Completed in $time ms")
 	println("loop count: $count")
 
+	val historyForLatex = histories.getLatexProof(this)
+	for (data in historyForLatex) {
+		if (data == null) {
+			println("\\AxiomC{}")
+			continue
+		}
+		println("\\RightLabel{\\scriptsize ${data.applyData.tactic}}")
+		when(data.applyData.tactic) {
+			is BinaryTactic -> println("\\BinaryInf$${data.sequentToBeApplied}$")
+			else -> println("\\UnaryInf$${data.sequentToBeApplied}$")
+		}
+	}
+
 	if (sequents.filterNotNull().isNotEmpty()) return
 
 	println("-----------------------------------")
@@ -94,6 +107,7 @@ fun Sequent.prove() {
 	}
 }
 
+/*
 private fun History0.toHistory(): History = this.map {
 	when(it) {
 		AXIOM.ApplyData -> it as IApplyData
@@ -103,12 +117,51 @@ private fun History0.toHistory(): History = this.map {
 		is TermTactic.ApplyData -> it
 	}
 }
+*/
 
 private fun List<History0>.getOneLineProof(): History {
-	val result = this.first().toHistory().toMutableList()
+	val result = this.first().map { it.toApplyData() }.toMutableList()
 	for ((index, history0) in this.drop(1).withIndex()) {
 		val differIndex = this[index].zip(history0).indexOfFirst { it.first != it.second }
-		result.addAll(history0.drop(differIndex + 1).toHistory())
+		result.addAll(history0.drop(differIndex + 1).map { it.toApplyData() })
 	}
 	return result
 }
+
+data class ApplyData0WithSequent(val sequentToBeApplied: Sequent, val applyData0: IApplyData0)
+
+typealias History0WithSequents = List<ApplyData0WithSequent>
+
+data class ApplyDataWithSequent(val sequentToBeApplied: Sequent, val applyData: IApplyData)
+
+typealias HistoryWithSequents = List<ApplyDataWithSequent?>
+
+private fun ApplyData0WithSequent.toApplyDataWithSequent(): ApplyDataWithSequent = ApplyDataWithSequent(this.sequentToBeApplied, this.applyData0.toApplyData())
+
+private fun List<History0WithSequents>.getOneLineProofWithSequents(): HistoryWithSequents {
+	val result: MutableList<ApplyDataWithSequent?> = this.first().map { it.toApplyDataWithSequent() }.toMutableList()
+	result.add(null)
+	for ((index, history0WithSequent) in this.drop(1).withIndex()) {
+		val differIndex = this[index].zip(history0WithSequent).indexOfFirst { it.first.applyData0 != it.second.applyData0 }
+		result.addAll(history0WithSequent.drop(differIndex + 1).map { it.toApplyDataWithSequent() })
+		result.add(null)
+	}
+	return result
+}
+
+private fun List<History0>.getLatexProof(firstSequent: Sequent): HistoryWithSequents =
+	map { it.toHistory0WithSequents(firstSequent) }.reversed().getOneLineProofWithSequents().reversed()
+
+/*
+private fun Sequent.toHistory0WithSequents(history0: History0): History0WithSequents {
+	val result = mutableListOf<ApplyData0WithSequent>()
+	for ((index, applyData0) in history0.withIndex()) {
+		val sequentToBeApplied = history0.take(index).applyTactics(this)
+		result.add(ApplyData0WithSequent(sequentToBeApplied, applyData0))
+	}
+	return result
+}
+ */
+
+private fun History0.toHistory0WithSequents(firstSequent: Sequent): History0WithSequents =
+	this.mapIndexed { index, applyData0 -> ApplyData0WithSequent(this.take(index).applyTactics(firstSequent), applyData0) }
