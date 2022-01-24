@@ -122,13 +122,15 @@ fun Sequent.prove() {
 
 	println("Print all proof Start...")
 	val timePrintProof = measureTimeMillis{
-		for ((index, applyData) in history.withIndex()) {
+		var currentSequents = this.toSequents()
+		for (applyData in history) {
 			//println(">>> ${applyData.tactic}")
-			val sequents0 = history.take(index + 1).applyTactics(this.toSequents())
-			//sequents0.forEach { println(it) }
+			currentSequents = applyData.applyTactic(currentSequents)
+			//currentSequents.forEach { println(it) }
 		}
 	}
 	println("Completed in $timePrintProof ms")
+	println("proof size: ${history.size}")
 }
 
 data class ApplyData0WithSequent(val sequentToBeApplied: Sequent, val applyData0: IApplyData0)
@@ -180,12 +182,13 @@ private fun History0.toHistory0WithSequents(firstSequent: Sequent): History0With
 /*
 ((o11 ∨ o12 ∨ o13) ∧ (o21 ∨ o22 ∨ o23) ∧ (o31 ∨ o32 ∨ o33) ∧ (o41 ∨ o42 ∨ o43)) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o11 ∧ o41) ∨ (o21 ∧ o31) ∨ (o21 ∧ o41) ∨ (o31 ∧ o41) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o12 ∧ o42) ∨ (o22 ∧ o32) ∨ (o22 ∧ o42) ∨ (o32 ∧ o42) ∨ (o13 ∧ o23) ∨ (o13 ∧ o33) ∨ (o13 ∧ o43) ∨ (o23 ∧ o33) ∨ (o23 ∧ o43) ∨ (o33 ∧ o43))
 PROOF SUCCEED!
-Completed in 585 ms
+Completed in 634 ms
 loop count: 8669
 Latex Start...
-Completed in 159 ms
+Completed in 154 ms
 One line proof Start...
 Completed in 24 ms
 Print all proof Start...
-Completed in 205479 ms
+Completed in 70 ms
+proof size: 8668
  */
