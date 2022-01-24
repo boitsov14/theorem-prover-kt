@@ -72,37 +72,19 @@ enum class UnaryTactic: ITactic {
 	}
 	data class ApplyData(override val tactic: UnaryTactic, val fml: Formula) : IApplyData, IApplyData0
 	override fun canApply(sequent: Sequent): Boolean = availableFmls(sequent).isNotEmpty()
-	fun availableFmls(sequent: Sequent): List<Formula> {
-		val assumptions = sequent.assumptions
-		val conclusions = sequent.conclusions
-		return when(this) {
-			AND_LEFT -> assumptions
-				.filterIsInstance<AND>()
-				.filterNot { it.leftFml in assumptions && it.rightFml in assumptions }
-			OR_RIGHT -> conclusions
-				.filterIsInstance<OR>()
-				.filterNot { it.leftFml in conclusions && it.rightFml in conclusions }
-			IMPLIES_RIGHT -> conclusions
-				.filterIsInstance<IMPLIES>()
-				.filterNot { it.leftFml in assumptions && it.rightFml in conclusions }
-			NOT_LEFT -> assumptions
-				.filterIsInstance<NOT>()
-				.filterNot { it.operandFml in conclusions }
-			NOT_RIGHT -> conclusions
-				.filterIsInstance<NOT>()
-				.filterNot { it.operandFml in assumptions }
-			IFF_LEFT -> assumptions
-				.filterIsInstance<IFF>()
-				.filterNot { it.leftFml in assumptions && it.rightFml in assumptions }
-			EXISTS_LEFT -> assumptions
-				.filterIsInstance<EXISTS>()
-				//.filterNot { assumption -> sequent.freeVars.any { freeVar -> assumption.substitute(freeVar) in assumptions } }
-			// TODO: 2021/12/12 関数記号も認めるようになったら修正要
-			// TODO: 2022/01/17 unification使って表現できる？
-			ALL_RIGHT -> conclusions
-				.filterIsInstance<ALL>()
-				//.filterNot { conclusion -> sequent.freeVars.any { freeVar -> conclusion.substitute(freeVar) in conclusions } }
-		}
+	fun availableFmls(sequent: Sequent): List<Formula> = when(this) {
+		AND_LEFT 		-> sequent.assumptions.filterIsInstance<AND>()
+		OR_RIGHT 		-> sequent.conclusions.filterIsInstance<OR>()
+		IMPLIES_RIGHT 	-> sequent.conclusions.filterIsInstance<IMPLIES>()
+		NOT_LEFT 		-> sequent.assumptions.filterIsInstance<NOT>()
+		NOT_RIGHT 		-> sequent.conclusions.filterIsInstance<NOT>()
+		IFF_LEFT 		-> sequent.assumptions.filterIsInstance<IFF>()
+		EXISTS_LEFT 	-> sequent.assumptions.filterIsInstance<EXISTS>()
+			//.filterNot { assumption -> sequent.freeVars.any { freeVar -> assumption.substitute(freeVar) in assumptions } }
+		// TODO: 2021/12/12 関数記号も認めるようになったら修正要
+		// TODO: 2022/01/17 unification使って表現できる？
+		ALL_RIGHT 		-> sequent.conclusions.filterIsInstance<ALL>()
+			//.filterNot { conclusion -> sequent.freeVars.any { freeVar -> conclusion.substitute(freeVar) in conclusions } }
 	}
 	fun applyTactic(sequent: Sequent, fml: Formula): Sequent {
 		if (!(this.canApply(sequent))) { throw IllegalTacticException() }
