@@ -1,6 +1,7 @@
 package sequentProver
 
 import core.Formula
+import kotlin.system.measureTimeMillis
 
 const val max = 3
 // TODO: 2022/01/20 そのうち消す
@@ -15,7 +16,7 @@ fun Sequent.prove() {
 
 	while (true) {
 		count++
-		sequents.filterNotNull().forEach { println(it) }
+		//sequents.filterNotNull().forEach { println(it) }
 
 		if (sequents.filterNotNull().isEmpty()) {
 			println("PROOF SUCCEED!")
@@ -25,7 +26,7 @@ fun Sequent.prove() {
 		if (axiomIndex != -1) {
 			histories[axiomIndex] = histories[axiomIndex] + AXIOM.ApplyData
 			sequents[axiomIndex] = null
-			println(">>> $AXIOM")
+			//println(">>> $AXIOM")
 			continue
 		}
 		val unaryIndex = sequents.indexOfFirst { it != null && applyUnaryTacticOrNull(it) != null }
@@ -34,7 +35,7 @@ fun Sequent.prove() {
 			val unaryApplyData = applyUnaryTacticOrNull(oldSequent)!!
 			histories[unaryIndex] = histories[unaryIndex] + unaryApplyData
 			sequents[unaryIndex] = unaryApplyData.applyTactic(oldSequent)
-			println(">>> ${unaryApplyData.tactic}")
+			//println(">>> ${unaryApplyData.tactic}")
 			continue
 		}
 		val binaryIndex = sequents.indexOfFirst { it != null && applyBinaryTacticOrNull(it) != null }
@@ -48,7 +49,7 @@ fun Sequent.prove() {
 			sequents.removeAt(binaryIndex)
 			sequents.add(binaryIndex, binaryApplyData.first.applyTactic(oldSequent))
 			sequents.add(binaryIndex + 1, binaryApplyData.second.applyTactic(oldSequent))
-			println(">>> ${binaryApplyData.first.tactic}")
+			//println(">>> ${binaryApplyData.first.tactic}")
 			continue
 		}
 
@@ -81,7 +82,19 @@ fun Sequent.prove() {
 	println("Completed in $time ms")
 	println("loop count: $count")
 
-	val historyForLatex = histories.getLatexProof(this)
+	//println("histories size: ${histories.size}")
+	//println("longest history size: ${histories.map { it.size }.maxOrNull()}")
+	//println("total history size: ${histories.sumOf { it.size }}")
+
+	val historyForLatex: HistoryWithSequents
+	println("Latex Start...")
+	val timeGetLatexProof = measureTimeMillis{
+		historyForLatex = histories.getLatexProof(this)
+	}
+	println("Completed in $timeGetLatexProof ms")
+	//val historyForLatex = histories.getLatexProof(this)
+
+	/*
 	for (data in historyForLatex) {
 		if (data == null) {
 			println("\\AxiomC{}")
@@ -93,31 +106,30 @@ fun Sequent.prove() {
 			else -> println("\\UnaryInf$${data.sequentToBeApplied}$")
 		}
 	}
+	 */
 
 	if (sequents.filterNotNull().isNotEmpty()) return
 
-	println("-----------------------------------")
-	println(this)
+	//println("-----------------------------------")
+	//println(this)
 
-	val history = histories.getOneLineProof()
-	for ((index, applyData) in history.withIndex()) {
-		println(">>> ${applyData.tactic}")
-		val sequents0 = history.take(index + 1).applyTactics(this.toSequents())
-		sequents0.forEach { println(it) }
+	println("One line proof Start...")
+	val history: History
+	val timeGetOneLineProof = measureTimeMillis{
+		history = histories.getOneLineProof()
 	}
-}
+	println("Completed in $timeGetOneLineProof ms")
 
-/*
-private fun History0.toHistory(): History = this.map {
-	when(it) {
-		AXIOM.ApplyData -> it as IApplyData
-		is UnaryTactic.ApplyData -> it
-		is BinaryTactic.ApplyData0 -> BinaryTactic.ApplyData(it.tactic, it.fml)
-		is UnificationTermTactic.ApplyData -> it
-		is TermTactic.ApplyData -> it
+	println("Print all proof Start...")
+	val timePrintProof = measureTimeMillis{
+		for ((index, applyData) in history.withIndex()) {
+			//println(">>> ${applyData.tactic}")
+			val sequents0 = history.take(index + 1).applyTactics(this.toSequents())
+			//sequents0.forEach { println(it) }
+		}
 	}
+	println("Completed in $timePrintProof ms")
 }
-*/
 
 private fun List<History0>.getOneLineProof(): History {
 	val result = this.first().map { it.toApplyData() }.toMutableList()
@@ -162,6 +174,19 @@ private fun Sequent.toHistory0WithSequents(history0: History0): History0WithSequ
 	return result
 }
  */
-
+// TODO: 2022/01/24 メモ化する
 private fun History0.toHistory0WithSequents(firstSequent: Sequent): History0WithSequents =
 	this.mapIndexed { index, applyData0 -> ApplyData0WithSequent(this.take(index).applyTactics(firstSequent), applyData0) }
+
+/*
+((o11 ∨ o12 ∨ o13) ∧ (o21 ∨ o22 ∨ o23) ∧ (o31 ∨ o32 ∨ o33) ∧ (o41 ∨ o42 ∨ o43)) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o11 ∧ o41) ∨ (o21 ∧ o31) ∨ (o21 ∧ o41) ∨ (o31 ∧ o41) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o12 ∧ o42) ∨ (o22 ∧ o32) ∨ (o22 ∧ o42) ∨ (o32 ∧ o42) ∨ (o13 ∧ o23) ∨ (o13 ∧ o33) ∨ (o13 ∧ o43) ∨ (o23 ∧ o33) ∨ (o23 ∧ o43) ∨ (o33 ∧ o43))
+PROOF SUCCEED!
+Completed in 638 ms
+loop count: 8669
+Latex Start...
+Completed in 21384 ms
+One line proof Start...
+Completed in 27 ms
+Print all proof Start...
+Completed in 205479 ms
+ */
