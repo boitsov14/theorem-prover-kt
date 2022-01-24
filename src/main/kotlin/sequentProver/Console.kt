@@ -131,15 +131,6 @@ fun Sequent.prove() {
 	println("Completed in $timePrintProof ms")
 }
 
-private fun List<History0>.getOneLineProof(): History {
-	val result = this.first().map { it.toApplyData() }.toMutableList()
-	for ((index, history0) in this.drop(1).withIndex()) {
-		val differIndex = this[index].zip(history0).indexOfFirst { it.first != it.second }
-		result.addAll(history0.drop(differIndex + 1).map { it.toApplyData() })
-	}
-	return result
-}
-
 data class ApplyData0WithSequent(val sequentToBeApplied: Sequent, val applyData0: IApplyData0)
 
 typealias History0WithSequents = List<ApplyData0WithSequent>
@@ -150,43 +141,51 @@ typealias HistoryWithSequents = List<ApplyDataWithSequent?>
 
 private fun ApplyData0WithSequent.toApplyDataWithSequent(): ApplyDataWithSequent = ApplyDataWithSequent(this.sequentToBeApplied, this.applyData0.toApplyData())
 
-private fun List<History0WithSequents>.getOneLineProofWithSequents(): HistoryWithSequents {
-	val result: MutableList<ApplyDataWithSequent?> = this.first().map { it.toApplyDataWithSequent() }.toMutableList()
+private fun List<History0>.getOneLineProof(): History {
+	val result = this.first().map { it.toApplyData() }.toMutableList()
+	for ((index, history0) in this.drop(1).withIndex()) {
+		val differIndex = this[index].zip(history0).indexOfFirst { it.first != it.second }
+		result.addAll(history0.drop(differIndex + 1).map { it.toApplyData() })
+	}
+	return result
+}
+
+private fun List<History0>.getOneLineProofWithSequents(firstSequent: Sequent): HistoryWithSequents {
+	var preHistory0WithSequents = this.first().toHistory0WithSequents(firstSequent)
+	val result: MutableList<ApplyDataWithSequent?> = preHistory0WithSequents.map { it.toApplyDataWithSequent() }.toMutableList()
 	result.add(null)
-	for ((index, history0WithSequent) in this.drop(1).withIndex()) {
-		val differIndex = this[index].zip(history0WithSequent).indexOfFirst { it.first.applyData0 != it.second.applyData0 }
-		result.addAll(history0WithSequent.drop(differIndex + 1).map { it.toApplyDataWithSequent() })
+	for ((index, history0) in this.drop(1).withIndex()) {
+		val differIndex = this[index].zip(history0).indexOfFirst { it.first != it.second }
+		val newHistory0WithSequents = history0.drop(differIndex).toHistory0WithSequents(preHistory0WithSequents[differIndex].sequentToBeApplied)
+		preHistory0WithSequents = preHistory0WithSequents.take(differIndex) + newHistory0WithSequents
+		result.addAll(newHistory0WithSequents.drop(1).map { it.toApplyDataWithSequent() })
 		result.add(null)
 	}
 	return result
 }
 
 private fun List<History0>.getLatexProof(firstSequent: Sequent): HistoryWithSequents =
-	map { it.toHistory0WithSequents(firstSequent) }.reversed().getOneLineProofWithSequents().reversed()
+	reversed().getOneLineProofWithSequents(firstSequent).reversed()
 
-/*
-private fun Sequent.toHistory0WithSequents(history0: History0): History0WithSequents {
+private fun History0.toHistory0WithSequents(firstSequent: Sequent): History0WithSequents {
 	val result = mutableListOf<ApplyData0WithSequent>()
-	for ((index, applyData0) in history0.withIndex()) {
-		val sequentToBeApplied = history0.take(index).applyTactics(this)
+	var sequentToBeApplied = firstSequent
+	for ((index, applyData0) in this.withIndex()) {
+		sequentToBeApplied = this.elementAtOrNull(index - 1).applyTactic(sequentToBeApplied)
 		result.add(ApplyData0WithSequent(sequentToBeApplied, applyData0))
 	}
 	return result
 }
- */
-// TODO: 2022/01/24 メモ化する
-private fun History0.toHistory0WithSequents(firstSequent: Sequent): History0WithSequents =
-	this.mapIndexed { index, applyData0 -> ApplyData0WithSequent(this.take(index).applyTactics(firstSequent), applyData0) }
 
 /*
 ((o11 ∨ o12 ∨ o13) ∧ (o21 ∨ o22 ∨ o23) ∧ (o31 ∨ o32 ∨ o33) ∧ (o41 ∨ o42 ∨ o43)) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o11 ∧ o41) ∨ (o21 ∧ o31) ∨ (o21 ∧ o41) ∨ (o31 ∧ o41) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o12 ∧ o42) ∨ (o22 ∧ o32) ∨ (o22 ∧ o42) ∨ (o32 ∧ o42) ∨ (o13 ∧ o23) ∨ (o13 ∧ o33) ∨ (o13 ∧ o43) ∨ (o23 ∧ o33) ∨ (o23 ∧ o43) ∨ (o33 ∧ o43))
 PROOF SUCCEED!
-Completed in 638 ms
+Completed in 585 ms
 loop count: 8669
 Latex Start...
-Completed in 21384 ms
+Completed in 159 ms
 One line proof Start...
-Completed in 27 ms
+Completed in 24 ms
 Print all proof Start...
 Completed in 205479 ms
  */

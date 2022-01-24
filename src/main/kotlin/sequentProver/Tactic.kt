@@ -33,7 +33,8 @@ fun IApplyData.applyTactic(sequents: Sequents): Sequents {
 	}
 }
 
-fun IApplyData0.applyTactic(sequent: Sequent): Sequent = when(this) {
+fun IApplyData0?.applyTactic(sequent: Sequent): Sequent = when(this) {
+	null -> sequent
 	AXIOM.ApplyData -> throw IllegalTacticException()
 	is UnaryTactic.ApplyData -> tactic.applyTactic(sequent, fml)
 	is BinaryTactic.ApplyData0 -> if (isFirst) { tactic.applyTactic(sequent, fml).first } else { tactic.applyTactic(sequent, fml).second }
