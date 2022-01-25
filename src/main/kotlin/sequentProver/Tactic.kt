@@ -6,6 +6,7 @@ import core.Term.*
 
 sealed interface ITactic {
 	fun canApply(sequent: Sequent): Boolean
+	fun toLatex(): String
 }
 
 //val allTactics: Set<ITactic> = BasicTactic.values().toSet()
@@ -54,8 +55,9 @@ class IllegalTacticException: Exception()
 
 object AXIOM: ITactic {
 	override fun toString(): String = "axiom"
+	override fun toLatex(): String = "axiom"
 	override fun canApply(sequent: Sequent): Boolean = (sequent.assumptions intersect sequent.conclusions).isNotEmpty() || TRUE in sequent.conclusions || FALSE in sequent.assumptions
-	object ApplyData: IApplyData, IApplyData0 { override val tactic = AXIOM }
+	object ApplyData: IApplyData, IApplyData0 { override val tactic = AXIOM	}
 }
 
 enum class UnaryTactic: ITactic {
@@ -69,6 +71,16 @@ enum class UnaryTactic: ITactic {
 		IFF_LEFT -> "↔L"
 		ALL_RIGHT -> "∀R"
 		EXISTS_LEFT -> "∃L"
+	}
+	override fun toLatex(): String = when(this) {
+		AND_LEFT 		-> "$\\land$: Left"
+		OR_RIGHT 		-> "$\\lor$: Right"
+		IMPLIES_RIGHT 	-> "$\\rightarrow$: Right"
+		NOT_LEFT 		-> "$\\neg$: Left"
+		NOT_RIGHT 		-> "$\\neg$: Right"
+		IFF_LEFT 		-> "$\\leftrightarrow$: Left"
+		ALL_RIGHT 		-> "$\\forall$: Right"
+		EXISTS_LEFT 	-> "$\\exists$: Left"
 	}
 	data class ApplyData(override val tactic: UnaryTactic, val fml: Formula) : IApplyData, IApplyData0
 	override fun canApply(sequent: Sequent): Boolean = availableFmls(sequent).isNotEmpty()
@@ -158,6 +170,12 @@ enum class BinaryTactic: ITactic {
 		IMPLIES_LEFT -> "→L"
 		IFF_RIGHT -> "↔R"
 	}
+	override fun toLatex(): String = when(this) {
+		AND_RIGHT 		-> "$\\land$: Right"
+		OR_LEFT 		-> "$\\lor$: Left"
+		IMPLIES_LEFT 	-> "$\\rightarrow$: Left"
+		IFF_RIGHT 		-> "$\\leftrightarrow$: Right"
+	}
 	data class ApplyData(override val tactic: BinaryTactic, val fml: Formula) : IApplyData
 	data class ApplyData0(override val tactic: BinaryTactic, val fml: Formula, val isFirst: Boolean) : IApplyData0
 	override fun canApply(sequent: Sequent): Boolean = availableFmls(sequent).isNotEmpty()
@@ -232,6 +250,10 @@ enum class UnificationTermTactic: ITactic {
 		EXISTS_RIGHT 	-> "∃R"
 		ALL_LEFT 		-> "∀L"
 	}
+	override fun toLatex(): String = when(this) {
+		EXISTS_RIGHT 	-> "$\\exists$: Right"
+		ALL_LEFT 		-> "$\\forall$: Left"
+	}
 	data class ApplyData(override val tactic: UnificationTermTactic, val fml: Formula, val unificationTermIndex: Int) : IApplyData, IApplyData0
 	override fun canApply(sequent: Sequent): Boolean = this.availableFmls(sequent).isNotEmpty()
 	private fun availableFmls(sequent: Sequent): List<Formula> = when(this) {
@@ -270,6 +292,10 @@ enum class TermTactic: ITactic {
 	override fun toString(): String = when(this) {
 		EXISTS_RIGHT -> "∃R"
 		ALL_LEFT -> "∀L"
+	}
+	override fun toLatex(): String = when(this) {
+		EXISTS_RIGHT 	-> "$\\exists$: Right"
+		ALL_LEFT 		-> "$\\forall$: Left"
 	}
 	data class ApplyData(override val tactic: TermTactic, val fml: Formula, val term: Term) : IApplyData, IApplyData0
 	override fun canApply(sequent: Sequent): Boolean = this.availableFmls(sequent).isNotEmpty()

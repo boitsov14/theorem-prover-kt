@@ -6,6 +6,7 @@ import core.Term.*
 data class Sequent(val assumptions: Set<Formula>, val conclusions: Set<Formula>) {
 	//constructor(conclusions: Set<Formula>) : this(emptySet(), conclusions)
 	override fun toString() = assumptions.joinToString(separator = ", ") + " ⊢ " + conclusions.joinToString(separator = ", ")
+	fun toLatex() = assumptions.joinToString(separator = ", ") { it.toLatex() } + " \\ \\fCenter \\ " + conclusions.joinToString(separator = ", ") { it.toLatex() }
 	// TODO: 2021/12/07 which is better?
 	// = (if (assumptions.isNotEmpty()) assumptions.joinToString(separator = ", ", postfix = " ") else "") + "⊢ " + "$conclusions"
 	val freeVars: Set<Var> = (assumptions + conclusions).map { it.freeVars }.flatten().toSet()

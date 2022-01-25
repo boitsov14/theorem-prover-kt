@@ -65,6 +65,14 @@ sealed class Formula {
 		is EXISTS 		-> "∃$bddVar${operandFml.recToString()}"
 	}
 	final override fun toString(): String = recToString().removeSurrounding("(", ")")
+	fun toLatex(): String = toString()
+		.replace("¬", "\\neg ")
+		.replace("∧", "\\land")
+		.replace("∨", "\\or")
+		.replace("→", "\\rightarrow")
+		.replace("↔", "\\leftrightarrow")
+		.replace("∀", "\\forall ")
+		.replace("∃", "\\exists ")
 	val freeVars: Set<Var>
 		get() = when (this) {
 			TRUE 			-> emptySet()
