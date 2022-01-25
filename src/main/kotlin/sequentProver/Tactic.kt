@@ -244,7 +244,7 @@ enum class UnificationTermTactic: ITactic {
 			EXISTS_RIGHT -> {
 				fml as EXISTS
 				val availableVars = sequent.freeVars.ifEmpty { setOf(fml.bddVar) }
-				val unificationTerm = UnificationTerm("t_$unificationTermIndex", availableVars)
+				val unificationTerm = UnificationTerm(unificationTermIndex, availableVars)
 				val newConclusion = fml.instantiate(unificationTerm)
 				val newFml = fml.copy(unificationTermInstantiationCount = fml.unificationTermInstantiationCount + 1)
 				sequent.copy(
@@ -254,7 +254,7 @@ enum class UnificationTermTactic: ITactic {
 			ALL_LEFT -> {
 				fml as ALL
 				val availableVars = sequent.freeVars.ifEmpty { setOf(fml.bddVar) }
-				val unificationTerm = UnificationTerm("t_$unificationTermIndex", availableVars)
+				val unificationTerm = UnificationTerm(unificationTermIndex, availableVars)
 				val newConclusion = fml.instantiate(unificationTerm)
 				val newFml = fml.copy(unificationTermInstantiationCount = fml.unificationTermInstantiationCount + 1)
 				sequent.copy(
