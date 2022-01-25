@@ -3,7 +3,7 @@ package sequentProver
 import core.Formula
 import kotlin.system.measureTimeMillis
 
-const val max = 3
+const val max = 4
 // TODO: 2022/01/20 そのうち消す
 
 fun Sequent.prove() {
@@ -140,19 +140,18 @@ fun Sequent.prove() {
 	}
 	println("Completed in $timeGetLatexProof ms")
 
-	/*
+
 	for (data in historyForLatex) {
 		if (data == null) {
 			println("\\AxiomC{}")
 			continue
 		}
-		println("\\RightLabel{\\scriptsize ${data.applyData.tactic}}")
+		println("\\RightLabel{\\scriptsize ${data.applyData.tactic.toLatex()}}")
 		when(data.applyData.tactic) {
-			is BinaryTactic -> println("\\BinaryInf$${data.sequentToBeApplied}$")
-			else -> println("\\UnaryInf$${data.sequentToBeApplied}$")
+			is BinaryTactic -> println("\\BinaryInf$${data.sequentToBeApplied.toLatex()}$")
+			else -> println("\\UnaryInf$${data.sequentToBeApplied.toLatex()}$")
 		}
 	}
-	 */
 
 	if (sequents.filterNotNull().isNotEmpty()) return
 

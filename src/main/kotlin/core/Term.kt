@@ -14,20 +14,7 @@ sealed class Term {
 			}
 		}
 	}
-	data class UnificationTerm(val id: Int, val availableVars: Set<Var>): Term() {
-		/*
-		fun getFreshUnificationTerm(oldUnificationTerms: Set<UnificationTerm>): UnificationTerm {
-			val oldIDs = oldUnificationTerms.map { it.id }
-			if (id !in oldIDs) { return this }
-			var n = 1
-			while (true) {
-				val newID = id + "_$n"
-				if (newID !in oldIDs) { return UnificationTerm(newID, availableVars) }
-				n++
-			}
-		}
-		*/
-	}
+	data class UnificationTerm(val id: Int, val availableVars: Set<Var>): Term()
 	data class Function(val id: String, val terms: List<Term>): Term()
 	final override fun toString(): String = when(this) {
 		is Var -> id
