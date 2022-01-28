@@ -16,3 +16,28 @@ fun applyUnificationTermTacticOrNull(sequent: Sequent, unificationTermIndex: Int
 		null
 	}
 }
+
+sealed interface IApplyDataWithNode {
+	val applyData: IApplyData
+}
+
+object AxiomApplyData: IApplyDataWithNode {
+	override val applyData = AXIOM.ApplyData
+}
+
+data class UnaryApplyDataWithNode(
+	override val applyData: UnaryTactic.ApplyData,
+	val node: Node
+): IApplyDataWithNode
+
+data class BinaryApplyDataWithNodes(
+	override val applyData: BinaryTactic.ApplyData,
+	val leftNode: Node,
+	val rightNode: Node
+): IApplyDataWithNode
+
+data class Node(
+	var sequentToBeApplied: Sequent
+) {
+	lateinit var applyDataWithNode: IApplyDataWithNode
+}

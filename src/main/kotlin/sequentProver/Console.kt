@@ -1,6 +1,5 @@
 package sequentProver
 
-import core.Formula
 import kotlin.system.measureTimeMillis
 
 const val max = 4
@@ -14,14 +13,18 @@ fun Sequent.prove() {
 	val histories = mutableListOf<History0>(emptyList())
 	val sequents = mutableListOf<Sequent?>(this)
 
+	val rootNode = Node(this)
+	val nodes = mutableListOf(rootNode)
+
 	//var oldEnd = System.currentTimeMillis()
 	//var tooLong = 10000L
 
 	loop@ while (true) {
 		count++
 		//sequents.filterNotNull().forEach { println(it) }
+		//nodes.forEach { println(it.sequentToBeApplied) }
 
-		if (sequents.size >= 30000) {
+		if (count >= 60000) {
 			println("PROOF IS TOO LONG")
 			break
 		}
@@ -46,7 +49,13 @@ fun Sequent.prove() {
 		}
 		 */
 
+		/*
 		if (sequents.filterNotNull().isEmpty()) {
+			println("PROOF SUCCEED!")
+			break
+		}
+		 */
+		if (nodes.isEmpty()) {
 			println("PROOF SUCCEED!")
 			break
 		}
@@ -63,6 +72,7 @@ fun Sequent.prove() {
 			}
 		}
 		 */
+		/*
 		val axiomIndex = sequents.indexOfFirst { it != null && AXIOM.canApply(it) }
 		if (axiomIndex != -1) {
 			histories[axiomIndex] = histories[axiomIndex] + AXIOM.ApplyData
@@ -70,7 +80,27 @@ fun Sequent.prove() {
 			//println(">>> $AXIOM")
 			continue
 		}
+		 */
+		/*
+		val axiomIndex = nodes.indexOfFirst { AXIOM.canApply(it.sequentToBeProved) }
+		if (axiomIndex != -1) {
+			nodes[axiomIndex].applyDataWithNode = AxiomApplyData
+			nodes.removeAt(axiomIndex)
+			//println(">>> $AXIOM")
+			continue
+		}
+		 */
+		// TODO: 2022/01/29 上と下どっちがよいか
+		for (node in nodes) {
+			if (AXIOM.canApply(node.sequentToBeApplied)) {
+				node.applyDataWithNode = AxiomApplyData
+				nodes.remove(node)
+				//println(">>> $AXIOM")
+				continue@loop
+			}
+		}
 
+		/*
 		for ((index, sequent) in sequents.withIndex()) {
 			if (sequent == null) continue
 			for (tactic in UnaryTactic.values()) {
@@ -82,7 +112,24 @@ fun Sequent.prove() {
 				continue@loop
 			}
 		}
+		 */
+		// TODO: 2022/01/29 indexは必要なのか
+		for ((index, node) in nodes.withIndex()) {
+			val sequentToBeApplied = node.sequentToBeApplied
+			for (tactic in UnaryTactic.values()) {
+				val fml = tactic.availableFmls(sequentToBeApplied).firstOrNull() ?: continue
+				// TODO: 2022/01/29 二重ループ改善?
+				val applyData = UnaryTactic.ApplyData(tactic, fml)
+				val sequent = applyData.applyTactic(sequentToBeApplied)
+				val newNode = Node(sequent)
+				node.applyDataWithNode = UnaryApplyDataWithNode(applyData, newNode)
+				nodes[index] = newNode
+				//println(">>> $tactic")
+				continue@loop
+			}
+		}
 
+		/*
 		for ((index, sequent) in sequents.withIndex()) {
 			if (sequent == null) continue
 			for (tactic in BinaryTactic.values()) {
@@ -99,6 +146,24 @@ fun Sequent.prove() {
 				continue@loop
 			}
 		}
+		 */
+		for ((index, node) in nodes.withIndex()) {
+			val sequentToBeApplied = node.sequentToBeApplied
+			for (tactic in BinaryTactic.values()) {
+				val fml = tactic.availableFmls(sequentToBeApplied).firstOrNull() ?: continue
+				val applyData = BinaryTactic.ApplyData(tactic, fml)
+				val leftSequent = tactic.applyTactic(sequentToBeApplied, fml).first
+				val rightSequent = tactic.applyTactic(sequentToBeApplied, fml).second
+				val leftNode = Node(leftSequent)
+				val rightNode = Node(rightSequent)
+				node.applyDataWithNode = BinaryApplyDataWithNodes(applyData, leftNode, rightNode)
+				nodes[index] = leftNode
+				nodes.add(index + 1, rightNode)
+				//println(">>> $tactic")
+				continue@loop
+			}
+		}
+		/*
 
 		val unProvable = sequents.filterNotNull().none { it.assumptions.filterIsInstance<Formula.ALL>().isNotEmpty()
 				|| it.conclusions.filterIsInstance<Formula.EXISTS>().isNotEmpty() }
@@ -123,15 +188,18 @@ fun Sequent.prove() {
 			println("PROOF FAILED")
 			break
 		}
+		 */
 	}
 	val end = System.currentTimeMillis()
 	val time = end - start
 	println("Completed in $time ms")
 	println("loop count: $count")
 
-	println("histories size: ${histories.size}")
+	//println("histories size: ${histories.size}")
 	//println("longest history size: ${histories.map { it.size }.maxOrNull()}")
 	//println("total history size: ${histories.sumOf { it.size }}")
+
+	/*
 
 	val historyForLatex: HistoryWithSequents
 	println("Latex Start...")
@@ -176,6 +244,7 @@ fun Sequent.prove() {
 	}
 	println("Completed in $timePrintProof ms")
 	println("proof size: ${history.size}")
+	 */
 }
 
 data class ApplyData0WithSequent(val sequentToBeApplied: Sequent, val applyData0: IApplyData0)
@@ -227,9 +296,8 @@ private fun History0.toHistory0WithSequents(firstSequent: Sequent): History0With
 /*
 ((o11 ∨ o12 ∨ o13) ∧ (o21 ∨ o22 ∨ o23) ∧ (o31 ∨ o32 ∨ o33) ∧ (o41 ∨ o42 ∨ o43)) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o11 ∧ o41) ∨ (o21 ∧ o31) ∨ (o21 ∧ o41) ∨ (o31 ∧ o41) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o12 ∧ o42) ∨ (o22 ∧ o32) ∨ (o22 ∧ o42) ∨ (o32 ∧ o42) ∨ (o13 ∧ o23) ∨ (o13 ∧ o33) ∨ (o13 ∧ o43) ∨ (o23 ∧ o33) ∨ (o23 ∧ o43) ∨ (o33 ∧ o43))
 PROOF SUCCEED!
-Completed in 535 ms
+Completed in 365 ms
 loop count: 8669
-histories size: 4324
 Latex Start...
 Completed in 161 ms
 One line proof Start...
@@ -240,9 +308,8 @@ proof size: 8668
 
 ((o11 ∨ o12 ∨ o13 ∨ o14) ∧ (o21 ∨ o22 ∨ o23 ∨ o24) ∧ (o31 ∨ o32 ∨ o33 ∨ o34) ∧ (o41 ∨ o42 ∨ o43 ∨ o44) ∧ (o51 ∨ o52 ∨ o53 ∨ o54)) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o11 ∧ o41) ∨ (o11 ∧ o51) ∨ (o21 ∧ o31) ∨ (o21 ∧ o41) ∨ (o21 ∧ o51) ∨ (o31 ∧ o41) ∨ (o31 ∧ o51) ∨ (o41 ∧ o51) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o12 ∧ o42) ∨ (o12 ∧ o52) ∨ (o22 ∧ o32) ∨ (o22 ∧ o42) ∨ (o22 ∧ o52) ∨ (o32 ∧ o42) ∨ (o32 ∧ o52) ∨ (o42 ∧ o52) ∨ (o13 ∧ o23) ∨ (o13 ∧ o33) ∨ (o13 ∧ o43) ∨ (o13 ∧ o53) ∨ (o23 ∧ o33) ∨ (o23 ∧ o43) ∨ (o23 ∧ o53) ∨ (o33 ∧ o43) ∨ (o33 ∧ o53) ∨ (o43 ∧ o53) ∨ (o14 ∧ o24) ∨ (o14 ∧ o34) ∨ (o14 ∧ o44) ∨ (o14 ∧ o54) ∨ (o24 ∧ o34) ∨ (o24 ∧ o44) ∨ (o24 ∧ o54) ∨ (o34 ∧ o44) ∨ (o34 ∧ o54) ∨ (o44 ∧ o54))
 PROOF IS TOO LONG
-Completed in 7284 ms
-loop count: 60033
-histories size: 30000
+Completed in 1914 ms
+loop count: 60000
 Latex Start...
 Completed in 1665 ms
 
