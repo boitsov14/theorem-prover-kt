@@ -36,6 +36,16 @@ data class BinaryApplyDataWithNodes(
 	val rightNode: Node
 ): IApplyDataWithNode
 
+data class UnificationTermApplyDataWithNode(
+	override val applyData: UnificationTermTactic.ApplyData,
+	val node: Node
+): IApplyDataWithNode
+
+data class TermApplyDataWithNode(
+	override val applyData: TermTactic.ApplyData,
+	val node: Node
+): IApplyDataWithNode
+
 data class Node(
 	var sequentToBeApplied: Sequent
 ) {

@@ -1,6 +1,6 @@
 package sequentProver
 
-import kotlin.system.measureTimeMillis
+import core.Formula
 
 const val max = 4
 // TODO: 2022/01/20 そのうち消す
@@ -22,7 +22,7 @@ fun Sequent.prove() {
 	loop@ while (true) {
 		count++
 		//sequents.filterNotNull().forEach { println(it) }
-		//nodes.forEach { println(it.sequentToBeApplied) }
+		nodes.forEach { println(it.sequentToBeApplied) }
 
 		if (count >= 60000) {
 			println("PROOF IS TOO LONG")
@@ -95,7 +95,7 @@ fun Sequent.prove() {
 			if (AXIOM.canApply(node.sequentToBeApplied)) {
 				node.applyDataWithNode = AxiomApplyData
 				nodes.remove(node)
-				//println(">>> $AXIOM")
+				println(">>> $AXIOM")
 				continue@loop
 			}
 		}
@@ -124,7 +124,7 @@ fun Sequent.prove() {
 				val newNode = Node(sequent)
 				node.applyDataWithNode = UnaryApplyDataWithNode(applyData, newNode)
 				nodes[index] = newNode
-				//println(">>> $tactic")
+				println(">>> $tactic")
 				continue@loop
 			}
 		}
@@ -159,10 +159,50 @@ fun Sequent.prove() {
 				node.applyDataWithNode = BinaryApplyDataWithNodes(applyData, leftNode, rightNode)
 				nodes[index] = leftNode
 				nodes.add(index + 1, rightNode)
-				//println(">>> $tactic")
+				println(">>> $tactic")
 				continue@loop
 			}
 		}
+
+		for ((index, node) in nodes.withIndex()) {
+			val sequentToBeApplied = node.sequentToBeApplied
+			// TODO: 2022/01/29 availableFmlsを使うか
+			val availableExistsRightFmls 	= sequentToBeApplied.conclusions.filterIsInstance<Formula.EXISTS>().filter { it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount }
+			val availableAllLeftFmls 		= sequentToBeApplied.assumptions.filterIsInstance<Formula.ALL>().filter { it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount }
+			val applyData = if (availableExistsRightFmls.isNotEmpty()) {
+				val fml = availableExistsRightFmls.first()
+				UnificationTermTactic.ApplyData(UnificationTermTactic.EXISTS_RIGHT, fml, unificationTermIndex)
+			} else if (availableAllLeftFmls.isNotEmpty()) {
+				val fml = availableAllLeftFmls.first()
+				UnificationTermTactic.ApplyData(UnificationTermTactic.ALL_LEFT, fml, unificationTermIndex)
+			} else {
+				continue
+			}
+			val sequent = applyData.applyTactic(sequentToBeApplied)
+			val newNode = Node(sequent)
+			node.applyDataWithNode = UnificationTermApplyDataWithNode(applyData, newNode)
+			nodes[index] = newNode
+			unificationTermIndex++
+			println(">>> ${applyData.tactic}")
+			continue@loop
+		}
+
+		if (unificationTermInstantiationMaxCount == 0
+			&& nodes.none {
+				it.sequentToBeApplied.assumptions.filterIsInstance<Formula.ALL>().isNotEmpty()
+						|| it.sequentToBeApplied.conclusions.filterIsInstance<Formula.EXISTS>().isNotEmpty() }) {
+			println("UNPROVABLE")
+			break
+		}
+
+		if (unificationTermInstantiationMaxCount == max) {
+			println("PROOF FAILED")
+			break
+		}
+
+		unificationTermInstantiationMaxCount++
+		println(">>> unificationTermMax: $unificationTermInstantiationMaxCount")
+
 		/*
 
 		val unProvable = sequents.filterNotNull().none { it.assumptions.filterIsInstance<Formula.ALL>().isNotEmpty()
