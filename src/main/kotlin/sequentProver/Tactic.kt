@@ -11,41 +11,6 @@ sealed interface ITactic {
 sealed interface IApplyData {
 	val tactic: ITactic
 }
-/*
-sealed interface IApplyData0 {
-	val tactic: ITactic
-}
-
-typealias History = List<IApplyData>
-typealias History0 = List<IApplyData0>
-
-fun IApplyData.applyTactic(sequents: Sequents): Sequents {
-	val sequent = sequents[0]
-	return when(this) {
-		AXIOM.ApplyData -> sequents.drop(1)
-		is UnaryTactic.ApplyData -> tactic.applyTactic(sequent, fml).toSequents() + sequents.drop(1)
-		is BinaryTactic.ApplyData -> tactic.applyTactic(sequent, fml).toList() + sequents.drop(1)
-		is UnificationTermTactic.ApplyData -> tactic.applyTactic(sequent, fml, unificationTermIndex).toSequents() + sequents.drop(1)
-		is TermTactic.ApplyData -> tactic.applyTactic(sequent, fml, term).toSequents() + sequents.drop(1)
-	}
-}
-
-fun IApplyData0.applyTactic(sequent: Sequent): Sequent = when(this) {
-	AXIOM.ApplyData -> throw IllegalTacticException()
-	is UnaryTactic.ApplyData -> tactic.applyTactic(sequent, fml)
-	is BinaryTactic.ApplyData0 -> if (isFirst) { tactic.applyTactic(sequent, fml).first } else { tactic.applyTactic(sequent, fml).second }
-	is UnificationTermTactic.ApplyData -> tactic.applyTactic(sequent, fml, unificationTermIndex)
-	is TermTactic.ApplyData -> tactic.applyTactic(sequent, fml, term)
-}
-
-fun History.applyTactics(firstSequents: Sequents): Sequents = this.fold(firstSequents){ sequents, applyData -> applyData.applyTactic(sequents)}
-fun History0.applyTactics(firstSequent: Sequent): Sequent = this.fold(firstSequent){ sequent, applyData0 -> applyData0.applyTactic(sequent)}
-
-fun IApplyData0.toApplyData(): IApplyData = when(this) {
-	is BinaryTactic.ApplyData0 -> BinaryTactic.ApplyData(this.tactic, this.fml)
-	else -> this as IApplyData
-}
- */
 
 class IllegalTacticException: Exception()
 
