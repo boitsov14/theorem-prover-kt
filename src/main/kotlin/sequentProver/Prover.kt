@@ -38,25 +38,21 @@ data class Node(
 
 data class IndependentNode(val sequentToBeApplied: Sequent, val applyData: IApplyData)
 
-fun Node.toIndependentNode(): IndependentNode = IndependentNode(this.sequentToBeApplied, this.applyDataWithNode.applyData)
+fun Node.toIndependentNode(): IndependentNode = IndependentNode(sequentToBeApplied, applyDataWithNode.applyData)
 
-// TODO: 2022/01/29 Binaryのとこ修正
-// TODO: 2022/01/29 try&catch将来的にはなくす
 fun Node.checkCorrectness(): Boolean = try {
-	when(val applyDataWithNode = this.applyDataWithNode) {
-		AxiomApplyData 						-> AXIOM.canApply(this.sequentToBeApplied)
+	when(val applyDataWithNode = applyDataWithNode) {
+		AxiomApplyData 						-> AXIOM.canApply(sequentToBeApplied)
 		is UnaryApplyDataWithNode 			-> applyDataWithNode.applyData.applyTactic(sequentToBeApplied) == applyDataWithNode.node.sequentToBeApplied && applyDataWithNode.node.checkCorrectness()
-		is BinaryApplyDataWithNodes 		-> applyDataWithNode.applyData.tactic.applyTactic(sequentToBeApplied, applyDataWithNode.applyData.fml) == applyDataWithNode.leftNode.sequentToBeApplied to applyDataWithNode.rightNode.sequentToBeApplied && applyDataWithNode.leftNode.checkCorrectness() && applyDataWithNode.rightNode.checkCorrectness()
+		is BinaryApplyDataWithNodes 		-> applyDataWithNode.applyData.applyTactic(sequentToBeApplied) == applyDataWithNode.leftNode.sequentToBeApplied to applyDataWithNode.rightNode.sequentToBeApplied && applyDataWithNode.leftNode.checkCorrectness() && applyDataWithNode.rightNode.checkCorrectness()
 		is UnificationTermApplyDataWithNode -> applyDataWithNode.applyData.applyTactic(sequentToBeApplied) == applyDataWithNode.node.sequentToBeApplied && applyDataWithNode.node.checkCorrectness()
 		is TermApplyDataWithNode 			-> applyDataWithNode.applyData.applyTactic(sequentToBeApplied) == applyDataWithNode.node.sequentToBeApplied && applyDataWithNode.node.checkCorrectness()
 	}
 } catch (e: IllegalTacticException) {
 	false
-} catch (e: UninitializedPropertyAccessException) {
-	false
 }
 
-private fun Node.getReversedProof(): List<IndependentNode> = listOf(this.toIndependentNode()) + when(val applyDataWithNode = this.applyDataWithNode) {
+private fun Node.getReversedProof(): List<IndependentNode> = listOf(toIndependentNode()) + when(val applyDataWithNode = applyDataWithNode) {
 	AxiomApplyData 						-> emptyList()
 	is UnaryApplyDataWithNode 			-> applyDataWithNode.node.getReversedProof()
 	is BinaryApplyDataWithNodes 		-> applyDataWithNode.rightNode.getReversedProof() + applyDataWithNode.leftNode.getReversedProof()
@@ -64,7 +60,7 @@ private fun Node.getReversedProof(): List<IndependentNode> = listOf(this.toIndep
 	is TermApplyDataWithNode 			-> applyDataWithNode.node.getReversedProof()
 }
 
-fun Node.getLatexProof(): String = this.getReversedProof().reversed().joinToString(separator = "\n") {
+fun Node.getLatexProof(): String = getReversedProof().reversed().joinToString(separator = "\n") {
 	when(it.applyData) {
 		AXIOM.ApplyData 	    -> "\\AxiomC{}\n\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\UnaryInf$${it.sequentToBeApplied.toLatex()}$"
 		is UnaryTactic.ApplyData 			-> "\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\UnaryInf$${it.sequentToBeApplied.toLatex()}$"

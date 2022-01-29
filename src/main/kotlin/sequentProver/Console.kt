@@ -69,8 +69,8 @@ fun Sequent.prove() {
 			for (tactic in BinaryTactic.values()) {
 				val fml = tactic.availableFmls(sequentToBeApplied).firstOrNull() ?: continue
 				val applyData = BinaryTactic.ApplyData(tactic, fml)
-				val leftSequent = tactic.applyTactic(sequentToBeApplied, fml).first
-				val rightSequent = tactic.applyTactic(sequentToBeApplied, fml).second
+				val leftSequent = applyData.applyTactic(sequentToBeApplied).first
+				val rightSequent = applyData.applyTactic(sequentToBeApplied).second
 				val leftNode = Node(leftSequent)
 				val rightNode = Node(rightSequent)
 				node.applyDataWithNode = BinaryApplyDataWithNodes(applyData, leftNode, rightNode)
@@ -84,8 +84,8 @@ fun Sequent.prove() {
 		for ((index, node) in nodes.withIndex()) {
 			val sequentToBeApplied = node.sequentToBeApplied
 			// TODO: 2022/01/29 availableFmlsを使うか
-			val availableExistsRightFmls 	= sequentToBeApplied.conclusions.filterIsInstance<Formula.EXISTS>().filter { it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount }
-			val availableAllLeftFmls 		= sequentToBeApplied.assumptions.filterIsInstance<Formula.ALL>().filter { it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount }
+			val availableExistsRightFmls 	= UnificationTermTactic.EXISTS_RIGHT.availableFmls(sequentToBeApplied, unificationTermInstantiationMaxCount)
+			val availableAllLeftFmls 		= UnificationTermTactic.ALL_LEFT.availableFmls(sequentToBeApplied, unificationTermInstantiationMaxCount)
 			val applyData = if (availableExistsRightFmls.isNotEmpty()) {
 				val fml = availableExistsRightFmls.first()
 				UnificationTermTactic.ApplyData(UnificationTermTactic.EXISTS_RIGHT, fml, unificationTermIndex)
@@ -175,20 +175,20 @@ fun Sequent.prove() {
 /*
 ((o11 ∨ o12 ∨ o13) ∧ (o21 ∨ o22 ∨ o23) ∧ (o31 ∨ o32 ∨ o33) ∧ (o41 ∨ o42 ∨ o43)) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o11 ∧ o41) ∨ (o21 ∧ o31) ∨ (o21 ∧ o41) ∨ (o31 ∧ o41) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o12 ∧ o42) ∨ (o22 ∧ o32) ∨ (o22 ∧ o42) ∨ (o32 ∧ o42) ∨ (o13 ∧ o23) ∨ (o13 ∧ o33) ∨ (o13 ∧ o43) ∨ (o23 ∧ o33) ∨ (o23 ∧ o43) ∨ (o33 ∧ o43))
 PROOF SUCCEED!
-Completed in 402 ms
+Completed in 391 ms
 loop count: 8669
 Proof Check Start... SUCCEED!
-Completed in 60 ms
+Completed in 122 ms
 Latex Start...
-Completed in 236 ms
+Completed in 245 ms
 
 ((o11 ∨ o12 ∨ o13 ∨ o14) ∧ (o21 ∨ o22 ∨ o23 ∨ o24) ∧ (o31 ∨ o32 ∨ o33 ∨ o34) ∧ (o41 ∨ o42 ∨ o43 ∨ o44) ∧ (o51 ∨ o52 ∨ o53 ∨ o54)) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o11 ∧ o41) ∨ (o11 ∧ o51) ∨ (o21 ∧ o31) ∨ (o21 ∧ o41) ∨ (o21 ∧ o51) ∨ (o31 ∧ o41) ∨ (o31 ∧ o51) ∨ (o41 ∧ o51) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o12 ∧ o42) ∨ (o12 ∧ o52) ∨ (o22 ∧ o32) ∨ (o22 ∧ o42) ∨ (o22 ∧ o52) ∨ (o32 ∧ o42) ∨ (o32 ∧ o52) ∨ (o42 ∧ o52) ∨ (o13 ∧ o23) ∨ (o13 ∧ o33) ∨ (o13 ∧ o43) ∨ (o13 ∧ o53) ∨ (o23 ∧ o33) ∨ (o23 ∧ o43) ∨ (o23 ∧ o53) ∨ (o33 ∧ o43) ∨ (o33 ∧ o53) ∨ (o43 ∧ o53) ∨ (o14 ∧ o24) ∨ (o14 ∧ o34) ∨ (o14 ∧ o44) ∨ (o14 ∧ o54) ∨ (o24 ∧ o34) ∨ (o24 ∧ o44) ∨ (o24 ∧ o54) ∨ (o34 ∧ o44) ∨ (o34 ∧ o54) ∨ (o44 ∧ o54))
 PROOF IS TOO LONG
-Completed in 2012 ms
+Completed in 3117 ms
 loop count: 60000
 Proof Check Start... FAIL!
-Completed in 671 ms
+Completed in 1177 ms
 Latex Start...
-Completed in 991 ms
+Completed in 1004 ms
 
  */
