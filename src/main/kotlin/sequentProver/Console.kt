@@ -1,6 +1,7 @@
 package sequentProver
 
 import core.Formula
+import kotlin.system.measureTimeMillis
 
 const val max = 4
 // TODO: 2022/01/20 そのうち消す
@@ -22,7 +23,7 @@ fun Sequent.prove() {
 	loop@ while (true) {
 		count++
 		//sequents.filterNotNull().forEach { println(it) }
-		nodes.forEach { println(it.sequentToBeApplied) }
+		//nodes.forEach { println(it.sequentToBeApplied) }
 
 		if (count >= 60000) {
 			println("PROOF IS TOO LONG")
@@ -95,7 +96,7 @@ fun Sequent.prove() {
 			if (AXIOM.canApply(node.sequentToBeApplied)) {
 				node.applyDataWithNode = AxiomApplyData
 				nodes.remove(node)
-				println(">>> $AXIOM")
+				//println(">>> $AXIOM")
 				continue@loop
 			}
 		}
@@ -124,7 +125,7 @@ fun Sequent.prove() {
 				val newNode = Node(sequent)
 				node.applyDataWithNode = UnaryApplyDataWithNode(applyData, newNode)
 				nodes[index] = newNode
-				println(">>> $tactic")
+				//println(">>> $tactic")
 				continue@loop
 			}
 		}
@@ -159,7 +160,7 @@ fun Sequent.prove() {
 				node.applyDataWithNode = BinaryApplyDataWithNodes(applyData, leftNode, rightNode)
 				nodes[index] = leftNode
 				nodes.add(index + 1, rightNode)
-				println(">>> $tactic")
+				//println(">>> $tactic")
 				continue@loop
 			}
 		}
@@ -235,6 +236,37 @@ fun Sequent.prove() {
 	println("Completed in $time ms")
 	println("loop count: $count")
 
+	// TODO: 2022/01/29 将来的にはなくす
+	if (nodes.isNotEmpty()) {
+		nodes.forEach { it.applyDataWithNode = AxiomApplyData }
+	}
+
+	val isCorrectProof: Boolean
+	print("Proof Check Start... ")
+	val checkProofTime = measureTimeMillis{
+		isCorrectProof = rootNode.checkCorrectness()
+	}
+	if (isCorrectProof) {
+		println("SUCCEED!")
+	} else {
+		println("FAIL!")
+	}
+	println("Completed in $checkProofTime ms")
+
+	val latexProof: String
+	println("Latex Start...")
+	val getLatexProofTime = measureTimeMillis{
+		latexProof = rootNode.getLatexProof()
+	}
+	println("Completed in $getLatexProofTime ms")
+
+	print("Show Latex Output? (y/n) >>> ")
+	if (readLine()!! == "y") {
+		println("-----------------------------------")
+		println(latexProof)
+		println("-----------------------------------")
+	}
+
 	//println("histories size: ${histories.size}")
 	//println("longest history size: ${histories.map { it.size }.maxOrNull()}")
 	//println("total history size: ${histories.sumOf { it.size }}")
@@ -287,6 +319,7 @@ fun Sequent.prove() {
 	 */
 }
 
+/*
 data class ApplyData0WithSequent(val sequentToBeApplied: Sequent, val applyData0: IApplyData0)
 
 typealias History0WithSequents = List<ApplyData0WithSequent>
@@ -332,38 +365,25 @@ private fun History0.toHistory0WithSequents(firstSequent: Sequent): History0With
 	}
 	return result
 }
+ */
 
 /*
 ((o11 ∨ o12 ∨ o13) ∧ (o21 ∨ o22 ∨ o23) ∧ (o31 ∨ o32 ∨ o33) ∧ (o41 ∨ o42 ∨ o43)) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o11 ∧ o41) ∨ (o21 ∧ o31) ∨ (o21 ∧ o41) ∨ (o31 ∧ o41) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o12 ∧ o42) ∨ (o22 ∧ o32) ∨ (o22 ∧ o42) ∨ (o32 ∧ o42) ∨ (o13 ∧ o23) ∨ (o13 ∧ o33) ∨ (o13 ∧ o43) ∨ (o23 ∧ o33) ∨ (o23 ∧ o43) ∨ (o33 ∧ o43))
 PROOF SUCCEED!
-Completed in 365 ms
+Completed in 402 ms
 loop count: 8669
+Proof Check Start... SUCCEED!
+Completed in 60 ms
 Latex Start...
-Completed in 161 ms
-One line proof Start...
-Completed in 26 ms
-Print all proof Start...
-Completed in 83 ms
-proof size: 8668
+Completed in 236 ms
 
 ((o11 ∨ o12 ∨ o13 ∨ o14) ∧ (o21 ∨ o22 ∨ o23 ∨ o24) ∧ (o31 ∨ o32 ∨ o33 ∨ o34) ∧ (o41 ∨ o42 ∨ o43 ∨ o44) ∧ (o51 ∨ o52 ∨ o53 ∨ o54)) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o11 ∧ o41) ∨ (o11 ∧ o51) ∨ (o21 ∧ o31) ∨ (o21 ∧ o41) ∨ (o21 ∧ o51) ∨ (o31 ∧ o41) ∨ (o31 ∧ o51) ∨ (o41 ∧ o51) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o12 ∧ o42) ∨ (o12 ∧ o52) ∨ (o22 ∧ o32) ∨ (o22 ∧ o42) ∨ (o22 ∧ o52) ∨ (o32 ∧ o42) ∨ (o32 ∧ o52) ∨ (o42 ∧ o52) ∨ (o13 ∧ o23) ∨ (o13 ∧ o33) ∨ (o13 ∧ o43) ∨ (o13 ∧ o53) ∨ (o23 ∧ o33) ∨ (o23 ∧ o43) ∨ (o23 ∧ o53) ∨ (o33 ∧ o43) ∨ (o33 ∧ o53) ∨ (o43 ∧ o53) ∨ (o14 ∧ o24) ∨ (o14 ∧ o34) ∨ (o14 ∧ o44) ∨ (o14 ∧ o54) ∨ (o24 ∧ o34) ∨ (o24 ∧ o44) ∨ (o24 ∧ o54) ∨ (o34 ∧ o44) ∨ (o34 ∧ o54) ∨ (o44 ∧ o54))
 PROOF IS TOO LONG
-Completed in 1914 ms
+Completed in 2012 ms
 loop count: 60000
+Proof Check Start... FAIL!
+Completed in 671 ms
 Latex Start...
-Completed in 1665 ms
-
-Completed in 6796 ms
-Completed in 7593 ms
-Completed in 6771 ms
-Completed in 7110 ms
-Completed in 7245 ms
-Completed in 7197 ms
-
-Completed in 8080 ms
-Completed in 7693 ms
-Completed in 7153 ms
-Completed in 8303 ms
-Completed in 8900 ms
+Completed in 991 ms
 
  */
