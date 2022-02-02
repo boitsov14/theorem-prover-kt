@@ -56,11 +56,7 @@ fun Sequent.prove() {
 				// TODO: 2022/01/29 二重ループ改善?
 				val applyData = UnaryTactic.ApplyData(tactic, fml)
 				val sequent = applyData.applyTactic(sequentToBeApplied)
-				val newNode = Node(sequent, node.siblings)
-				if (node.siblings != null) {
-					node.siblings.remove(node)
-					node.siblings.add(newNode)
-				}
+				val newNode = Node(sequent, node.siblingLabel)
 				node.applyDataWithNode = UnaryApplyDataWithNode(applyData, newNode)
 				nodes[index] = newNode
 				//println(">>> $tactic")
@@ -75,13 +71,8 @@ fun Sequent.prove() {
 				val applyData = BinaryTactic.ApplyData(tactic, fml)
 				val leftSequent = applyData.applyTactic(sequentToBeApplied).first
 				val rightSequent = applyData.applyTactic(sequentToBeApplied).second
-				val leftNode = Node(leftSequent, node.siblings)
-				val rightNode = Node(rightSequent, node.siblings)
-				if (node.siblings != null) {
-					node.siblings.remove(node)
-					node.siblings.add(leftNode)
-					node.siblings.add(rightNode)
-				}
+				val leftNode = Node(leftSequent, node.siblingLabel)
+				val rightNode = Node(rightSequent, node.siblingLabel)
 				node.applyDataWithNode = BinaryApplyDataWithNodes(applyData, leftNode, rightNode)
 				nodes[index] = leftNode
 				nodes.add(index + 1, rightNode)
@@ -105,10 +96,8 @@ fun Sequent.prove() {
 				continue
 			}
 			val sequent = applyData.applyTactic(sequentToBeApplied)
-			val siblings = node.siblings ?: mutableSetOf()
-			val newNode = Node(sequent, siblings)
-			siblings.remove(node)
-			siblings.add(newNode)
+			val siblingLabel = node.siblingLabel ?: applyData.unificationTermIndex
+			val newNode = Node(sequent, siblingLabel)
 			node.applyDataWithNode = UnificationTermApplyDataWithNode(applyData, newNode)
 			nodes[index] = newNode
 			unificationTermIndex++

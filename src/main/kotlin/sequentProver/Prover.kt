@@ -32,7 +32,7 @@ data class TermApplyDataWithNode(
 // TODO: 2022/01/29 valではダメか
 data class Node(
 	var sequentToBeApplied: Sequent,
-	val siblings: MutableSet<Node>?
+	val siblingLabel: Int?
 ) {
 	lateinit var applyDataWithNode: IApplyDataWithNode
 }
