@@ -81,6 +81,17 @@ fun Sequent.prove() {
 			}
 		}
 
+		if (unificationTermInstantiationMaxCount == 0
+			&& nodes.none {
+				it.sequentToBeApplied.assumptions.filterIsInstance<Formula.ALL>().isNotEmpty()
+						|| it.sequentToBeApplied.conclusions.filterIsInstance<Formula.EXISTS>().isNotEmpty() }) {
+			println("UNPROVABLE")
+			break
+		}
+
+		// TODO: 2022/02/02 ここにunificationを書く
+		val unifiableNodes = nodes.groupBy { it.siblingLabel }.minus(null)
+
 		for ((index, node) in nodes.withIndex()) {
 			val sequentToBeApplied = node.sequentToBeApplied
 			// TODO: 2022/01/29 availableFmlsを使うか
@@ -103,14 +114,6 @@ fun Sequent.prove() {
 			unificationTermIndex++
 			println(">>> ${applyData.tactic}")
 			continue@loop
-		}
-
-		if (unificationTermInstantiationMaxCount == 0
-			&& nodes.none {
-				it.sequentToBeApplied.assumptions.filterIsInstance<Formula.ALL>().isNotEmpty()
-						|| it.sequentToBeApplied.conclusions.filterIsInstance<Formula.EXISTS>().isNotEmpty() }) {
-			println("UNPROVABLE")
-			break
 		}
 
 		if (unificationTermInstantiationMaxCount == max) {
