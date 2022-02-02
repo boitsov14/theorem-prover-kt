@@ -31,7 +31,8 @@ data class TermApplyDataWithNode(
 
 // TODO: 2022/01/29 valではダメか
 data class Node(
-	var sequentToBeApplied: Sequent
+	var sequentToBeApplied: Sequent,
+	val siblings: MutableSet<Node>?
 ) {
 	lateinit var applyDataWithNode: IApplyDataWithNode
 }
