@@ -103,7 +103,7 @@ sealed class Formula {
 		get() = when (this) {
 			TRUE 			-> emptySet()
 			FALSE 			-> emptySet()
-			is PREDICATE 	-> terms.map { it.unificationTerm }.flatten().toSet()
+			is PREDICATE 	-> terms.map { it.unificationTerms }.flatten().toSet()
 			is NOT 			-> operandFml.unificationTerms
 			is AND 			-> leftFml.unificationTerms + rightFml.unificationTerms
 			is OR 			-> leftFml.unificationTerms + rightFml.unificationTerms

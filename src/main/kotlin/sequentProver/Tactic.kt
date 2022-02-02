@@ -134,7 +134,6 @@ enum class BinaryTactic: ITactic {
 	data class ApplyData(override val tactic: BinaryTactic, val fml: Formula) : IApplyData {
 		fun applyTactic(sequent: Sequent): Pair<Sequent, Sequent> = tactic.applyTactic(sequent, fml).first to tactic.applyTactic(sequent, fml).second
 	}
-	private fun canApply(sequent: Sequent): Boolean = availableFmls(sequent).isNotEmpty()
 	fun availableFmls(sequent: Sequent): List<Formula> = when(this) {
 		AND_RIGHT -> sequent.conclusions
 			.filterIsInstance<AND>()

@@ -33,16 +33,19 @@ private fun String.toFormulas(): Set<Formula> {
 
 fun String.parseToSequent(): Sequent {
 	val str = this.toOneLetter()
-	val count = str.filter { it == '⊢' }.length
-	if (count == 0) {
-		val fml = str.parseToFormula()
-		return Sequent(emptySet(), setOf(fml))
-	} else if (count == 1) {
-		val strList = str.split("⊢")
-		val assumptions = strList[0].toFormulas()
-		val conclusions = strList[1].toFormulas()
-		return Sequent(assumptions, conclusions)
-	} else {
-		throw FormulaParserException("⊢ must occur one time")
+	return when (str.filter { it == '⊢' }.length) {
+		0 -> {
+			val fml = str.parseToFormula()
+			Sequent(emptySet(), setOf(fml))
+		}
+		1 -> {
+			val strList = str.split("⊢")
+			val assumptions = strList[0].toFormulas()
+			val conclusions = strList[1].toFormulas()
+			Sequent(assumptions, conclusions)
+		}
+		else -> {
+			throw FormulaParserException("⊢ must occur one time")
+		}
 	}
 }
