@@ -28,11 +28,11 @@ sealed class Term {
 			// TODO: 2022/01/17 availableVarsにするかemptySetにするか
 			is Function -> terms.map { it.freeVars }.flatten().toSet()
 		}
-	val unificationTerm: Set<UnificationTerm>
+	val unificationTerms: Set<UnificationTerm>
 		get() = when (this) {
 			is Var -> emptySet()
 			is UnificationTerm -> setOf(this)
-			is Function -> terms.map { it.unificationTerm }.flatten().toSet()
+			is Function -> terms.map { it.unificationTerms }.flatten().toSet()
 		}
 	fun replace(oldVar: Var, newTerm: Term): Term = when(this) {
 		is Var -> if (this == oldVar) newTerm else this
@@ -43,5 +43,10 @@ sealed class Term {
 		is Var -> this
 		is UnificationTerm -> if (this == oldUnificationTerm) newTerm else this
 		is Function -> Function(id, terms.map { it.replace(oldUnificationTerm, newTerm) })
+	}
+	fun replace(map: Map<UnificationTerm, Term>): Term {
+		var result = this
+		map.forEach { (key, value) -> result = result.replace(key, value) }
+		return result
 	}
 }
