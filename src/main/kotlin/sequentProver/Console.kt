@@ -1,6 +1,9 @@
 package sequentProver
 
 import core.Formula
+import core.Term
+import core.Term.*
+import core.*
 import kotlin.system.measureTimeMillis
 
 const val max = 4
@@ -14,6 +17,7 @@ fun Sequent.prove() {
 
 	val rootNode = Node(this, null)
 	val nodes = mutableListOf(rootNode)
+	val substitution = mutableMapOf<UnificationTerm,Term>()
 
 	loop@ while (true) {
 		count++
@@ -43,7 +47,7 @@ fun Sequent.prove() {
 			if (AXIOM.canApply(node.sequentToBeApplied)) {
 				node.applyDataWithNode = AxiomApplyData
 				nodes.remove(node)
-				//println(">>> $AXIOM")
+				println(">>> $AXIOM")
 				continue@loop
 			}
 		}
@@ -59,7 +63,7 @@ fun Sequent.prove() {
 				val newNode = Node(sequent, node.siblingLabel)
 				node.applyDataWithNode = UnaryApplyDataWithNode(applyData, newNode)
 				nodes[index] = newNode
-				//println(">>> $tactic")
+				println(">>> $tactic")
 				continue@loop
 			}
 		}
@@ -76,7 +80,7 @@ fun Sequent.prove() {
 				node.applyDataWithNode = BinaryApplyDataWithNodes(applyData, leftNode, rightNode)
 				nodes[index] = leftNode
 				nodes.add(index + 1, rightNode)
-				//println(">>> $tactic")
+				println(">>> $tactic")
 				continue@loop
 			}
 		}
@@ -89,8 +93,16 @@ fun Sequent.prove() {
 			break
 		}
 
-		// TODO: 2022/02/02 ここにunificationを書く
-		val unifiableNodes = nodes.groupBy { it.siblingLabel }.minus(null)
+		val siblingNodesList = nodes.groupBy { it.siblingLabel }.minus(null).values
+		for (siblingNodes in siblingNodesList) {
+			val siblingSubstitutionsList = siblingNodes.map { it.sequentToBeApplied }.map { it.unify() }
+			if (siblingSubstitutionsList.any { it.isEmpty() }) continue
+			val siblingSubstitution = unify(siblingSubstitutionsList) ?: continue
+			substitution.putAll(siblingSubstitution)
+			nodes.removeAll(siblingNodes)
+			println("node size: ${siblingNodes.size}")
+			siblingSubstitution.forEach { println(it) }
+		}
 
 		for ((index, node) in nodes.withIndex()) {
 			val sequentToBeApplied = node.sequentToBeApplied
@@ -129,6 +141,8 @@ fun Sequent.prove() {
 	val time = end - start
 	println("Completed in $time ms")
 	println("loop count: $count")
+
+	return
 
 	// TODO: 2022/01/29 将来的にはなくす
 	if (nodes.isNotEmpty()) {

@@ -2,10 +2,9 @@ package core
 
 import core.Term.*
 
-// TODO: 2022/02/02 必要なのか
 fun unify(pairs: List<Pair<Term, Term>>): Map<UnificationTerm,Term>? = emptyMap<UnificationTerm, Term>().unify(pairs)
 
-fun Map<UnificationTerm, Term>.unify(pairs: List<Pair<Term, Term>>): Map<UnificationTerm,Term>? {
+private fun Map<UnificationTerm, Term>.unify(pairs: List<Pair<Term, Term>>): Map<UnificationTerm,Term>? {
 	if (pairs.isEmpty()) return this
 	val (first, second) = pairs.first()
 	when {
@@ -33,13 +32,37 @@ fun Map<UnificationTerm, Term>.unify(pairs: List<Pair<Term, Term>>): Map<Unifica
 			val second2 = second1.replace(unificationTermToShrinkMap)
 			if (!first.freeVars.containsAll(second2.freeVars)) return null
 			val additionalMap = mapOf(first to second2) + unificationTermToShrinkMap
-			val newMap = mutableMapOf<UnificationTerm, Term>()
-			for ((key, value) in this) {
-				newMap[key] = value.replace(additionalMap)
-			}
-			return (newMap + additionalMap).unify(pairs.drop(1))
+			val newMap = this.map { it.key to it.value.replace(additionalMap) }.toMap() + additionalMap
+			return newMap.unify(pairs.drop(1))
 		}
 		second is UnificationTerm -> return unify(listOf(second to first) + pairs.drop(1))
 		else -> throw IllegalArgumentException()
 	}
+}
+
+// TODO: 2022/02/03 typealiasでsubstitution作る？
+
+@JvmName("unify1")
+fun unify(substitutionsList: List<List<Map<UnificationTerm, Term>>>): Map<UnificationTerm,Term>? = emptyMap<UnificationTerm, Term>().unify(substitutionsList)
+
+@JvmName("unifyUnificationTermTerm")
+private fun Map<UnificationTerm, Term>.unify(substitutionsList: List<List<Map<UnificationTerm, Term>>>): Map<UnificationTerm, Term>? {
+	var index = 0
+	if (substitutionsList.isEmpty()) return this
+	val substitutions = substitutionsList.first()
+	while (index < substitutions.size) {
+		val pairs = substitutions[index].toList()
+		val substitution1 = this.unify(pairs)
+		if (substitution1 == null) {
+			index++
+			continue
+		}
+		val substitution2 = substitution1.unify(substitutionsList.drop(1))
+		if (substitution2 == null) {
+			index++
+			continue
+		}
+		return substitution2
+	}
+	return null
 }
