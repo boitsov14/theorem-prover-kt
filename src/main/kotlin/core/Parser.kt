@@ -75,7 +75,7 @@ private fun String.trimWhiteSpaces(): String = this
 @OptIn(ExperimentalStdlibApi::class)
 private fun String.getIdEndPos(startPos: Int): Int {
 	if (!(this[startPos].isLetter())) throw FormulaParserException("Illegal Argument >> ${this[startPos]}")
-	val regex = "[a-zA-Z0-9_]+".toRegex()
+	val regex = "[a-zA-Z0-9]+".toRegex()
 	val str = regex.matchAt(this, startPos)!!.value
 	return startPos + str.length - 1
 }
