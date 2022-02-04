@@ -121,7 +121,7 @@ private fun Node.getReversedProof(): List<IndependentNode> = listOf(toIndependen
 	is TermApplyDataWithNode 			-> applyDataWithNode.node.getReversedProof()
 }
 
-fun Node.getLatexProof(): String = getReversedProof().reversed().joinToString(separator = "\n") {
+fun Node.getProofTree(): String = getReversedProof().reversed().joinToString(separator = "\n") {
 	when(it.applyData) {
 		null -> "\\Axiom$${it.sequentToBeApplied.toLatex()}$"
 		AXIOM.ApplyData 	    -> "\\AxiomC{}\n\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\UnaryInf$${it.sequentToBeApplied.toLatex()}$"

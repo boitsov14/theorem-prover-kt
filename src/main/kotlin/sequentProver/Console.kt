@@ -164,7 +164,7 @@ fun Sequent.prove() {
 	val latexProof: String
 	print("Latex Start...")
 	val getLatexProofTime = measureTimeMillis{
-		latexProof = rootNode.getLatexProof()
+		latexProof = rootNode.getProofTree()
 	}
 	println("Completed in $getLatexProofTime ms")
 
