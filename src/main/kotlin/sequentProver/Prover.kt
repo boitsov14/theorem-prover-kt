@@ -70,13 +70,14 @@ fun Node.completeProof(substitution: Substitution) {
 				val applyData = applyDataWithNode.applyData.toTermTacticApplyData(variable)
 				this.applyDataWithNode = TermApplyDataWithNode(applyData, applyDataWithNode.node)
 				applyDataWithNode.node.sequentToBeApplied = applyData.applyTactic(sequentToBeApplied)
-				applyDataWithNode.node.completeProof(substitution + mapOf(unificationTerm to variable))
+				val additionalSubstitution = mapOf(unificationTerm to variable)
+				applyDataWithNode.node.completeProof(substitution.map { it.key to it.value.replace(additionalSubstitution) }.toMap() + additionalSubstitution)
 			} else {
 				val additionalSubstitution = term.unificationTerms.associateWith { it.availableVars.first() }
 				val applyData = applyDataWithNode.applyData.toTermTacticApplyData(term)
 				this.applyDataWithNode = TermApplyDataWithNode(applyData, applyDataWithNode.node)
 				applyDataWithNode.node.sequentToBeApplied = applyData.applyTactic(sequentToBeApplied)
-				applyDataWithNode.node.completeProof(substitution + additionalSubstitution)
+				applyDataWithNode.node.completeProof(substitution.map { it.key to it.value.replace(additionalSubstitution) }.toMap() + additionalSubstitution)
 			}
 		}
 		is TermApplyDataWithNode -> throw IllegalArgumentException()
