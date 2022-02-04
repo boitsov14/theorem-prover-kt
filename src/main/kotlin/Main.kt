@@ -13,6 +13,7 @@ A to (A to B) to ((A to B) to C) to C
 not (P and Q and R and S and T) to (not P or not Q or not R or not S or not T)
 not (P and Q and R and S and T and U) to (not P or not Q or not R or not S or not T or not U)
 not (P and Q and R and S and T and U and V) to (not P or not Q or not R or not S or not T or not U or not V)
+not (P and Q and R and S and T and U and V and W and X and Y and Z) to (not P or not Q or not R or not S or not T or not U or not V or not W or not X or not Y or not Z)
 ((A and B) to C) to (A to C) or (B to C)
 (A or B or C or D or E or F or G or X) or (AA or BB or CC or DD or EE or FF or GG or not X)
 (A to B) to (not A or B)

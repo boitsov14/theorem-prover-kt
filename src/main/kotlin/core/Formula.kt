@@ -65,11 +65,11 @@ sealed class Formula {
 	}
 	final override fun toString(): String = recToString().removeSurrounding("(", ")")
 	fun toLatex(): String = toString()
-		.replace("true", "\\top")
-		.replace("false", "\\bot")
+		.replace("true", "\\top ")
+		.replace("false", "\\bot ")
 		.replace("¬", "\\neg ")
 		.replace("∧", "\\land")
-		.replace("∨", "\\or")
+		.replace("∨", "\\lor")
 		.replace("→", "\\rightarrow")
 		.replace("↔", "\\leftrightarrow")
 		.replace("∀", "\\forall ")
@@ -100,6 +100,7 @@ sealed class Formula {
 			is ALL 			-> operandFml.bddVars + bddVar
 			is EXISTS 		-> operandFml.bddVars + bddVar
 		}
+	/*
 	val unificationTerms: Set<UnificationTerm>
 		get() = when (this) {
 			TRUE 			-> emptySet()
@@ -113,6 +114,7 @@ sealed class Formula {
 			is ALL 			-> operandFml.unificationTerms
 			is EXISTS 		-> operandFml.unificationTerms
 		}
+	 */
 	fun replace(oldVar: Var, newTerm: Term): Formula = when(this) {
 		TRUE 			-> this
 		FALSE 			-> this

@@ -256,7 +256,7 @@ private fun List<Token>.getFormula(): Formula {
 					}
 				)
 			}
-			else -> throw IllegalArgumentException()
+			Token.LP, Token.RP -> throw IllegalArgumentException()
 		}
 	}
 	if (stack.size != 1) {
