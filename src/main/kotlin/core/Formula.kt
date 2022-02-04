@@ -157,11 +157,11 @@ sealed class Formula {
 		TRUE -> this
 		FALSE -> this
 		is PREDICATE -> PREDICATE(id, terms.map { it.replace(oldUnificationTerm, newTerm) })
-		is NOT 			-> NOT		(operandFml.replace(oldUnificationTerm, newTerm))
-		is AND 			-> AND		(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
-		is OR 			-> OR		(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
-		is IMPLIES 		-> IMPLIES	(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
-		is IFF 			-> IFF		(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
+		is NOT 		-> NOT		(operandFml.replace(oldUnificationTerm, newTerm))
+		is AND 		-> AND		(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
+		is OR 		-> OR		(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
+		is IMPLIES 	-> IMPLIES	(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
+		is IFF 		-> IFF		(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
 		is ALL -> {
 			if (!(oldUnificationTerm.availableVars.containsAll(newTerm.freeVars))) {
 				throw IllegalArgumentException()

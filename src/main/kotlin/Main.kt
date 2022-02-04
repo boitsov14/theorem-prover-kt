@@ -1,7 +1,4 @@
-//import core.*
 //import tacticGame.*
-import core.Term
-import core.unify
 import sequentProver.*
 
 /*
@@ -48,10 +45,15 @@ P(a) to all x (P(x) to P(f(x))) to P(f(f(f(f(f(f(f(f(f(f(f(f(a))))))))))))) //49
 P(a) to all x (P(x) to P(f(x))) to P(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(a)))))))))))))))))))))
 P(a), P(b), Q(b) proves exists x (P(x) and Q(x))
 exists x (P(x) implies forall y P(y))
+all x1 ex x2 all x3 ex x4 all x5 ex x6 all x7 P(x1,x2,x3,x4,x5,x6,x7) proves all y1 ex y2 all y3 ex y4 all y5 ex y6 all y7 P(y1,y2,y3,y4,y5,y6,y7)
+ex x all y P(x,y) proves all y ex x P(x,y)
+ex x (P(x) and Q(x)) proves ex x P(x) and ex x Q(x)
+all x P(x) proves ex x P(x)
+ex x P(x) proves all x P(x)
+(P to Q) or (Q to P)
  */
 
 fun main() {
-	//Test()
 	/*
 	while (true) {
 		print("INPUT A FORMULA >>> ")
@@ -60,8 +62,6 @@ fun main() {
 	 */
 	print("INPUT A FORMULA >>> ")
 	val firstSequent = readLine()!!.parseToSequent()
-	//println(firstSequent)
-	//val firstSequent = Sequent(emptySet(),setOf(fml))
 	firstSequent.prove()
 
 	/*
@@ -70,75 +70,3 @@ fun main() {
 	letMeProve(firstGoals)
 	 */
 }
-
-fun Test() {
-	val x = Term.Var("x")
-	val y = Term.Var("y")
-	val z = Term.Var("z")
-	val pair1 = Term.Function("f", listOf(x)) to Term.Function("f", listOf(x))
-	val pair2 = Term.UnificationTerm(0, setOf(x,y)) to Term.Function("f", listOf(x,y))
-	val pair3 = Term.UnificationTerm(1, setOf(x,y)) to Term.Function("f", listOf(x, Term.UnificationTerm(2, setOf(x,y,z))))
-	val pairs = listOf(pair1, pair2, pair3)
-	println(pairs)
-	val substitution = unify(pairs)
-	println(substitution)
-}
-
-/*
-fun main() {
-	/*
-	val x = Var("x")
-	val y = Var("y")
-	val fml0 = Formula.PREDICATE("P", listOf(x))
-	val fml1 = Formula.ALL(x, fml0) // all x, P x
-	//val fml2 = Formula.ALL(x, fml1) // throw exception
-	//val fml3 = fml1.replace(y, x) // throw exception
-	 */
-
-	//println(""" /\ \/ and or forall x ~false""".toUnicode())
-
-	/*
-	while (true) {
-		print("INPUT A FORMULA >>> ")
-		val str = readLine()!!
-		try {
-			println(parse(str))
-		} catch (e: FormulaParserException) {
-			println(e.message)
-		}
-		println("--------------------------------------")
-	}
-	 */
-
-	/*
-	val x = Var("x")
-	val x_1 = Var("x_1")
-	val x_2 = Var("x_2")
-	val y = Var("y")
-	//val str = "ex x, ex x_1, P x x_1 x_2 y"
-	val str = "P x and ex x , Q x and P x"
-	val fml = parse(str)
-	println(fml)
-	try {
-		println(fml.replace(x, x_1))
-	} catch (e: DuplicateBddVarException) {
-		println(e)
-	}
-	 */
-
-}
- */
-
-/*
-	val variousGoals = listOf(
-	listOf(Goal("all x, all y, P x y".parse()!!)),
-	listOf(Goal("P and Q to Q and P".parse()!!)),
-	listOf(Goal("P or Q to Q or P".parse()!!)),
-	listOf(Goal("(ex x, P x) to ex y, P y".parse()!!)),
-	listOf(Goal("(ex x, P x) to all x, P x".parse()!!)),
-	listOf(Goal("(ex x, P x) to (ex x, Q x) to (all x, R x)".parse()!!)),
-	listOf(Goal("(all x, P x) to (ex x, P x)".parse()!!)),
-	listOf(Goal("P to (P to Q) to Q".parse()!!)),
-	listOf(Goal("P to not P to false".parse()!!))
-	)
-	*/

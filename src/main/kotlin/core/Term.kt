@@ -1,7 +1,5 @@
 package core
 
-// TODO: 2022/01/09 varのidをpublicにするかどうか．
-
 sealed class Term {
 	data class Var(internal val id: String): Term() {
 		fun getFreshVar(oldVars: Set<Var>): Var {
@@ -27,7 +25,6 @@ sealed class Term {
 		get() = when (this) {
 			is Var -> setOf(this)
 			is UnificationTerm -> availableVars
-			// TODO: 2022/01/17 availableVarsにするかemptySetにするか
 			is Function -> terms.map { it.freeVars }.flatten().toSet()
 		}
 	val unificationTerms: Set<UnificationTerm>
@@ -46,9 +43,11 @@ sealed class Term {
 		is UnificationTerm -> if (this == oldUnificationTerm) newTerm else this
 		is Function -> Function(id, terms.map { it.replace(oldUnificationTerm, newTerm) })
 	}
-	fun replace(substitution: Map<UnificationTerm, Term>): Term {
+	fun replace(substitution: Substitution): Term {
 		var result = this
 		substitution.forEach { (key, value) -> result = result.replace(key, value) }
 		return result
 	}
 }
+
+typealias Substitution = Map<Term.UnificationTerm, Term>

@@ -31,8 +31,9 @@ private fun Substitution.unify(pairs: List<Pair<Term, Term>>): Substitution? {
 			val unificationTermToShrinkMap = unificationTermToShrink.associateWith { UnificationTerm(it.id, first.availableVars) }
 			val second2 = second1.replace(unificationTermToShrinkMap)
 			if (!first.freeVars.containsAll(second2.freeVars)) return null
-			val additionalMap = mapOf(first to second2) + unificationTermToShrinkMap
-			val newMap = this.map { it.key to it.value.replace(additionalMap) }.toMap() + additionalMap
+			val additionalSubstitution = mapOf(first to second2) + unificationTermToShrinkMap
+			// TODO: 2022/02/04 .update(additionalSubstitution)みたな関数を定義する？
+			val newMap = this.map { it.key to it.value.replace(additionalSubstitution) }.toMap() + additionalSubstitution
 			return newMap.unify(pairs.drop(1))
 		}
 		second is UnificationTerm -> return unify(listOf(second to first) + pairs.drop(1))

@@ -1,7 +1,6 @@
 package sequentProver
 
 import core.*
-import core.Term.*
 import core.Formula.*
 
 fun Sequent.getSubstitutions(): List<Substitution> {

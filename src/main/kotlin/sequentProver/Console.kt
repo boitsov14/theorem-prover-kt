@@ -147,20 +147,6 @@ fun Sequent.prove() {
 	}
 	println("Completed in $completeProofTime ms")
 
-	/*
-	val isCorrectProof: Boolean
-	print("Proof Check Start... ")
-	val checkProofTime = measureTimeMillis{
-		isCorrectProof = rootNode.checkCorrectness()
-	}
-	if (isCorrectProof) {
-		println("SUCCEED!")
-	} else {
-		println("FAIL!")
-	}
-	println("Completed in $checkProofTime ms")
-	 */
-
 	val latexProof: String
 	print("Latex Start...")
 	val getLatexProofTime = measureTimeMillis{
@@ -183,20 +169,6 @@ fun Sequent.prove() {
 			println("-----------------------------------")
 		}
 	}
-
-	/*
-	println("Print all proof Start...")
-	val timePrintProof = measureTimeMillis{
-		var currentSequents = this.toSequents()
-		for (applyData in history) {
-			//println(">>> ${applyData.tactic}")
-			currentSequents = applyData.applyTactic(currentSequents)
-			//currentSequents.forEach { println(it) }
-		}
-	}
-	println("Completed in $timePrintProof ms")
-	println("proof size: ${history.size}")
-	 */
 }
 
 /*

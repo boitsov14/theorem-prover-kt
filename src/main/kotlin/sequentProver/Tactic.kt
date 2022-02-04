@@ -215,8 +215,6 @@ enum class UnificationTermTactic: ITactic {
 	private fun applyTactic(sequent: Sequent, fml: Formula, unificationTerm: UnificationTerm): Sequent = when(this) {
 		ALL_LEFT -> {
 			if (fml !is ALL) { throw IllegalTacticException() }
-			//val availableVars = sequent.freeVars.ifEmpty { setOf(fml.bddVar) }
-			//val unificationTerm = UnificationTerm(unificationTermIndex, availableVars)
 			val newConclusion = fml.instantiate(unificationTerm)
 			val newFml = fml.copy(unificationTermInstantiationCount = fml.unificationTermInstantiationCount + 1)
 			// TODO: 2022/02/03 もっと良い書き方ある？
@@ -226,8 +224,6 @@ enum class UnificationTermTactic: ITactic {
 		}
 		EXISTS_RIGHT -> {
 			if (fml !is EXISTS) { throw IllegalTacticException() }
-			//val availableVars = sequent.freeVars.ifEmpty { setOf(fml.bddVar) }
-			//val unificationTerm = UnificationTerm(unificationTermIndex, availableVars)
 			val newConclusion = fml.instantiate(unificationTerm)
 			val newFml = fml.copy(unificationTermInstantiationCount = fml.unificationTermInstantiationCount + 1)
 			sequent.copy(
