@@ -51,7 +51,7 @@ private fun String.toOneLetter(): String {
 
 private val oneLetterMap = mapOf(
 	"T" to setOf("true", "tautology", "top"),
-	"⊥" to setOf("false", "contradiction", "bottom"),
+	"⊥" to setOf("false", "contradiction", "bottom", "bot"),
 	"¬" to setOf("not ", "~", "negation ", "\\neg ", "neg "),
 	"∧" to setOf(" \\land ", " and ", "/\\", "&&", "&"),
 	"∨" to setOf(" \\or ", " or ", "\\/", "||", "|"),

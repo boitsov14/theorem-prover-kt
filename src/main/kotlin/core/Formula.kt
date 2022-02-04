@@ -65,6 +65,8 @@ sealed class Formula {
 	}
 	final override fun toString(): String = recToString().removeSurrounding("(", ")")
 	fun toLatex(): String = toString()
+		.replace("true", "\\top")
+		.replace("false", "\\bot")
 		.replace("¬", "\\neg ")
 		.replace("∧", "\\land")
 		.replace("∨", "\\or")
