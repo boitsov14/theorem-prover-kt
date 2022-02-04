@@ -44,9 +44,9 @@ sealed class Term {
 		is UnificationTerm -> if (this == oldUnificationTerm) newTerm else this
 		is Function -> Function(id, terms.map { it.replace(oldUnificationTerm, newTerm) })
 	}
-	fun replace(map: Map<UnificationTerm, Term>): Term {
+	fun replace(substitution: Map<UnificationTerm, Term>): Term {
 		var result = this
-		map.forEach { (key, value) -> result = result.replace(key, value) }
+		substitution.forEach { (key, value) -> result = result.replace(key, value) }
 		return result
 	}
 }

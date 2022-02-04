@@ -1,6 +1,6 @@
 package sequentProver
 
-import core.Formula
+import core.Formula.*
 import core.Term
 import core.Term.*
 import core.*
@@ -14,6 +14,7 @@ fun Sequent.prove() {
 	var count = 0
 	var unificationTermInstantiationMaxCount = 0
 	var unificationTermIndex = 0
+	var totalUnificationTime = 0L
 
 	val rootNode = Node(this, null)
 	val nodes = mutableListOf(rootNode)
@@ -45,7 +46,7 @@ fun Sequent.prove() {
 		// TODO: 2022/01/29 上と下どっちがよいか
 		for (node in nodes) {
 			if (AXIOM.canApply(node.sequentToBeApplied)) {
-				node.applyDataWithNode = AxiomApplyData
+				//node.applyDataWithNode = AxiomApplyData
 				nodes.remove(node)
 				println(">>> $AXIOM")
 				continue@loop
@@ -87,12 +88,13 @@ fun Sequent.prove() {
 
 		if (unificationTermInstantiationMaxCount == 0
 			&& nodes.none {
-				it.sequentToBeApplied.assumptions.filterIsInstance<Formula.ALL>().isNotEmpty()
-						|| it.sequentToBeApplied.conclusions.filterIsInstance<Formula.EXISTS>().isNotEmpty() }) {
+				it.sequentToBeApplied.assumptions.filterIsInstance<ALL>().isNotEmpty()
+						|| it.sequentToBeApplied.conclusions.filterIsInstance<EXISTS>().isNotEmpty() }) {
 			println("UNPROVABLE")
 			break
 		}
 
+		val startUnification = System.currentTimeMillis()
 		val siblingNodesList = nodes.groupBy { it.siblingLabel }.minus(null).values
 		for (siblingNodes in siblingNodesList) {
 			val siblingSubstitutionsList = siblingNodes.map { it.sequentToBeApplied }.map { it.unify() }
@@ -103,6 +105,10 @@ fun Sequent.prove() {
 			println("node size: ${siblingNodes.size}")
 			siblingSubstitution.forEach { println(it) }
 		}
+		val endUnification = System.currentTimeMillis()
+		val unificationTime = endUnification - startUnification
+		println("Unification try: $unificationTime ms")
+		totalUnificationTime += unificationTime
 
 		for ((index, node) in nodes.withIndex()) {
 			val sequentToBeApplied = node.sequentToBeApplied
@@ -110,16 +116,20 @@ fun Sequent.prove() {
 			val availableExistsRightFmls 	= UnificationTermTactic.EXISTS_RIGHT.availableFmls(sequentToBeApplied, unificationTermInstantiationMaxCount)
 			val availableAllLeftFmls 		= UnificationTermTactic.ALL_LEFT.availableFmls(sequentToBeApplied, unificationTermInstantiationMaxCount)
 			val applyData = if (availableExistsRightFmls.isNotEmpty()) {
-				val fml = availableExistsRightFmls.first()
-				UnificationTermTactic.ApplyData(UnificationTermTactic.EXISTS_RIGHT, fml, unificationTermIndex)
+				val fml = availableExistsRightFmls.first() as EXISTS
+				val availableVars = sequentToBeApplied.freeVars.ifEmpty { setOf(fml.bddVar) }
+				val unificationTerm = UnificationTerm(unificationTermIndex, availableVars)
+				UnificationTermTactic.ApplyData(UnificationTermTactic.EXISTS_RIGHT, fml, unificationTerm)
 			} else if (availableAllLeftFmls.isNotEmpty()) {
-				val fml = availableAllLeftFmls.first()
-				UnificationTermTactic.ApplyData(UnificationTermTactic.ALL_LEFT, fml, unificationTermIndex)
+				val fml = availableAllLeftFmls.first() as ALL
+				val availableVars = sequentToBeApplied.freeVars.ifEmpty { setOf(fml.bddVar) }
+				val unificationTerm = UnificationTerm(unificationTermIndex, availableVars)
+				UnificationTermTactic.ApplyData(UnificationTermTactic.ALL_LEFT, fml, unificationTerm)
 			} else {
 				continue
 			}
 			val sequent = applyData.applyTactic(sequentToBeApplied)
-			val siblingLabel = node.siblingLabel ?: applyData.unificationTermIndex
+			val siblingLabel = node.siblingLabel ?: applyData.unificationTerm.id
 			val newNode = Node(sequent, siblingLabel)
 			node.applyDataWithNode = UnificationTermApplyDataWithNode(applyData, newNode)
 			nodes[index] = newNode
@@ -140,15 +150,17 @@ fun Sequent.prove() {
 	val end = System.currentTimeMillis()
 	val time = end - start
 	println("Completed in $time ms")
+	println("unification time: $totalUnificationTime ms")
+	println("other time: ${time - totalUnificationTime} ms")
 	println("loop count: $count")
 
-	return
-
-	// TODO: 2022/01/29 将来的にはなくす
-	if (nodes.isNotEmpty()) {
-		nodes.forEach { it.applyDataWithNode = AxiomApplyData }
+	print("Complete Proof Start... ")
+	val completeProofTime = measureTimeMillis{
+		rootNode.completeProof(substitution)
 	}
+	println("Completed in $completeProofTime ms")
 
+	/*
 	val isCorrectProof: Boolean
 	print("Proof Check Start... ")
 	val checkProofTime = measureTimeMillis{
@@ -160,6 +172,7 @@ fun Sequent.prove() {
 		println("FAIL!")
 	}
 	println("Completed in $checkProofTime ms")
+	 */
 
 	val latexProof: String
 	println("Latex Start...")

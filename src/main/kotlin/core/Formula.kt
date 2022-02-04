@@ -1,7 +1,6 @@
 package core
 
 import core.Term.*
-import java.lang.IllegalArgumentException
 
 class DuplicateBddVarException: Exception()
 
@@ -124,7 +123,7 @@ sealed class Formula {
 		is ALL -> {
 			if (oldVar == bddVar) {
 				this
-			} else if (bddVar in newTerm.freeVars) {
+			} else if (bddVar in newTerm.freeVars && oldVar in freeVars) {
 				val newBddVar = bddVar.getFreshVar(operandFml.bddVars + operandFml.freeVars + newTerm.freeVars)
 				this.copy(
 					bddVar = newBddVar,
@@ -139,7 +138,7 @@ sealed class Formula {
 		is EXISTS -> {
 			if (oldVar == bddVar) {
 				this
-			} else if (bddVar in newTerm.freeVars) {
+			} else if (bddVar in newTerm.freeVars && oldVar in freeVars) {
 				val newBddVar = bddVar.getFreshVar(operandFml.bddVars + operandFml.freeVars + newTerm.freeVars)
 				this.copy(
 					bddVar = newBddVar,
@@ -152,7 +151,7 @@ sealed class Formula {
 			}
 		}
 	}
-	fun replace(oldUnificationTerm: UnificationTerm, newTerm: Term): Formula = when(this) {
+	private fun replace(oldUnificationTerm: UnificationTerm, newTerm: Term): Formula = when(this) {
 		TRUE -> this
 		FALSE -> this
 		is PREDICATE -> PREDICATE(id, terms.map { it.replace(oldUnificationTerm, newTerm) })
@@ -162,17 +161,11 @@ sealed class Formula {
 		is IMPLIES 		-> IMPLIES	(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
 		is IFF 			-> IFF		(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
 		is ALL -> {
-			// TODO: 2022/01/17 bddVar in oldUnificationTerm.freeVarsのときどうする？ そんなケースはない？
 			if (!(oldUnificationTerm.availableVars.containsAll(newTerm.freeVars))) {
 				throw IllegalArgumentException()
 			}
-			// TODO: 2022/01/17 ここのifとelse一緒にする？
-			if (bddVar in newTerm.freeVars) {
-				val newBddVar = bddVar.getFreshVar(operandFml.bddVars + operandFml.freeVars + newTerm.freeVars)
-				this.copy(
-					bddVar = newBddVar,
-					operandFml = operandFml.replace(bddVar, newBddVar).replace(oldUnificationTerm, newTerm)
-				)
+			if (bddVar in oldUnificationTerm.availableVars) {
+				this
 			} else {
 				this.copy(
 					operandFml = operandFml.replace(oldUnificationTerm, newTerm)
@@ -183,18 +176,19 @@ sealed class Formula {
 			if (!(oldUnificationTerm.availableVars.containsAll(newTerm.freeVars))) {
 				throw IllegalArgumentException()
 			}
-			if (bddVar in newTerm.freeVars) {
-				val newBddVar = bddVar.getFreshVar(operandFml.bddVars + operandFml.freeVars + newTerm.freeVars)
-				this.copy(
-					bddVar = newBddVar,
-					operandFml = operandFml.replace(bddVar, newBddVar).replace(oldUnificationTerm, newTerm)
-				)
+			if (bddVar in oldUnificationTerm.availableVars) {
+				this
 			} else {
 				this.copy(
 					operandFml = operandFml.replace(oldUnificationTerm, newTerm)
 				)
 			}
 		}
+	}
+	fun replace(substitution: Map<UnificationTerm, Term>): Formula {
+		var result = this
+		substitution.forEach { (key, value) -> result = result.replace(key, value) }
+		return result
 	}
 }
 
