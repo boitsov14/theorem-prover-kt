@@ -1,8 +1,8 @@
 package sequentProver
 
-import core.Term
-import core.Term.*
+import core.*
 
+// TODO: 2022/02/04 nested classにする？
 sealed interface IApplyDataWithNode {
 	val applyData: IApplyData
 }
@@ -32,7 +32,6 @@ data class TermApplyDataWithNode(
 	val node: Node
 ): IApplyDataWithNode
 
-// TODO: 2022/01/29 valではダメか
 data class Node(
 	var sequentToBeApplied: Sequent,
 	val siblingLabel: Int?,
@@ -84,21 +83,34 @@ fun Node.completeProof(substitution: Substitution) {
 	}
 }
 
-// TODO: 2022/02/03 消す
-/*
-fun Node.checkCorrectness(): Boolean = try {
-	when(val applyDataWithNode = applyDataWithNode) {
-		null -> false
-		AxiomApplyData 						-> AXIOM.canApply(sequentToBeApplied)
-		is UnaryApplyDataWithNode 			-> applyDataWithNode.applyData.applyTactic(sequentToBeApplied) == applyDataWithNode.node.sequentToBeApplied && applyDataWithNode.node.checkCorrectness()
-		is BinaryApplyDataWithNodes 		-> applyDataWithNode.applyData.applyTactic(sequentToBeApplied) == applyDataWithNode.leftNode.sequentToBeApplied to applyDataWithNode.rightNode.sequentToBeApplied && applyDataWithNode.leftNode.checkCorrectness() && applyDataWithNode.rightNode.checkCorrectness()
-		is UnificationTermApplyDataWithNode -> applyDataWithNode.applyData.applyTactic(sequentToBeApplied) == applyDataWithNode.node.sequentToBeApplied && applyDataWithNode.node.checkCorrectness()
-		is TermApplyDataWithNode 			-> applyDataWithNode.applyData.applyTactic(sequentToBeApplied) == applyDataWithNode.node.sequentToBeApplied && applyDataWithNode.node.checkCorrectness()
-	}
-} catch (e: IllegalTacticException) {
-	false
+private fun Node.getProof(): List<IApplyData> = listOf(applyDataWithNode!!.applyData) + when(val applyDataWithNode = applyDataWithNode!!) {
+	AxiomApplyData		 				-> emptyList()
+	is UnaryApplyDataWithNode 			-> applyDataWithNode.node.getProof()
+	is BinaryApplyDataWithNodes 		-> applyDataWithNode.leftNode.getProof() + applyDataWithNode.rightNode.getProof()
+	is UnificationTermApplyDataWithNode -> applyDataWithNode.node.getProof()
+	is TermApplyDataWithNode 			-> applyDataWithNode.node.getProof()
 }
- */
+
+fun Node.printProof() {
+	val proof = getProof()
+	val sequents = mutableListOf(this.sequentToBeApplied)
+	for (data in proof) {
+		sequents.forEach { println(it) }
+		when(data) {
+			AXIOM.ApplyData -> sequents.removeFirst()
+			is UnaryTactic.ApplyData -> sequents[0] = data.applyTactic(sequents[0])
+			is BinaryTactic.ApplyData -> {
+				val newSequents = data.applyTactic(sequents[0])
+				sequents[0] = newSequents.first
+				sequents.add(1, newSequents.second)
+			}
+			is UnificationTermTactic.ApplyData -> throw IllegalArgumentException()
+			is TermTactic.ApplyData -> sequents[0] = data.applyTactic(sequents[0])
+		}
+		println(">>> ${data.tactic}")
+	}
+	if (sequents.isNotEmpty()) throw IllegalArgumentException()
+}
 
 private fun Node.getReversedProof(): List<IndependentNode> = listOf(toIndependentNode()) + when(val applyDataWithNode = applyDataWithNode) {
 	AxiomApplyData, null 				-> emptyList()
@@ -110,7 +122,7 @@ private fun Node.getReversedProof(): List<IndependentNode> = listOf(toIndependen
 
 fun Node.getLatexProof(): String = getReversedProof().reversed().joinToString(separator = "\n") {
 	when(it.applyData) {
-		null 																							 -> "\\Axiom$${it.sequentToBeApplied.toLatex()}$"
+		null -> "\\Axiom$${it.sequentToBeApplied.toLatex()}$"
 		AXIOM.ApplyData 	    -> "\\AxiomC{}\n\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\UnaryInf$${it.sequentToBeApplied.toLatex()}$"
 		is UnaryTactic.ApplyData 			-> "\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\UnaryInf$${it.sequentToBeApplied.toLatex()}$"
 		is BinaryTactic.ApplyData 			-> "\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\BinaryInf$${it.sequentToBeApplied.toLatex()}$"
