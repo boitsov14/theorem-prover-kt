@@ -4,8 +4,8 @@ import core.*
 import core.Term.*
 import core.Formula.*
 
-fun Sequent.unify(): List<Map<UnificationTerm, Term>> {
-	val result = mutableListOf<Map<UnificationTerm, Term>>()
+fun Sequent.unify(): List<Substitution> {
+	val result = mutableListOf<Substitution>()
 	val assumptions = this.assumptions.filterIsInstance<PREDICATE>()
 	val conclusions = this.conclusions.filterIsInstance<PREDICATE>()
 	for (assumption in assumptions) {

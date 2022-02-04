@@ -185,7 +185,7 @@ sealed class Formula {
 			}
 		}
 	}
-	fun replace(substitution: Map<UnificationTerm, Term>): Formula {
+	fun replace(substitution: Substitution): Formula {
 		var result = this
 		substitution.forEach { (key, value) -> result = result.replace(key, value) }
 		return result

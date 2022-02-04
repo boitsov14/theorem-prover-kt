@@ -43,7 +43,7 @@ data class IndependentNode(val sequentToBeApplied: Sequent, val applyData: IAppl
 
 fun Node.toIndependentNode(): IndependentNode = IndependentNode(sequentToBeApplied, applyDataWithNode?.applyData)
 
-fun Node.completeProof(substitution: Map<UnificationTerm, Term>) {
+fun Node.completeProof(substitution: Substitution) {
 	if (AXIOM.canApply(sequentToBeApplied)) {
 		applyDataWithNode = AxiomApplyData
 	}
