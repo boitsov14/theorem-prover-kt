@@ -40,13 +40,9 @@ private fun Substitution.unify(pairs: List<Pair<Term, Term>>): Substitution? {
 	}
 }
 
-// TODO: 2022/02/03 typealiasでsubstitution作る？
+fun getSubstitution(substitutionsList: List<List<Substitution>>): Substitution? = emptyMap<UnificationTerm, Term>().getSubstitution(substitutionsList)
 
-@JvmName("unify1")
-fun unify(substitutionsList: List<List<Substitution>>): Substitution? = emptyMap<UnificationTerm, Term>().unify(substitutionsList)
-
-@JvmName("unify1")
-private fun Substitution.unify(substitutionsList: List<List<Substitution>>): Substitution? {
+private fun Substitution.getSubstitution(substitutionsList: List<List<Substitution>>): Substitution? {
 	var index = 0
 	if (substitutionsList.isEmpty()) return this
 	val substitutions = substitutionsList.first()
@@ -57,7 +53,7 @@ private fun Substitution.unify(substitutionsList: List<List<Substitution>>): Sub
 			index++
 			continue
 		}
-		val substitution2 = substitution1.unify(substitutionsList.drop(1))
+		val substitution2 = substitution1.getSubstitution(substitutionsList.drop(1))
 		if (substitution2 == null) {
 			index++
 			continue

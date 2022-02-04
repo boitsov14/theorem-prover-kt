@@ -4,7 +4,7 @@ import core.*
 import core.Term.*
 import core.Formula.*
 
-fun Sequent.unify(): List<Substitution> {
+fun Sequent.getSubstitutions(): List<Substitution> {
 	val result = mutableListOf<Substitution>()
 	val assumptions = this.assumptions.filterIsInstance<PREDICATE>()
 	val conclusions = this.conclusions.filterIsInstance<PREDICATE>()

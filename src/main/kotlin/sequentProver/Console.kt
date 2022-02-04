@@ -97,9 +97,9 @@ fun Sequent.prove() {
 		val startUnification = System.currentTimeMillis()
 		val siblingNodesList = nodes.groupBy { it.siblingLabel }.minus(null).values
 		for (siblingNodes in siblingNodesList) {
-			val siblingSubstitutionsList = siblingNodes.map { it.sequentToBeApplied }.map { it.unify() }
+			val siblingSubstitutionsList = siblingNodes.map { it.sequentToBeApplied }.map { it.getSubstitutions() }
 			if (siblingSubstitutionsList.any { it.isEmpty() }) continue
-			val siblingSubstitution = unify(siblingSubstitutionsList) ?: continue
+			val siblingSubstitution = getSubstitution(siblingSubstitutionsList) ?: continue
 			substitution.putAll(siblingSubstitution)
 			nodes.removeAll(siblingNodes)
 			println("node size: ${siblingNodes.size}")
