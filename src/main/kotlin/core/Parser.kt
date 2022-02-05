@@ -259,8 +259,5 @@ private fun List<Token>.getFormula(): Formula {
 			Token.LP, Token.RP -> throw IllegalArgumentException()
 		}
 	}
-	if (stack.size != 1) {
-		throw FormulaParserException("Parse Error")
-	}
-	return stack.last()
+	return stack.singleOrNull() ?: throw FormulaParserException("Parse Error")
 }
