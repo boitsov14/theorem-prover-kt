@@ -23,18 +23,25 @@ private fun Substitution.unify(pairs: List<Pair<Term, Term>>): Substitution? {
 		first is Term.Function && second is Var -> return null
 		first is UnificationTerm -> {
 			if (first in this.keys) {
+				// TODO: 2022/02/05 仮に不完全なsubstitutionでもこれで問題ないと思う． 毎回フルでやるのは効率悪い．
 				return unify(listOf(this[first]!! to second) + pairs.drop(1))
 			}
-			val second1 = second.replace(this)
-			if (first in second1.unificationTerms) return null
-			val unificationTermToShrink = second1.unificationTerms.filter { it.availableVars.size > first.availableVars.size }
-			val unificationTermToShrinkMap = unificationTermToShrink.associateWith { UnificationTerm(it.id, first.availableVars) }
-			val second2 = second1.replace(unificationTermToShrinkMap)
-			if (!first.freeVars.containsAll(second2.freeVars)) return null
-			val additionalSubstitution = mapOf(first to second2) + unificationTermToShrinkMap
+			val newSecond = second.replace(this)
+			if (first in newSecond.unificationTerms) return null
+			// TODO: 2022/02/05 本当にこのfilterでよいのかチェック
+			val unificationTermShrinkMap = newSecond.unificationTerms
+				.filter { it.availableVars.size > first.availableVars.size }
+				.associateWith { UnificationTerm(it.id, first.availableVars) }
+			if (!first.freeVars.containsAll(newSecond.replace(unificationTermShrinkMap).freeVars)) return null
+			return (this + (first to newSecond) + unificationTermShrinkMap).unify(pairs.drop(1))
+
+			//val second2 = newSecond.replace(unificationTermShrinkMap)
+			//if (!first.freeVars.containsAll(second2.freeVars)) return null
+			//val additionalSubstitution = mapOf(first to second2) + unificationTermShrinkMap
 			// TODO: 2022/02/04 .update(additionalSubstitution)みたな関数を定義する？
-			val newMap = this.map { it.key to it.value.replace(additionalSubstitution) }.toMap() + additionalSubstitution
-			return newMap.unify(pairs.drop(1))
+			// TODO: 2022/02/05 そもそもこれをここでする必要はあるのか
+			//val newMap = this.map { it.key to it.value.replace(additionalSubstitution) }.toMap() + additionalSubstitution
+			//return newMap.unify(pairs.drop(1))
 		}
 		second is UnificationTerm -> return unify(listOf(second to first) + pairs.drop(1))
 		else -> throw IllegalArgumentException()
@@ -63,3 +70,7 @@ private fun Substitution.getSubstitution(substitutionsList: List<List<Substituti
 	}
 	return null
 }
+
+// TODO: 2022/02/05 performance向上の余地あり？
+fun Substitution.getCompleteSubstitution(): Substitution =
+	this.toList().mapIndexed { index, pair -> pair.first to pair.second.replace(this.toList().drop(index + 1).toMap()) }.toMap()

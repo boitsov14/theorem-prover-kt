@@ -40,8 +40,8 @@ A and B and C and D to D and C and B and A
 A and B and C to C and B and A
 P(a) to all x (P(x) to P(f(x))) to P(f(f(f(f(a)))))
 P(a) to all x (P(x) to P(f(x))) to P(f(f(f(f(f(f(f(f(a))))))))) //433ms
-P(a) to all x (P(x) to P(f(x))) to P(f(f(f(f(f(f(f(f(f(f(a))))))))))) //8,808 ms
-P(a) to all x (P(x) to P(f(x))) to P(f(f(f(f(f(f(f(f(f(f(f(a)))))))))))) //64,266 ms
+P(a) to all x (P(x) to P(f(x))) to P(f(f(f(f(f(f(f(f(f(f(a)))))))))))
+P(a) to all x (P(x) to P(f(x))) to P(f(f(f(f(f(f(f(f(f(f(f(a))))))))))))
 P(a) to all x (P(x) to P(f(x))) to P(f(f(f(f(f(f(f(f(f(f(f(f(a))))))))))))) //490,981 ms
 P(a) to all x (P(x) to P(f(x))) to P(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(a)))))))))))))))))))))
 P(a), P(b), Q(b) proves exists x (P(x) and Q(x))
@@ -52,6 +52,9 @@ ex x (P(x) and Q(x)) proves ex x P(x) and ex x Q(x)
 all x P(x) proves ex x P(x)
 ex x P(x) proves all x P(x)
 (P to Q) or (Q to P)
+not all x P(x) proves ex x not P(x)
+not all a all b all c all d all e all f all g all h P(a,b,c,d,e,f,g,h) proves ex a ex b ex c ex d ex e ex f ex g ex h not P(a,b,c,d,e,f,g,h)
+all x P(x) proves Q
  */
 
 fun main() {
@@ -62,7 +65,7 @@ fun main() {
 	}
 	 */
 	print("INPUT A FORMULA >>> ")
-	val firstSequent = readLine()!!.parseToSequent()
+	val firstSequent = readln().parseToSequent()
 	firstSequent.prove()
 
 	/*
@@ -71,3 +74,42 @@ fun main() {
 	letMeProve(firstGoals)
 	 */
 }
+
+/*
+((o11 ∨ o12 ∨ o13) ∧ (o21 ∨ o22 ∨ o23) ∧ (o31 ∨ o32 ∨ o33) ∧ (o41 ∨ o42 ∨ o43)) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o11 ∧ o41) ∨ (o21 ∧ o31) ∨ (o21 ∧ o41) ∨ (o31 ∧ o41) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o12 ∧ o42) ∨ (o22 ∧ o32) ∨ (o22 ∧ o42) ∨ (o32 ∧ o42) ∨ (o13 ∧ o23) ∨ (o13 ∧ o33) ∨ (o13 ∧ o43) ∨ (o23 ∧ o33) ∨ (o23 ∧ o43) ∨ (o33 ∧ o43))
+PROOF SUCCEED!
+Completed in 370 ms
+unification time: 0 ms
+other time: 370 ms
+loop count: 8669
+Complete Proof Start... Completed in 133 ms
+Latex Start...Completed in 250 ms
+
+((o11 ∨ o12 ∨ o13 ∨ o14) ∧ (o21 ∨ o22 ∨ o23 ∨ o24) ∧ (o31 ∨ o32 ∨ o33 ∨ o34) ∧ (o41 ∨ o42 ∨ o43 ∨ o44) ∧ (o51 ∨ o52 ∨ o53 ∨ o54)) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o11 ∧ o41) ∨ (o11 ∧ o51) ∨ (o21 ∧ o31) ∨ (o21 ∧ o41) ∨ (o21 ∧ o51) ∨ (o31 ∧ o41) ∨ (o31 ∧ o51) ∨ (o41 ∧ o51) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o12 ∧ o42) ∨ (o12 ∧ o52) ∨ (o22 ∧ o32) ∨ (o22 ∧ o42) ∨ (o22 ∧ o52) ∨ (o32 ∧ o42) ∨ (o32 ∧ o52) ∨ (o42 ∧ o52) ∨ (o13 ∧ o23) ∨ (o13 ∧ o33) ∨ (o13 ∧ o43) ∨ (o13 ∧ o53) ∨ (o23 ∧ o33) ∨ (o23 ∧ o43) ∨ (o23 ∧ o53) ∨ (o33 ∧ o43) ∨ (o33 ∧ o53) ∨ (o43 ∧ o53) ∨ (o14 ∧ o24) ∨ (o14 ∧ o34) ∨ (o14 ∧ o44) ∨ (o14 ∧ o54) ∨ (o24 ∧ o34) ∨ (o24 ∧ o44) ∨ (o24 ∧ o54) ∨ (o34 ∧ o44) ∨ (o34 ∧ o54) ∨ (o44 ∧ o54))
+PROOF IS TOO LONG
+Completed in 2001 ms
+unification time: 0 ms
+other time: 2001 ms
+loop count: 60000
+Complete Proof Start... Completed in 1312 ms
+Latex Start...Completed in 1197 ms
+
+P(a) to all x (P(x) to P(f(x))) to P(f(f(f(f(f(f(f(f(f(f(a)))))))))))
+PROOF SUCCEED!
+Completed in 5990 ms
+unification time: 5967 ms
+other time: 23 ms
+loop count: 27
+Complete Proof Start... Completed in 8 ms
+Latex Start...Completed in 11 ms
+
+P(a) to all x (P(x) to P(f(x))) to P(f(f(f(f(f(f(f(f(f(f(f(a))))))))))))
+PROOF SUCCEED!
+Completed in 42568 ms
+unification time: 42544 ms
+other time: 24 ms
+loop count: 29
+Complete Proof Start... Completed in 6 ms
+Latex Start...Completed in 9 ms
+
+ */

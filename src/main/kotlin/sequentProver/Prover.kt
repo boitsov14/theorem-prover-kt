@@ -1,7 +1,6 @@
 package sequentProver
 
 import core.*
-import core.Term.*
 
 // TODO: 2022/02/04 nested classにする？
 // TODO: 2022/02/05 もっと簡略に書く
@@ -43,12 +42,6 @@ data class Node(
 data class IndependentNode(val sequentToBeApplied: Sequent, val applyData: IApplyData?)
 
 fun Node.toIndependentNode(): IndependentNode = IndependentNode(sequentToBeApplied, applyDataWithNode?.applyData)
-
-// TODO: 2022/02/05
-fun Substitution.getCompleteSubstitution(allUnificationTerms: Set<UnificationTerm>): Substitution {
-	val additionalSubstitution = allUnificationTerms.subtract(this.keys).associateWith { it.availableVars.first() }
-	return this.map { it.key to it.value.replace(additionalSubstitution) }.toMap() + additionalSubstitution
-}
 
 fun Node.completeProof(substitution: Substitution) {
 	if (AXIOM.canApply(sequentToBeApplied)) {

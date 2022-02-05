@@ -19,7 +19,7 @@ fun Sequent.prove() {
 	val rootNode = Node(this, null)
 	val nodes = mutableListOf(rootNode)
 	val substitution = mutableMapOf<UnificationTerm,Term>()
-	val allUnificationTerms = mutableSetOf<UnificationTerm>()
+	val allUnificationTermsWithSiblingLabel = mutableMapOf<Int, MutableSet<UnificationTerm>>()
 
 	loop@ while (true) {
 		count++
@@ -88,16 +88,17 @@ fun Sequent.prove() {
 		}
 
 		val startUnification = System.currentTimeMillis()
-		val siblingNodesList = nodes.groupBy { it.siblingLabel }.minus(null).values
-		for (siblingNodes in siblingNodesList) {
+		val siblingNodesListWithLabel = nodes.groupBy { it.siblingLabel }.minus(null)
+		for ((siblingLabel, siblingNodes) in siblingNodesListWithLabel) {
 			val siblingSubstitutionsList = siblingNodes.map { it.sequentToBeApplied }.map { it.getSubstitutions() }
 			if (siblingSubstitutionsList.any { it.isEmpty() }) continue
-			val siblingSubstitution = getSubstitution(siblingSubstitutionsList) ?: continue
-			// TODO: 2022/02/05 もともとのsubstitutionのvalueも更新しなきゃだめじゃない？
+			val siblingSubstitution0 = getSubstitution(siblingSubstitutionsList) ?: continue
+			val additionalSubstitution = allUnificationTermsWithSiblingLabel[siblingLabel]!!.subtract(siblingSubstitution0.keys).associateWith { it.availableVars.first() }
+			val siblingSubstitution = (siblingSubstitution0 + additionalSubstitution).getCompleteSubstitution()
 			substitution.putAll(siblingSubstitution)
 			nodes.removeAll(siblingNodes)
 			println("node size: ${siblingNodes.size}")
-			siblingSubstitution.forEach { println(it) }
+			(siblingSubstitution).forEach { println(it) }
 		}
 		val endUnification = System.currentTimeMillis()
 		val unificationTime = endUnification - startUnification
@@ -140,7 +141,7 @@ fun Sequent.prove() {
 			node.applyDataWithNode = UnificationTermApplyDataWithNode(applyData, newNode)
 			nodes[index] = newNode
 			unificationTermIndex++
-			allUnificationTerms.add(unificationTerm)
+			allUnificationTermsWithSiblingLabel.getOrPut(siblingLabel) { mutableSetOf() }.add(unificationTerm)
 			println(">>> ${applyData.tactic}")
 			continue@loop
 		}
@@ -163,7 +164,7 @@ fun Sequent.prove() {
 
 	print("Complete Proof Start... ")
 	val completeProofTime = measureTimeMillis{
-		rootNode.completeProof(substitution.getCompleteSubstitution(allUnificationTerms))
+		rootNode.completeProof(substitution)
 	}
 	println("Completed in $completeProofTime ms")
 
@@ -193,24 +194,3 @@ fun Sequent.prove() {
 		}
 	}
 }
-
-/*
-((o11 ∨ o12 ∨ o13) ∧ (o21 ∨ o22 ∨ o23) ∧ (o31 ∨ o32 ∨ o33) ∧ (o41 ∨ o42 ∨ o43)) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o11 ∧ o41) ∨ (o21 ∧ o31) ∨ (o21 ∧ o41) ∨ (o31 ∧ o41) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o12 ∧ o42) ∨ (o22 ∧ o32) ∨ (o22 ∧ o42) ∨ (o32 ∧ o42) ∨ (o13 ∧ o23) ∨ (o13 ∧ o33) ∨ (o13 ∧ o43) ∨ (o23 ∧ o33) ∨ (o23 ∧ o43) ∨ (o33 ∧ o43))
-PROOF SUCCEED!
-Completed in 428 ms
-unification time: 0 ms
-other time: 428 ms
-loop count: 8669
-Complete Proof Start... Completed in 254 ms
-Latex Start...Completed in 254 ms
-
-((o11 ∨ o12 ∨ o13 ∨ o14) ∧ (o21 ∨ o22 ∨ o23 ∨ o24) ∧ (o31 ∨ o32 ∨ o33 ∨ o34) ∧ (o41 ∨ o42 ∨ o43 ∨ o44) ∧ (o51 ∨ o52 ∨ o53 ∨ o54)) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o11 ∧ o41) ∨ (o11 ∧ o51) ∨ (o21 ∧ o31) ∨ (o21 ∧ o41) ∨ (o21 ∧ o51) ∨ (o31 ∧ o41) ∨ (o31 ∧ o51) ∨ (o41 ∧ o51) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o12 ∧ o42) ∨ (o12 ∧ o52) ∨ (o22 ∧ o32) ∨ (o22 ∧ o42) ∨ (o22 ∧ o52) ∨ (o32 ∧ o42) ∨ (o32 ∧ o52) ∨ (o42 ∧ o52) ∨ (o13 ∧ o23) ∨ (o13 ∧ o33) ∨ (o13 ∧ o43) ∨ (o13 ∧ o53) ∨ (o23 ∧ o33) ∨ (o23 ∧ o43) ∨ (o23 ∧ o53) ∨ (o33 ∧ o43) ∨ (o33 ∧ o53) ∨ (o43 ∧ o53) ∨ (o14 ∧ o24) ∨ (o14 ∧ o34) ∨ (o14 ∧ o44) ∨ (o14 ∧ o54) ∨ (o24 ∧ o34) ∨ (o24 ∧ o44) ∨ (o24 ∧ o54) ∨ (o34 ∧ o44) ∨ (o34 ∧ o54) ∨ (o44 ∧ o54))
-PROOF IS TOO LONG
-Completed in 3509 ms
-unification time: 0 ms
-other time: 3509 ms
-loop count: 60000
-Complete Proof Start... Completed in 4026 ms
-Latex Start...Completed in 1307 ms
-
- */
