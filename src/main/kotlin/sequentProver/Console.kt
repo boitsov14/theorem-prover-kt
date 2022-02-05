@@ -19,6 +19,7 @@ fun Sequent.prove() {
 	val rootNode = Node(this, null)
 	val nodes = mutableListOf(rootNode)
 	val substitution = mutableMapOf<UnificationTerm,Term>()
+	val allUnificationTerms = mutableSetOf<UnificationTerm>()
 
 	loop@ while (true) {
 		count++
@@ -92,6 +93,7 @@ fun Sequent.prove() {
 			val siblingSubstitutionsList = siblingNodes.map { it.sequentToBeApplied }.map { it.getSubstitutions() }
 			if (siblingSubstitutionsList.any { it.isEmpty() }) continue
 			val siblingSubstitution = getSubstitution(siblingSubstitutionsList) ?: continue
+			// TODO: 2022/02/05 もともとのsubstitutionのvalueも更新しなきゃだめじゃない？
 			substitution.putAll(siblingSubstitution)
 			nodes.removeAll(siblingNodes)
 			println("node size: ${siblingNodes.size}")
@@ -138,6 +140,7 @@ fun Sequent.prove() {
 			node.applyDataWithNode = UnificationTermApplyDataWithNode(applyData, newNode)
 			nodes[index] = newNode
 			unificationTermIndex++
+			allUnificationTerms.add(unificationTerm)
 			println(">>> ${applyData.tactic}")
 			continue@loop
 		}
@@ -160,7 +163,7 @@ fun Sequent.prove() {
 
 	print("Complete Proof Start... ")
 	val completeProofTime = measureTimeMillis{
-		rootNode.completeProof(substitution)
+		rootNode.completeProof(substitution.getCompleteSubstitution(allUnificationTerms))
 	}
 	println("Completed in $completeProofTime ms")
 

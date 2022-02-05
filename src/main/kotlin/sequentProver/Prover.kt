@@ -1,6 +1,7 @@
 package sequentProver
 
 import core.*
+import core.Term.*
 
 // TODO: 2022/02/04 nested classにする？
 // TODO: 2022/02/05 もっと簡略に書く
@@ -43,8 +44,10 @@ data class IndependentNode(val sequentToBeApplied: Sequent, val applyData: IAppl
 
 fun Node.toIndependentNode(): IndependentNode = IndependentNode(sequentToBeApplied, applyDataWithNode?.applyData)
 
-fun Node.completeSubstitution(substitution: Substitution) {
-	TODO()
+// TODO: 2022/02/05
+fun Substitution.getCompleteSubstitution(allUnificationTerms: Set<UnificationTerm>): Substitution {
+	val additionalSubstitution = allUnificationTerms.subtract(this.keys).associateWith { it.availableVars.first() }
+	return this.map { it.key to it.value.replace(additionalSubstitution) }.toMap() + additionalSubstitution
 }
 
 fun Node.completeProof(substitution: Substitution) {
@@ -65,7 +68,8 @@ fun Node.completeProof(substitution: Substitution) {
 		}
 		is UnificationTermApplyDataWithNode -> {
 			val unificationTerm = applyDataWithNode.applyData.unificationTerm
-			val term = substitution[unificationTerm]
+			val term = substitution[unificationTerm]!!
+			/*
 			if (term == null) {
 				val variable = unificationTerm.availableVars.first()
 				val applyData = applyDataWithNode.applyData.toTermTacticApplyData(variable)
@@ -80,6 +84,11 @@ fun Node.completeProof(substitution: Substitution) {
 				applyDataWithNode.node.sequentToBeApplied = applyData.applyTactic(sequentToBeApplied)
 				applyDataWithNode.node.completeProof(substitution.map { it.key to it.value.replace(additionalSubstitution) }.toMap() + additionalSubstitution)
 			}
+			 */
+			val applyData = applyDataWithNode.applyData.toTermTacticApplyData(term)
+			this.applyDataWithNode = TermApplyDataWithNode(applyData, applyDataWithNode.node)
+			applyDataWithNode.node.sequentToBeApplied = applyData.applyTactic(sequentToBeApplied)
+			applyDataWithNode.node.completeProof(substitution)
 		}
 		is TermApplyDataWithNode -> throw IllegalArgumentException()
 	}
