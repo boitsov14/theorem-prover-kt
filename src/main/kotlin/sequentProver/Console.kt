@@ -157,7 +157,10 @@ fun Sequent.prove() {
 	print("Show Latex Output? (y/n) >>> ")
 	if (readLine()!! == "y") {
 		println("-----------------------------------")
+		println("\\begin{prooftree}")
+		println("\\def\\fCenter{\\mbox{\$\\vdash\$}}")
 		println(latexProof)
+		println("\\end{prooftree}")
 		println("-----------------------------------")
 	}
 
