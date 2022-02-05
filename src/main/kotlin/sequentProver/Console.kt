@@ -48,7 +48,6 @@ fun Sequent.prove() {
 			for (tactic in UnaryTactic.values()) {
 				val fmlIndex = tactic.getAvailableFmlIndex(sequentToBeApplied)
 				if (fmlIndex == -1) continue
-				//val fml = tactic.availableFmls(sequentToBeApplied).firstOrNull() ?: continue
 				// TODO: 2022/01/29 二重ループ改善?
 				val applyData = UnaryTactic.ApplyData(tactic, fmlIndex)
 				val sequent = applyData.applyTactic(sequentToBeApplied)
@@ -65,7 +64,6 @@ fun Sequent.prove() {
 			for (tactic in BinaryTactic.values()) {
 				val fmlIndex = tactic.getAvailableFmlIndex(sequentToBeApplied)
 				if (fmlIndex == -1) continue
-				//val fml = tactic.availableFmls(sequentToBeApplied).firstOrNull() ?: continue
 				val applyData = BinaryTactic.ApplyData(tactic, fmlIndex)
 				val leftSequent = applyData.applyTactic(sequentToBeApplied).first
 				val rightSequent = applyData.applyTactic(sequentToBeApplied).second
@@ -87,12 +85,18 @@ fun Sequent.prove() {
 			break
 		}
 
-		val startUnification = System.currentTimeMillis()
 		val siblingNodesListWithLabel = nodes.groupBy { it.siblingLabel }.minus(null)
 		for ((siblingLabel, siblingNodes) in siblingNodesListWithLabel) {
 			val siblingSubstitutionsList = siblingNodes.map { it.sequentToBeApplied }.map { it.getSubstitutions() }
 			if (siblingSubstitutionsList.any { it.isEmpty() }) continue
-			val siblingSubstitution0 = getSubstitution(siblingSubstitutionsList) ?: continue
+			val siblingSubstitution0: Substitution?
+			val unificationTime = measureTimeMillis {
+				siblingSubstitution0 = getSubstitution(siblingSubstitutionsList)
+			}
+			println("Unification try: $unificationTime ms")
+			totalUnificationTime += unificationTime
+			if (siblingSubstitution0 == null) continue
+			//val siblingSubstitution0 = getSubstitution(siblingSubstitutionsList) ?: continue
 			val additionalSubstitution = allUnificationTermsWithSiblingLabel[siblingLabel]!!.subtract(siblingSubstitution0.keys).associateWith { it.availableVars.first() }
 			val siblingSubstitution = (siblingSubstitution0 + additionalSubstitution).getCompleteSubstitution()
 			substitution.putAll(siblingSubstitution)
@@ -100,10 +104,6 @@ fun Sequent.prove() {
 			println("node size: ${siblingNodes.size}")
 			(siblingSubstitution).forEach { println(it) }
 		}
-		val endUnification = System.currentTimeMillis()
-		val unificationTime = endUnification - startUnification
-		println("Unification try: $unificationTime ms")
-		totalUnificationTime += unificationTime
 
 		for ((index, node) in nodes.withIndex()) {
 			val sequentToBeApplied = node.sequentToBeApplied

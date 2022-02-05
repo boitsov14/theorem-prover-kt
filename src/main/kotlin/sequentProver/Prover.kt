@@ -61,7 +61,7 @@ fun Node.completeProof(substitution: Substitution) {
 		}
 		is UnificationTermApplyDataWithNode -> {
 			val unificationTerm = applyDataWithNode.applyData.unificationTerm
-			val term = substitution[unificationTerm]!!
+			val term = substitution[unificationTerm] ?: unificationTerm
 			/*
 			if (term == null) {
 				val variable = unificationTerm.availableVars.first()

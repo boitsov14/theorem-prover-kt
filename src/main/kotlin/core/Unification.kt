@@ -27,21 +27,14 @@ private fun Substitution.unify(pairs: List<Pair<Term, Term>>): Substitution? {
 				return unify(listOf(this[first]!! to second) + pairs.drop(1))
 			}
 			val newSecond = second.replace(this)
+			if (first == newSecond) return unify(pairs.drop(1))
 			if (first in newSecond.unificationTerms) return null
 			// TODO: 2022/02/05 本当にこのfilterでよいのかチェック
 			val unificationTermShrinkMap = newSecond.unificationTerms
 				.filter { it.availableVars.size > first.availableVars.size }
 				.associateWith { UnificationTerm(it.id, first.availableVars) }
-			if (!first.freeVars.containsAll(newSecond.replace(unificationTermShrinkMap).freeVars)) return null
+			if (!first.availableVars.containsAll(newSecond.replace(unificationTermShrinkMap).freeVars)) return null
 			return (this + (first to newSecond) + unificationTermShrinkMap).unify(pairs.drop(1))
-
-			//val second2 = newSecond.replace(unificationTermShrinkMap)
-			//if (!first.freeVars.containsAll(second2.freeVars)) return null
-			//val additionalSubstitution = mapOf(first to second2) + unificationTermShrinkMap
-			// TODO: 2022/02/04 .update(additionalSubstitution)みたな関数を定義する？
-			// TODO: 2022/02/05 そもそもこれをここでする必要はあるのか
-			//val newMap = this.map { it.key to it.value.replace(additionalSubstitution) }.toMap() + additionalSubstitution
-			//return newMap.unify(pairs.drop(1))
 		}
 		second is UnificationTerm -> return unify(listOf(second to first) + pairs.drop(1))
 		else -> throw IllegalArgumentException()
@@ -56,21 +49,20 @@ private fun Substitution.getSubstitution(substitutionsList: List<List<Substituti
 	val substitutions = substitutionsList.first()
 	while (index < substitutions.size) {
 		val pairs = substitutions[index].toList()
-		val substitution1 = this.unify(pairs)
-		if (substitution1 == null) {
+		val ownSubstitution = this.unify(pairs)
+		if (ownSubstitution == null) {
 			index++
 			continue
 		}
-		val substitution2 = substitution1.getSubstitution(substitutionsList.drop(1))
-		if (substitution2 == null) {
+		val nextSubstitution = ownSubstitution.getSubstitution(substitutionsList.drop(1))
+		if (nextSubstitution == null) {
 			index++
 			continue
 		}
-		return substitution2
+		return nextSubstitution
 	}
 	return null
 }
 
-// TODO: 2022/02/05 performance向上の余地あり？
 fun Substitution.getCompleteSubstitution(): Substitution =
 	this.toList().mapIndexed { index, pair -> pair.first to pair.second.replace(this.toList().drop(index + 1).toMap()) }.toMap()
