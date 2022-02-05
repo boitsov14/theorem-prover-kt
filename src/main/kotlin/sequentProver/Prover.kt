@@ -3,6 +3,7 @@ package sequentProver
 import core.*
 
 // TODO: 2022/02/04 nested classにする？
+// TODO: 2022/02/05 もっと簡略に書く
 sealed interface IApplyDataWithNode {
 	val applyData: IApplyData
 }
@@ -42,6 +43,10 @@ data class IndependentNode(val sequentToBeApplied: Sequent, val applyData: IAppl
 
 fun Node.toIndependentNode(): IndependentNode = IndependentNode(sequentToBeApplied, applyDataWithNode?.applyData)
 
+fun Node.completeSubstitution(substitution: Substitution) {
+	TODO()
+}
+
 fun Node.completeProof(substitution: Substitution) {
 	if (AXIOM.canApply(sequentToBeApplied)) {
 		applyDataWithNode = AxiomApplyData
@@ -49,16 +54,12 @@ fun Node.completeProof(substitution: Substitution) {
 	when(val applyDataWithNode = applyDataWithNode) {
 		AxiomApplyData, null -> {}
 		is UnaryApplyDataWithNode -> {
-			val newApplyData = applyDataWithNode.applyData.copy(fml = applyDataWithNode.applyData.fml.replace(substitution))
-			this.applyDataWithNode = applyDataWithNode.copy(newApplyData)
-			applyDataWithNode.node.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied)
+			applyDataWithNode.node.sequentToBeApplied = applyDataWithNode.applyData.applyTactic(sequentToBeApplied)
 			applyDataWithNode.node.completeProof(substitution)
 		}
 		is BinaryApplyDataWithNodes -> {
-			val newApplyData = applyDataWithNode.applyData.copy(fml = applyDataWithNode.applyData.fml.replace(substitution))
-			this.applyDataWithNode = applyDataWithNode.copy(newApplyData)
-			applyDataWithNode.leftNode.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied).first
-			applyDataWithNode.rightNode.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied).second
+			applyDataWithNode.leftNode.sequentToBeApplied = applyDataWithNode.applyData.applyTactic(sequentToBeApplied).first
+			applyDataWithNode.rightNode.sequentToBeApplied = applyDataWithNode.applyData.applyTactic(sequentToBeApplied).second
 			applyDataWithNode.leftNode.completeProof(substitution)
 			applyDataWithNode.rightNode.completeProof(substitution)
 		}
@@ -74,7 +75,7 @@ fun Node.completeProof(substitution: Substitution) {
 				applyDataWithNode.node.completeProof(substitution.map { it.key to it.value.replace(additionalSubstitution) }.toMap() + additionalSubstitution)
 			} else {
 				val additionalSubstitution = term.unificationTerms.associateWith { it.availableVars.first() }
-				val applyData = applyDataWithNode.applyData.toTermTacticApplyData(term)
+				val applyData = applyDataWithNode.applyData.toTermTacticApplyData(term.replace(additionalSubstitution))
 				this.applyDataWithNode = TermApplyDataWithNode(applyData, applyDataWithNode.node)
 				applyDataWithNode.node.sequentToBeApplied = applyData.applyTactic(sequentToBeApplied)
 				applyDataWithNode.node.completeProof(substitution.map { it.key to it.value.replace(additionalSubstitution) }.toMap() + additionalSubstitution)

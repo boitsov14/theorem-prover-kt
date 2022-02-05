@@ -46,6 +46,17 @@ enum class UnaryTactic: ITactic {
 	data class ApplyData(override val tactic: UnaryTactic, val fmlIndex: Int) : IApplyData {
 		fun applyTactic(sequent: Sequent): Sequent = tactic.applyTactic(sequent, fmlIndex)
 	}
+	fun getAvailableFmlIndex(sequent: Sequent): Int = when(this) {
+		AND_LEFT 		-> sequent.assumptions.indexOfFirst { it is AND }
+		OR_RIGHT 		-> sequent.conclusions.indexOfFirst { it is OR }
+		IMPLIES_RIGHT 	-> sequent.conclusions.indexOfFirst { it is IMPLIES }
+		NOT_LEFT 		-> sequent.assumptions.indexOfFirst { it is NOT }
+		NOT_RIGHT 		-> sequent.conclusions.indexOfFirst { it is NOT }
+		IFF_LEFT 		-> sequent.assumptions.indexOfFirst { it is IFF }
+		ALL_RIGHT 		-> sequent.conclusions.indexOfFirst { it is ALL }
+		EXISTS_LEFT 	-> sequent.assumptions.indexOfFirst { it is EXISTS }
+	}
+	/*
 	fun availableFmls(sequent: Sequent): List<Formula> = when(this) {
 		AND_LEFT 		-> sequent.assumptions.filterIsInstance<AND>()
 		OR_RIGHT 		-> sequent.conclusions.filterIsInstance<OR>()
@@ -56,6 +67,7 @@ enum class UnaryTactic: ITactic {
 		EXISTS_LEFT 	-> sequent.assumptions.filterIsInstance<EXISTS>()
 		ALL_RIGHT 		-> sequent.conclusions.filterIsInstance<ALL>()
 	}
+	 */
 	private fun applyTactic(sequent: Sequent, fmlIndex: Int): Sequent = when (this) {
 		AND_LEFT -> {
 			val fml = sequent.assumptions.elementAtOrNull(fmlIndex)
@@ -143,6 +155,13 @@ enum class BinaryTactic: ITactic {
 	data class ApplyData(override val tactic: BinaryTactic, val fmlIndex: Int) : IApplyData {
 		fun applyTactic(sequent: Sequent): Pair<Sequent, Sequent> = tactic.applyTactic(sequent, fmlIndex).first to tactic.applyTactic(sequent, fmlIndex).second
 	}
+	fun getAvailableFmlIndex(sequent: Sequent): Int = when(this) {
+		AND_RIGHT 		-> sequent.conclusions.indexOfFirst { it is AND && it.leftFml !in sequent.conclusions && it.rightFml !in sequent.conclusions }
+		OR_LEFT 		-> sequent.assumptions.indexOfFirst { it is OR && it.leftFml !in sequent.assumptions && it.rightFml !in sequent.assumptions }
+		IMPLIES_LEFT 	-> sequent.assumptions.indexOfFirst { it is IMPLIES && it.leftFml !in sequent.conclusions && it.rightFml !in sequent.assumptions }
+		IFF_RIGHT 		-> sequent.conclusions.indexOfFirst { it is IFF && it.leftFml !in sequent.conclusions && it.rightFml !in sequent.conclusions }
+	}
+	/*
 	fun availableFmls(sequent: Sequent): List<Formula> = when(this) {
 		AND_RIGHT -> sequent.conclusions
 			.filterIsInstance<AND>()
@@ -156,8 +175,9 @@ enum class BinaryTactic: ITactic {
 			.filterNot { it.rightFml in sequent.assumptions }
 		IFF_RIGHT -> sequent.conclusions
 			.filterIsInstance<IFF>()
-			.filterNot { it.leftFml in sequent.assumptions || it.rightFml in sequent.conclusions }
+			.filterNot { it.leftFml in sequent.conclusions || it.rightFml in sequent.conclusions }
 	}
+	 */
 	private fun applyTactic(sequent: Sequent, fmlIndex: Int): Pair<Sequent, Sequent> = when (this) {
 		AND_RIGHT -> {
 			val fml = sequent.conclusions.elementAtOrNull(fmlIndex)
@@ -221,10 +241,17 @@ enum class UnificationTermTactic: ITactic {
 		fun applyTactic(sequent: Sequent): Sequent = tactic.applyTactic(sequent, fmlIndex, unificationTerm)
 		fun toTermTacticApplyData(term: Term): TermTactic.ApplyData = TermTactic.ApplyData(tactic.toTermTactic(), fmlIndex, term)
 	}
+	// TODO: 2022/02/05 <= or <
+	fun getAvailableFmlIndex(sequent: Sequent, unificationTermInstantiationMaxCount: Int): Int = when(this) {
+		ALL_LEFT 		-> sequent.assumptions.indexOfFirst { it is ALL && it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount }
+		EXISTS_RIGHT 	-> sequent.conclusions.indexOfFirst { it is EXISTS && it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount }
+	}
+	/*
 	fun availableFmls(sequent: Sequent, unificationTermInstantiationMaxCount: Int): List<Formula> = when(this) {
 		ALL_LEFT 		-> sequent.assumptions.filterIsInstance<ALL>().filter { it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount }
 		EXISTS_RIGHT 	-> sequent.conclusions.filterIsInstance<EXISTS>().filter { it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount }
 	}
+	 */
 	private fun applyTactic(sequent: Sequent, fmlIndex: Int, unificationTerm: UnificationTerm): Sequent = when(this) {
 		ALL_LEFT -> {
 			val fml = sequent.assumptions.elementAtOrNull(fmlIndex)

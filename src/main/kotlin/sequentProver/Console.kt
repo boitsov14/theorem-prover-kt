@@ -45,9 +45,11 @@ fun Sequent.prove() {
 		for ((index, node) in nodes.withIndex()) {
 			val sequentToBeApplied = node.sequentToBeApplied
 			for (tactic in UnaryTactic.values()) {
-				val fml = tactic.availableFmls(sequentToBeApplied).firstOrNull() ?: continue
+				val fmlIndex = tactic.getAvailableFmlIndex(sequentToBeApplied)
+				if (fmlIndex == -1) continue
+				//val fml = tactic.availableFmls(sequentToBeApplied).firstOrNull() ?: continue
 				// TODO: 2022/01/29 二重ループ改善?
-				val applyData = UnaryTactic.ApplyData(tactic, fml)
+				val applyData = UnaryTactic.ApplyData(tactic, fmlIndex)
 				val sequent = applyData.applyTactic(sequentToBeApplied)
 				val newNode = Node(sequent, node.siblingLabel)
 				node.applyDataWithNode = UnaryApplyDataWithNode(applyData, newNode)
@@ -60,8 +62,10 @@ fun Sequent.prove() {
 		for ((index, node) in nodes.withIndex()) {
 			val sequentToBeApplied = node.sequentToBeApplied
 			for (tactic in BinaryTactic.values()) {
-				val fml = tactic.availableFmls(sequentToBeApplied).firstOrNull() ?: continue
-				val applyData = BinaryTactic.ApplyData(tactic, fml)
+				val fmlIndex = tactic.getAvailableFmlIndex(sequentToBeApplied)
+				if (fmlIndex == -1) continue
+				//val fml = tactic.availableFmls(sequentToBeApplied).firstOrNull() ?: continue
+				val applyData = BinaryTactic.ApplyData(tactic, fmlIndex)
 				val leftSequent = applyData.applyTactic(sequentToBeApplied).first
 				val rightSequent = applyData.applyTactic(sequentToBeApplied).second
 				val leftNode = Node(leftSequent, node.siblingLabel)
@@ -100,6 +104,18 @@ fun Sequent.prove() {
 
 		for ((index, node) in nodes.withIndex()) {
 			val sequentToBeApplied = node.sequentToBeApplied
+			val fmlAllIndex 	= UnificationTermTactic.ALL_LEFT.getAvailableFmlIndex(sequentToBeApplied, unificationTermInstantiationMaxCount)
+			val fmlExistsIndex 	= UnificationTermTactic.EXISTS_RIGHT.getAvailableFmlIndex(sequentToBeApplied, unificationTermInstantiationMaxCount)
+			val availableVars = sequentToBeApplied.freeVars.ifEmpty { setOf(Var("v")) }
+			val unificationTerm = UnificationTerm(unificationTermIndex, availableVars)
+			val applyData = if (fmlAllIndex != -1) {
+				UnificationTermTactic.ApplyData(UnificationTermTactic.ALL_LEFT, fmlAllIndex, unificationTerm)
+			} else if (fmlExistsIndex != -1) {
+				UnificationTermTactic.ApplyData(UnificationTermTactic.EXISTS_RIGHT, fmlExistsIndex, unificationTerm)
+			} else {
+				continue
+			}
+			/*
 			val availableExistsRightFmls 	= UnificationTermTactic.EXISTS_RIGHT.availableFmls(sequentToBeApplied, unificationTermInstantiationMaxCount)
 			val availableAllLeftFmls 		= UnificationTermTactic.ALL_LEFT.availableFmls(sequentToBeApplied, unificationTermInstantiationMaxCount)
 			val applyData = if (availableExistsRightFmls.isNotEmpty()) {
@@ -115,6 +131,7 @@ fun Sequent.prove() {
 			} else {
 				continue
 			}
+			 */
 			val sequent = applyData.applyTactic(sequentToBeApplied)
 			val siblingLabel = node.siblingLabel ?: applyData.unificationTerm.id
 			val newNode = Node(sequent, siblingLabel)
