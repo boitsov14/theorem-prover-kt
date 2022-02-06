@@ -6,10 +6,10 @@ import core.Term.*
 import core.*
 import kotlin.system.measureTimeMillis
 
-const val max = 4
+//const val unificationTermInstantiationMaxCountMax = 4
 // TODO: 2022/01/20 そのうち消す
 
-fun Sequent.prove() {
+fun Sequent.prove(loopCountMax: Int = 500_000, unificationTermInstantiationMaxCountMax: Int = 5, totalUnificationTimeMax: Long = 30_000) {
 	val start = System.currentTimeMillis()
 	var count = 0
 	var unificationTermInstantiationMaxCount = 0
@@ -25,8 +25,8 @@ fun Sequent.prove() {
 		count++
 		//nodes.forEach { println(it.sequentToBeApplied) }
 
-		if (count >= 60000) {
-			println("PROOF IS TOO LONG")
+		if (count >= loopCountMax) {
+			println("PROOF FAILED: PROOF IS TOO LONG OR UNPROVABLE")
 			break
 		}
 
@@ -105,6 +105,11 @@ fun Sequent.prove() {
 			(siblingSubstitution).forEach { println(it) }
 		}
 
+		if (totalUnificationTime > totalUnificationTimeMax) {
+			println("PROOF FAILED: PROOF IS TOO LONG OR UNPROVABLE")
+			break
+		}
+
 		for ((index, node) in nodes.withIndex()) {
 			val sequentToBeApplied = node.sequentToBeApplied
 			val fmlAllIndex 	= UnificationTermTactic.ALL_LEFT.getAvailableFmlIndex(sequentToBeApplied, unificationTermInstantiationMaxCount)
@@ -146,8 +151,8 @@ fun Sequent.prove() {
 			continue@loop
 		}
 
-		if (unificationTermInstantiationMaxCount == max) {
-			println("PROOF FAILED")
+		if (unificationTermInstantiationMaxCount == unificationTermInstantiationMaxCountMax) {
+			println("PROOF FAILED: PROOF IS TOO LONG OR UNPROVABLE")
 			break
 		}
 
