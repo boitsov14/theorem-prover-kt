@@ -52,7 +52,8 @@ fun Sequent.prove(loopCountMax: Int = 500_000, unificationTermInstantiationMaxCo
 				val applyData = UnaryTactic.ApplyData(tactic, fmlIndex)
 				val sequent = applyData.applyTactic(sequentToBeApplied)
 				val newNode = Node(sequent, node.siblingLabel)
-				node.applyDataWithNode = UnaryApplyDataWithNode(applyData, newNode)
+				node.applyData = applyData
+				node.child = newNode
 				nodes[index] = newNode
 				//println(">>> $tactic")
 				continue@loop
@@ -69,7 +70,9 @@ fun Sequent.prove(loopCountMax: Int = 500_000, unificationTermInstantiationMaxCo
 				val rightSequent = applyData.applyTactic(sequentToBeApplied).second
 				val leftNode = Node(leftSequent, node.siblingLabel)
 				val rightNode = Node(rightSequent, node.siblingLabel)
-				node.applyDataWithNode = BinaryApplyDataWithNodes(applyData, leftNode, rightNode)
+				node.applyData = applyData
+				node.leftChild = leftNode
+				node.rightChild = rightNode
 				nodes[index] = leftNode
 				nodes.add(index + 1, rightNode)
 				//println(">>> $tactic")
@@ -143,7 +146,8 @@ fun Sequent.prove(loopCountMax: Int = 500_000, unificationTermInstantiationMaxCo
 			val sequent = applyData.applyTactic(sequentToBeApplied)
 			val siblingLabel = node.siblingLabel ?: applyData.unificationTerm.id
 			val newNode = Node(sequent, siblingLabel)
-			node.applyDataWithNode = UnificationTermApplyDataWithNode(applyData, newNode)
+			node.applyData = applyData
+			node.child = newNode
 			nodes[index] = newNode
 			unificationTermIndex++
 			allUnificationTermsWithSiblingLabel.getOrPut(siblingLabel) { mutableSetOf() }.add(unificationTerm)

@@ -2,97 +2,52 @@ package sequentProver
 
 import core.*
 
-// TODO: 2022/02/04 nested classにする？
-// TODO: 2022/02/05 もっと簡略に書く
-sealed interface IApplyDataWithNode {
-	val applyData: IApplyData
-}
-
-object AxiomApplyData: IApplyDataWithNode {
-	override val applyData = AXIOM.ApplyData
-}
-
-data class UnaryApplyDataWithNode(
-	override val applyData: UnaryTactic.ApplyData,
-	val node: Node
-): IApplyDataWithNode
-
-data class BinaryApplyDataWithNodes(
-	override val applyData: BinaryTactic.ApplyData,
-	val leftNode: Node,
-	val rightNode: Node
-): IApplyDataWithNode
-
-data class UnificationTermApplyDataWithNode(
-	override val applyData: UnificationTermTactic.ApplyData,
-	val node: Node
-): IApplyDataWithNode
-
-data class TermApplyDataWithNode(
-	override val applyData: TermTactic.ApplyData,
-	val node: Node
-): IApplyDataWithNode
-
 data class Node(
 	var sequentToBeApplied: Sequent,
 	val siblingLabel: Int?,
-	var applyDataWithNode: IApplyDataWithNode? = null
+	var applyData: IApplyData? = null,
+	var child: Node? = null,
+	var leftChild: Node? = null,
+	var rightChild: Node? = null
 )
 
 data class IndependentNode(val sequentToBeApplied: Sequent, val applyData: IApplyData?)
 
-fun Node.toIndependentNode(): IndependentNode = IndependentNode(sequentToBeApplied, applyDataWithNode?.applyData)
+fun Node.toIndependentNode(): IndependentNode = IndependentNode(sequentToBeApplied, applyData)
 
 fun Node.completeProof(substitution: Substitution) {
 	if (AXIOM.canApply(sequentToBeApplied)) {
-		applyDataWithNode = AxiomApplyData
+		applyData = AXIOM.ApplyData
 	}
-	when(val applyDataWithNode = applyDataWithNode) {
-		AxiomApplyData, null -> {}
-		is UnaryApplyDataWithNode -> {
-			applyDataWithNode.node.sequentToBeApplied = applyDataWithNode.applyData.applyTactic(sequentToBeApplied)
-			applyDataWithNode.node.completeProof(substitution)
+	when(val applyData = applyData) {
+		AXIOM.ApplyData, null -> {}
+		is UnaryTactic.ApplyData -> {
+			child!!.sequentToBeApplied = applyData.applyTactic(sequentToBeApplied)
+			child!!.completeProof(substitution)
 		}
-		is BinaryApplyDataWithNodes -> {
-			applyDataWithNode.leftNode.sequentToBeApplied = applyDataWithNode.applyData.applyTactic(sequentToBeApplied).first
-			applyDataWithNode.rightNode.sequentToBeApplied = applyDataWithNode.applyData.applyTactic(sequentToBeApplied).second
-			applyDataWithNode.leftNode.completeProof(substitution)
-			applyDataWithNode.rightNode.completeProof(substitution)
+		is BinaryTactic.ApplyData -> {
+			leftChild!!.sequentToBeApplied = applyData.applyTactic(sequentToBeApplied).first
+			rightChild!!.sequentToBeApplied = applyData.applyTactic(sequentToBeApplied).second
+			leftChild!!.completeProof(substitution)
+			rightChild!!.completeProof(substitution)
 		}
-		is UnificationTermApplyDataWithNode -> {
-			val unificationTerm = applyDataWithNode.applyData.unificationTerm
+		is UnificationTermTactic.ApplyData -> {
+			val unificationTerm = applyData.unificationTerm
 			val term = substitution[unificationTerm] ?: unificationTerm
-			/*
-			if (term == null) {
-				val variable = unificationTerm.availableVars.first()
-				val applyData = applyDataWithNode.applyData.toTermTacticApplyData(variable)
-				this.applyDataWithNode = TermApplyDataWithNode(applyData, applyDataWithNode.node)
-				applyDataWithNode.node.sequentToBeApplied = applyData.applyTactic(sequentToBeApplied)
-				val additionalSubstitution = mapOf(unificationTerm to variable)
-				applyDataWithNode.node.completeProof(substitution.map { it.key to it.value.replace(additionalSubstitution) }.toMap() + additionalSubstitution)
-			} else {
-				val additionalSubstitution = term.unificationTerms.associateWith { it.availableVars.first() }
-				val applyData = applyDataWithNode.applyData.toTermTacticApplyData(term.replace(additionalSubstitution))
-				this.applyDataWithNode = TermApplyDataWithNode(applyData, applyDataWithNode.node)
-				applyDataWithNode.node.sequentToBeApplied = applyData.applyTactic(sequentToBeApplied)
-				applyDataWithNode.node.completeProof(substitution.map { it.key to it.value.replace(additionalSubstitution) }.toMap() + additionalSubstitution)
-			}
-			 */
-			val applyData = applyDataWithNode.applyData.toTermTacticApplyData(term)
-			this.applyDataWithNode = TermApplyDataWithNode(applyData, applyDataWithNode.node)
-			applyDataWithNode.node.sequentToBeApplied = applyData.applyTactic(sequentToBeApplied)
-			applyDataWithNode.node.completeProof(substitution)
+			val newApplyData = applyData.toTermTacticApplyData(term)
+			this.applyData = newApplyData
+			child!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied)
+			child!!.completeProof(substitution)
 		}
-		is TermApplyDataWithNode -> throw IllegalArgumentException()
+		is TermTactic.ApplyData -> throw IllegalArgumentException()
 	}
 }
 
-private fun Node.getProof(): List<IApplyData> = listOf(applyDataWithNode!!.applyData) + when(val applyDataWithNode = applyDataWithNode!!) {
-	AxiomApplyData		 				-> emptyList()
-	is UnaryApplyDataWithNode 			-> applyDataWithNode.node.getProof()
-	is BinaryApplyDataWithNodes 		-> applyDataWithNode.leftNode.getProof() + applyDataWithNode.rightNode.getProof()
-	is UnificationTermApplyDataWithNode -> applyDataWithNode.node.getProof()
-	is TermApplyDataWithNode 			-> applyDataWithNode.node.getProof()
+private fun Node.getProof(): List<IApplyData> = listOf(applyData!!) + when(applyData!!) {
+	AXIOM.ApplyData -> emptyList()
+	is UnaryTactic.ApplyData, is TermTactic.ApplyData -> child!!.getProof()
+	is BinaryTactic.ApplyData -> leftChild!!.getProof() + rightChild!!.getProof()
+	is UnificationTermTactic.ApplyData -> throw IllegalArgumentException()
 }
 
 fun Node.printProof() {
@@ -116,12 +71,10 @@ fun Node.printProof() {
 	if (sequents.isNotEmpty()) throw IllegalArgumentException()
 }
 
-private fun Node.getReversedProof(): List<IndependentNode> = listOf(toIndependentNode()) + when(val applyDataWithNode = applyDataWithNode) {
-	AxiomApplyData, null 				-> emptyList()
-	is UnaryApplyDataWithNode 			-> applyDataWithNode.node.getReversedProof()
-	is BinaryApplyDataWithNodes 		-> applyDataWithNode.rightNode.getReversedProof() + applyDataWithNode.leftNode.getReversedProof()
-	is UnificationTermApplyDataWithNode -> applyDataWithNode.node.getReversedProof()
-	is TermApplyDataWithNode 			-> applyDataWithNode.node.getReversedProof()
+private fun Node.getReversedProof(): List<IndependentNode> = listOf(toIndependentNode()) + when(applyData) {
+	AXIOM.ApplyData, null -> emptyList()
+	is UnaryTactic.ApplyData, is UnificationTermTactic.ApplyData, is TermTactic.ApplyData -> child!!.getReversedProof()
+	is BinaryTactic.ApplyData -> rightChild!!.getReversedProof() + leftChild!!.getReversedProof()
 }
 
 fun Node.getProofTree(): String = getReversedProof().reversed().joinToString(separator = "\n") {
