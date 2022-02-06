@@ -257,18 +257,20 @@ enum class TermInstantiationTactic: ITactic {
 	}
 	private fun applyTactic(sequent: Sequent, fml: Formula, term: Term): Sequent = when(this) {
 		ALL_LEFT -> {
-			if (fml !is ALL) { throw IllegalTacticException() }
-			val newConclusion = fml.instantiate(term)
-			val newFml = fml.copy(unificationTermInstantiationCount = fml.unificationTermInstantiationCount + 1)
+			//if (fml !is ALL) { throw IllegalTacticException() }
+			val fml0 = sequent.assumptions.filterIsInstance<ALL>().firstOrNull { it == fml } ?: throw IllegalTacticException()
+			val newConclusion = fml0.instantiate(term)
+			val newFml = fml0.copy(unificationTermInstantiationCount = fml0.unificationTermInstantiationCount + 1)
 			// TODO: 2022/02/03 もっと良い書き方ある？
 			sequent.copy(
 				assumptions = sequent.assumptions.map { if (it == fml) newFml else it }.toSet() + newConclusion
 			)
 		}
 		EXISTS_RIGHT -> {
-			if (fml !is EXISTS) { throw IllegalTacticException() }
-			val newConclusion = fml.instantiate(term)
-			val newFml = fml.copy(unificationTermInstantiationCount = fml.unificationTermInstantiationCount + 1)
+			//if (fml !is EXISTS) { throw IllegalTacticException() }
+			val fml0 = sequent.conclusions.filterIsInstance<EXISTS>().firstOrNull { it == fml } ?: throw IllegalTacticException()
+			val newConclusion = fml0.instantiate(term)
+			val newFml = fml0.copy(unificationTermInstantiationCount = fml0.unificationTermInstantiationCount + 1)
 			sequent.copy(
 				conclusions = sequent.conclusions.map { if (it == fml) newFml else it }.toSet() + newConclusion
 			)
