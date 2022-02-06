@@ -13,36 +13,33 @@ sealed class Formula {
 	data class OR(val leftFml: Formula, val rightFml: Formula): Formula()
 	data class IMPLIES(val leftFml: Formula, val rightFml: Formula): Formula()
 	data class IFF(val leftFml: Formula, val rightFml: Formula): Formula()
-	data class ALL(val bddVar: Var, val operandFml: Formula, val unificationTermInstantiationCount: Int = 0): Formula() {
-		init {
-			if (bddVar in operandFml.bddVars) { throw DuplicateBddVarException() }
-		}
+	sealed class Quantified: Formula() {
+		abstract val bddVar: Var
+		abstract val operandFml: Formula
 		fun instantiate(newTerm: Term): Formula = operandFml.replace(bddVar, newTerm)
-		override fun equals(other: Any?): Boolean {
+		final override fun equals(other: Any?): Boolean {
 			if (this === other) return true
 			if (javaClass != other?.javaClass) return false
-			other as ALL
+			other as Quantified
+			if (bddVar == other.bddVar) return operandFml == other.operandFml
+			if (bddVar in other.operandFml.freeVars) return false
 			if (operandFml == other.instantiate(bddVar)) return true
 			return false
 		}
-		override fun hashCode(): Int {
-			return javaClass.hashCode()
+		final override fun hashCode(): Int {
+			var result = javaClass.hashCode()
+			result = 31 * result + operandFml.javaClass.hashCode()
+			return result
 		}
 	}
-	data class EXISTS(val bddVar: Var, val operandFml: Formula, val unificationTermInstantiationCount: Int = 0): Formula() {
+	data class ALL(override val bddVar: Var, override val operandFml: Formula, val unificationTermInstantiationCount: Int = 0): Quantified() {
 		init {
 			if (bddVar in operandFml.bddVars) { throw DuplicateBddVarException() }
 		}
-		fun instantiate(newTerm: Term): Formula = operandFml.replace(bddVar, newTerm)
-		override fun equals(other: Any?): Boolean {
-			if (this === other) return true
-			if (javaClass != other?.javaClass) return false
-			other as EXISTS
-			if (operandFml == other.instantiate(bddVar)) return true
-			return false
-		}
-		override fun hashCode(): Int {
-			return javaClass.hashCode()
+	}
+	data class EXISTS(override val bddVar: Var, override val operandFml: Formula, val unificationTermInstantiationCount: Int = 0): Quantified() {
+		init {
+			if (bddVar in operandFml.bddVars) { throw DuplicateBddVarException() }
 		}
 	}
 	private fun recToString(): String = when(this) {
@@ -84,8 +81,7 @@ sealed class Formula {
 			is OR 			-> leftFml.freeVars + rightFml.freeVars
 			is IMPLIES 		-> leftFml.freeVars + rightFml.freeVars
 			is IFF 			-> leftFml.freeVars + rightFml.freeVars
-			is ALL 			-> operandFml.freeVars.minus(bddVar)
-			is EXISTS 		-> operandFml.freeVars.minus(bddVar)
+			is Quantified	-> operandFml.freeVars.minus(bddVar)
 		}
 	val bddVars: Set<Var>
 		get() = when (this) {
@@ -97,8 +93,7 @@ sealed class Formula {
 			is OR 			-> leftFml.bddVars + leftFml.bddVars
 			is IMPLIES 		-> leftFml.bddVars + leftFml.bddVars
 			is IFF 			-> leftFml.bddVars + leftFml.bddVars
-			is ALL 			-> operandFml.bddVars + bddVar
-			is EXISTS 		-> operandFml.bddVars + bddVar
+			is Quantified	-> operandFml.bddVars + bddVar
 		}
 	/*
 	val unificationTerms: Set<UnificationTerm>

@@ -33,23 +33,26 @@ fun Node.completeProof(substitution: Substitution) {
 			leftChild!!.completeProof(substitution)
 			rightChild!!.completeProof(substitution)
 		}
-		is UnificationTermTactic.ApplyData -> {
-			val unificationTerm = applyData.unificationTerm
+		is FreshVarInstantiationTactic.ApplyData -> {
+			val newApplyData = applyData.copy(fml = applyData.fml.replace(substitution))
+			child!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied)
+			child!!.completeProof(substitution)
+		}
+		is TermInstantiationTactic.ApplyData -> {
+			val unificationTerm = applyData.term
 			val term = substitution[unificationTerm] ?: unificationTerm
-			val newApplyData = applyData.toTermTacticApplyData(term).copy(fml = applyData.fml.replace(substitution))
+			val newApplyData = TermInstantiationTactic.ApplyData(applyData.fml.replace(substitution), term)
 			this.applyData = newApplyData
 			child!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied)
 			child!!.completeProof(substitution)
 		}
-		is TermTactic.ApplyData -> throw IllegalArgumentException()
 	}
 }
 
 private fun Node.getProof(): List<IApplyData> = listOf(applyData!!) + when(applyData!!) {
 	AXIOM.ApplyData -> emptyList()
-	is UnaryTactic.ApplyData, is TermTactic.ApplyData -> child!!.getProof()
+	is UnaryTactic.ApplyData, is FreshVarInstantiationTactic.ApplyData, is TermInstantiationTactic.ApplyData -> child!!.getProof()
 	is BinaryTactic.ApplyData -> leftChild!!.getProof() + rightChild!!.getProof()
-	is UnificationTermTactic.ApplyData -> throw IllegalArgumentException()
 }
 
 fun Node.printProof() {
@@ -65,8 +68,8 @@ fun Node.printProof() {
 				sequents[0] = newSequents.first
 				sequents.add(1, newSequents.second)
 			}
-			is UnificationTermTactic.ApplyData -> throw IllegalArgumentException()
-			is TermTactic.ApplyData -> sequents[0] = data.applyTactic(sequents[0])
+			is FreshVarInstantiationTactic.ApplyData -> sequents[0] = data.applyTactic(sequents[0])
+			is TermInstantiationTactic.ApplyData -> sequents[0] = data.applyTactic(sequents[0])
 		}
 		println(">>> ${data.tactic}")
 	}
@@ -75,17 +78,15 @@ fun Node.printProof() {
 
 private fun Node.getReversedProof(): List<IndependentNode> = listOf(toIndependentNode()) + when(applyData) {
 	AXIOM.ApplyData, null -> emptyList()
-	is UnaryTactic.ApplyData, is UnificationTermTactic.ApplyData, is TermTactic.ApplyData -> child!!.getReversedProof()
+	is UnaryTactic.ApplyData, is TermInstantiationTactic.ApplyData, is FreshVarInstantiationTactic.ApplyData -> child!!.getReversedProof()
 	is BinaryTactic.ApplyData -> rightChild!!.getReversedProof() + leftChild!!.getReversedProof()
 }
 
 fun Node.getProofTree(): String = getReversedProof().reversed().joinToString(separator = "\n") {
 	when(it.applyData) {
 		null -> "\\Axiom$${it.sequentToBeApplied.toLatex()}$"
-		AXIOM.ApplyData 	    -> "\\AxiomC{}\n\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\UnaryInf$${it.sequentToBeApplied.toLatex()}$"
-		is UnaryTactic.ApplyData 			-> "\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\UnaryInf$${it.sequentToBeApplied.toLatex()}$"
-		is BinaryTactic.ApplyData 			-> "\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\BinaryInf$${it.sequentToBeApplied.toLatex()}$"
-		is UnificationTermTactic.ApplyData 	-> "\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\UnaryInf$${it.sequentToBeApplied.toLatex()}$"
-		is TermTactic.ApplyData 			-> "\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\UnaryInf$${it.sequentToBeApplied.toLatex()}$"
+		AXIOM.ApplyData -> "\\AxiomC{}\n\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\UnaryInf$${it.sequentToBeApplied.toLatex()}$"
+		is UnaryTactic.ApplyData, is FreshVarInstantiationTactic.ApplyData, is TermInstantiationTactic.ApplyData -> "\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\UnaryInf$${it.sequentToBeApplied.toLatex()}$"
+		is BinaryTactic.ApplyData -> "\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\BinaryInf$${it.sequentToBeApplied.toLatex()}$"
 	}
 }

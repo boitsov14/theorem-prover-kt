@@ -22,7 +22,7 @@ object AXIOM: ITactic {
 }
 
 enum class UnaryTactic: ITactic {
-	AND_LEFT, OR_RIGHT, IMPLIES_RIGHT, NOT_LEFT, NOT_RIGHT, IFF_LEFT, ALL_RIGHT, EXISTS_LEFT;
+	AND_LEFT, OR_RIGHT, IMPLIES_RIGHT, NOT_LEFT, NOT_RIGHT, IFF_LEFT;
 	override fun toString(): String = when(this) {
 		AND_LEFT 		-> "∧: Left"
 		OR_RIGHT 		-> "∨: Right"
@@ -30,8 +30,6 @@ enum class UnaryTactic: ITactic {
 		NOT_LEFT 		-> "¬: Left"
 		NOT_RIGHT 		-> "¬: Right"
 		IFF_LEFT 		-> "↔: Left"
-		ALL_RIGHT 		-> "∀: Right"
-		EXISTS_LEFT 	-> "∃: Left"
 	}
 	override fun toLatex(): String = when(this) {
 		AND_LEFT 		-> "$\\land$: Left"
@@ -40,8 +38,6 @@ enum class UnaryTactic: ITactic {
 		NOT_LEFT 		-> "$\\neg$: Left"
 		NOT_RIGHT 		-> "$\\neg$: Right"
 		IFF_LEFT 		-> "$\\leftrightarrow$: Left"
-		ALL_RIGHT 		-> "$\\forall$: Right"
-		EXISTS_LEFT 	-> "$\\exists$: Left"
 	}
 	data class ApplyData(override val tactic: UnaryTactic, val fml: Formula) : IApplyData {
 		fun applyTactic(sequent: Sequent): Sequent = tactic.applyTactic(sequent, fml)
@@ -53,8 +49,6 @@ enum class UnaryTactic: ITactic {
 		NOT_LEFT 		-> sequent.assumptions.firstOrNull { it is NOT }
 		NOT_RIGHT 		-> sequent.conclusions.firstOrNull { it is NOT }
 		IFF_LEFT 		-> sequent.assumptions.firstOrNull { it is IFF }
-		ALL_RIGHT 		-> sequent.conclusions.firstOrNull { it is ALL }
-		EXISTS_LEFT 	-> sequent.assumptions.firstOrNull { it is EXISTS }
 	}
 	/*
 	fun availableFmls(sequent: Sequent): List<Formula> = when(this) {
@@ -108,23 +102,6 @@ enum class UnaryTactic: ITactic {
 			val toLeft  = IMPLIES(fml.rightFml, fml.leftFml)
 			sequent.copy(
 				assumptions = sequent.assumptions - fml + toRight + toLeft
-			)
-		}
-		// TODO: 2022/02/05 分離独立
-		ALL_RIGHT -> {
-			if (fml !is ALL) { throw IllegalTacticException() }
-			val freshVar = fml.bddVar.getFreshVar(sequent.freeVars)
-			val newConclusion = fml.instantiate(freshVar)
-			sequent.copy(
-				conclusions = sequent.conclusions - fml + newConclusion
-			)
-		}
-		EXISTS_LEFT -> {
-			if (fml !is EXISTS) { throw IllegalTacticException() }
-			val freshVar = fml.bddVar.getFreshVar(sequent.freeVars)
-			val newAssumption = fml.instantiate(freshVar)
-			sequent.copy(
-				assumptions = sequent.assumptions - fml + newAssumption
 			)
 		}
 	}
@@ -215,7 +192,46 @@ enum class BinaryTactic: ITactic {
 	}
 }
 
-enum class UnificationTermTactic: ITactic {
+enum class FreshVarInstantiationTactic: ITactic {
+	ALL_RIGHT, EXISTS_LEFT;
+	override fun toString(): String = when(this) {
+		ALL_RIGHT 		-> "∀: Right"
+		EXISTS_LEFT 	-> "∃: Left"
+	}
+	override fun toLatex(): String = when(this) {
+		ALL_RIGHT 		-> "$\\forall$: Right"
+		EXISTS_LEFT 	-> "$\\exists$: Left"
+	}
+	data class ApplyData(val fml: Formula, val freshVar: Var) : IApplyData {
+		override val tactic: FreshVarInstantiationTactic
+			get() = when(fml) {
+				is ALL 		-> ALL_RIGHT
+				is EXISTS 	-> EXISTS_LEFT
+				else -> throw IllegalTacticException()
+			}
+		fun applyTactic(sequent: Sequent): Sequent = tactic.applyTactic(sequent, fml, freshVar)
+	}
+	fun getAvailableFml(sequent: Sequent): Quantified? = when(this) {
+		ALL_RIGHT 		-> sequent.conclusions.firstOrNull { it is ALL } as Quantified?
+		EXISTS_LEFT 	-> sequent.assumptions.firstOrNull { it is EXISTS } as Quantified?
+	}
+	private fun applyTactic(sequent: Sequent, fml: Formula, freshVar: Var): Sequent = when (this) {
+		ALL_RIGHT -> {
+			if (fml !is ALL) { throw IllegalTacticException() }
+			sequent.copy(
+				conclusions = sequent.conclusions - fml + fml.instantiate(freshVar)
+			)
+		}
+		EXISTS_LEFT -> {
+			if (fml !is EXISTS) { throw IllegalTacticException() }
+			sequent.copy(
+				assumptions = sequent.assumptions - fml + fml.instantiate(freshVar)
+			)
+		}
+	}
+}
+
+enum class TermInstantiationTactic: ITactic {
 	ALL_LEFT, EXISTS_RIGHT;
 	override fun toString(): String = when(this) {
 		ALL_LEFT 		-> "∀: Left"
@@ -225,25 +241,24 @@ enum class UnificationTermTactic: ITactic {
 		ALL_LEFT 		-> "$\\forall$: Left"
 		EXISTS_RIGHT 	-> "$\\exists$: Right"
 	}
-	data class ApplyData(override val tactic: UnificationTermTactic, val fml: Formula, val unificationTerm: UnificationTerm) : IApplyData {
-		fun applyTactic(sequent: Sequent): Sequent = tactic.applyTactic(sequent, fml, unificationTerm)
-		fun toTermTacticApplyData(term: Term): TermTactic.ApplyData = TermTactic.ApplyData(tactic.toTermTactic(), fml, term)
+	data class ApplyData(val fml: Formula, val term: Term) : IApplyData {
+		override val tactic: TermInstantiationTactic
+			get() = when(fml) {
+				is ALL 		-> ALL_LEFT
+				is EXISTS 	-> EXISTS_RIGHT
+				else -> throw IllegalTacticException()
+			}
+		fun applyTactic(sequent: Sequent): Sequent = tactic.applyTactic(sequent, fml, term)
 	}
 	// TODO: 2022/02/05 <= or <
-	fun getAvailableFml(sequent: Sequent, unificationTermInstantiationMaxCount: Int): Formula? = when(this) {
-		ALL_LEFT 		-> sequent.assumptions.firstOrNull { it is ALL && it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount }
-		EXISTS_RIGHT 	-> sequent.conclusions.firstOrNull { it is EXISTS && it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount }
+	fun getAvailableFml(sequent: Sequent, unificationTermInstantiationMaxCount: Int): Quantified? = when(this) {
+		ALL_LEFT 		-> sequent.assumptions.firstOrNull { it is ALL && it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount } as Quantified?
+		EXISTS_RIGHT 	-> sequent.conclusions.firstOrNull { it is EXISTS && it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount } as Quantified?
 	}
-	/*
-	fun availableFmls(sequent: Sequent, unificationTermInstantiationMaxCount: Int): List<Formula> = when(this) {
-		ALL_LEFT 		-> sequent.assumptions.filterIsInstance<ALL>().filter { it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount }
-		EXISTS_RIGHT 	-> sequent.conclusions.filterIsInstance<EXISTS>().filter { it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount }
-	}
-	 */
-	private fun applyTactic(sequent: Sequent, fml: Formula, unificationTerm: UnificationTerm): Sequent = when(this) {
+	private fun applyTactic(sequent: Sequent, fml: Formula, term: Term): Sequent = when(this) {
 		ALL_LEFT -> {
 			if (fml !is ALL) { throw IllegalTacticException() }
-			val newConclusion = fml.instantiate(unificationTerm)
+			val newConclusion = fml.instantiate(term)
 			val newFml = fml.copy(unificationTermInstantiationCount = fml.unificationTermInstantiationCount + 1)
 			// TODO: 2022/02/03 もっと良い書き方ある？
 			sequent.copy(
@@ -252,45 +267,10 @@ enum class UnificationTermTactic: ITactic {
 		}
 		EXISTS_RIGHT -> {
 			if (fml !is EXISTS) { throw IllegalTacticException() }
-			val newConclusion = fml.instantiate(unificationTerm)
+			val newConclusion = fml.instantiate(term)
 			val newFml = fml.copy(unificationTermInstantiationCount = fml.unificationTermInstantiationCount + 1)
 			sequent.copy(
 				conclusions = sequent.conclusions.map { if (it == fml) newFml else it }.toSet() + newConclusion
-			)
-		}
-	}
-	private fun toTermTactic(): TermTactic = when(this) {
-		ALL_LEFT 		-> TermTactic.ALL_LEFT
-		EXISTS_RIGHT 	-> TermTactic.EXISTS_RIGHT
-	}
-}
-
-enum class TermTactic: ITactic {
-	ALL_LEFT, EXISTS_RIGHT;
-	override fun toString(): String = when(this) {
-		ALL_LEFT 		-> "∀: Left"
-		EXISTS_RIGHT 	-> "∃: Right"
-	}
-	override fun toLatex(): String = when(this) {
-		ALL_LEFT 		-> "$\\forall$: Left"
-		EXISTS_RIGHT 	-> "$\\exists$: Right"
-	}
-	data class ApplyData(override val tactic: TermTactic, val fml: Formula, val term: Term) : IApplyData {
-		fun applyTactic(sequent: Sequent): Sequent = tactic.applyTactic(sequent, fml, term)
-	}
-	fun applyTactic(sequent: Sequent, fml: Formula, term: Term): Sequent = when(this) {
-		ALL_LEFT -> {
-			if (fml !is ALL) { throw IllegalTacticException() }
-			val newConclusion = fml.instantiate(term)
-			sequent.copy(
-				assumptions = sequent.assumptions + newConclusion
-			)
-		}
-		EXISTS_RIGHT -> {
-			if (fml !is EXISTS) { throw IllegalTacticException() }
-			val newConclusion = fml.instantiate(term)
-			sequent.copy(
-				conclusions = sequent.conclusions + newConclusion
 			)
 		}
 	}

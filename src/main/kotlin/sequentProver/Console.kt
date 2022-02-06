@@ -61,6 +61,22 @@ fun Sequent.prove(loopCountMax: Int = 500_000, unificationTermInstantiationMaxCo
 
 		for ((index, node) in nodes.withIndex()) {
 			val sequentToBeApplied = node.sequentToBeApplied
+			for (tactic in FreshVarInstantiationTactic.values()) {
+				val fml = tactic.getAvailableFml(sequentToBeApplied) ?: continue
+				val freshVar = fml.bddVar.getFreshVar(sequentToBeApplied.freeVars)
+				val applyData = FreshVarInstantiationTactic.ApplyData(fml, freshVar)
+				val sequent = applyData.applyTactic(sequentToBeApplied)
+				val newNode = Node(sequent, node.siblingLabel)
+				node.applyData = applyData
+				node.child = newNode
+				nodes[index] = newNode
+				//println(">>> $tactic")
+				continue@loop
+			}
+		}
+
+		for ((index, node) in nodes.withIndex()) {
+			val sequentToBeApplied = node.sequentToBeApplied
 			for (tactic in BinaryTactic.values()) {
 				val fml = tactic.getAvailableFml(sequentToBeApplied) ?: continue
 				val applyData = BinaryTactic.ApplyData(tactic, fml)
@@ -111,36 +127,14 @@ fun Sequent.prove(loopCountMax: Int = 500_000, unificationTermInstantiationMaxCo
 
 		for ((index, node) in nodes.withIndex()) {
 			val sequentToBeApplied = node.sequentToBeApplied
-			val fmlAll 		= UnificationTermTactic.ALL_LEFT.getAvailableFml(sequentToBeApplied, unificationTermInstantiationMaxCount)
-			val fmlExists 	= UnificationTermTactic.EXISTS_RIGHT.getAvailableFml(sequentToBeApplied, unificationTermInstantiationMaxCount)
+			val fml = TermInstantiationTactic.ALL_LEFT.getAvailableFml(sequentToBeApplied, unificationTermInstantiationMaxCount)
+				?: TermInstantiationTactic.EXISTS_RIGHT.getAvailableFml(sequentToBeApplied, unificationTermInstantiationMaxCount)
+				?: continue
 			val availableVars = setOf(Var("v")) + sequentToBeApplied.freeVars
 			val unificationTerm = UnificationTerm(unificationTermIndex, availableVars)
-			val applyData = if (fmlAll != null) {
-				UnificationTermTactic.ApplyData(UnificationTermTactic.ALL_LEFT, fmlAll, unificationTerm)
-			} else if (fmlExists != null) {
-				UnificationTermTactic.ApplyData(UnificationTermTactic.EXISTS_RIGHT, fmlExists, unificationTerm)
-			} else {
-				continue
-			}
-			/*
-			val availableExistsRightFmls 	= UnificationTermTactic.EXISTS_RIGHT.availableFmls(sequentToBeApplied, unificationTermInstantiationMaxCount)
-			val availableAllLeftFmls 		= UnificationTermTactic.ALL_LEFT.availableFmls(sequentToBeApplied, unificationTermInstantiationMaxCount)
-			val applyData = if (availableExistsRightFmls.isNotEmpty()) {
-				val fml = availableExistsRightFmls.first() as EXISTS
-				val availableVars = sequentToBeApplied.freeVars.ifEmpty { setOf(fml.bddVar) }
-				val unificationTerm = UnificationTerm(unificationTermIndex, availableVars)
-				UnificationTermTactic.ApplyData(UnificationTermTactic.EXISTS_RIGHT, fml, unificationTerm)
-			} else if (availableAllLeftFmls.isNotEmpty()) {
-				val fml = availableAllLeftFmls.first() as ALL
-				val availableVars = sequentToBeApplied.freeVars.ifEmpty { setOf(fml.bddVar) }
-				val unificationTerm = UnificationTerm(unificationTermIndex, availableVars)
-				UnificationTermTactic.ApplyData(UnificationTermTactic.ALL_LEFT, fml, unificationTerm)
-			} else {
-				continue
-			}
-			 */
+			val applyData = TermInstantiationTactic.ApplyData(fml, unificationTerm)
 			val sequent = applyData.applyTactic(sequentToBeApplied)
-			val siblingLabel = node.siblingLabel ?: applyData.unificationTerm.id
+			val siblingLabel = node.siblingLabel ?: unificationTerm.id
 			val newNode = Node(sequent, siblingLabel)
 			node.applyData = applyData
 			node.child = newNode
