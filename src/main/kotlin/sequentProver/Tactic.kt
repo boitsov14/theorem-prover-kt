@@ -159,7 +159,7 @@ enum class BinaryTactic: ITactic {
 		AND_RIGHT 		-> sequent.conclusions.indexOfFirst { it is AND && it.leftFml !in sequent.conclusions && it.rightFml !in sequent.conclusions }
 		OR_LEFT 		-> sequent.assumptions.indexOfFirst { it is OR && it.leftFml !in sequent.assumptions && it.rightFml !in sequent.assumptions }
 		IMPLIES_LEFT 	-> sequent.assumptions.indexOfFirst { it is IMPLIES && it.leftFml !in sequent.conclusions && it.rightFml !in sequent.assumptions }
-		IFF_RIGHT 		-> sequent.conclusions.indexOfFirst { it is IFF && it.leftFml !in sequent.conclusions && it.rightFml !in sequent.conclusions }
+		IFF_RIGHT 		-> sequent.conclusions.indexOfFirst { it is IFF && IMPLIES(it.leftFml, it.rightFml) !in sequent.conclusions && IMPLIES(it.rightFml, it.leftFml) !in sequent.conclusions }
 	}
 	/*
 	fun availableFmls(sequent: Sequent): List<Formula> = when(this) {
@@ -217,10 +217,10 @@ enum class BinaryTactic: ITactic {
 			val fml = sequent.conclusions.elementAtOrNull(fmlIndex)
 			if (fml !is IFF) { throw IllegalTacticException() }
 			val leftSequent = sequent.copy(
-				conclusions = sequent.conclusions - fml + fml.leftFml
+				conclusions = sequent.conclusions - fml + IMPLIES(fml.leftFml, fml.rightFml)
 			)
 			val rightSequent = sequent.copy(
-				conclusions = sequent.conclusions - fml + fml.rightFml
+				conclusions = sequent.conclusions - fml + IMPLIES(fml.rightFml, fml.leftFml)
 			)
 			leftSequent to rightSequent
 		}
