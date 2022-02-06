@@ -155,7 +155,6 @@ sealed class Formula {
 			}
 		}
 	}
-	/*
 	private fun replace(oldUnificationTerm: UnificationTerm, newTerm: Term): Formula = when(this) {
 		TRUE -> this
 		FALSE -> this
@@ -190,13 +189,10 @@ sealed class Formula {
 			}
 		}
 	}
-	*/
-	/*
 	fun replace(substitution: Substitution): Formula {
 		var result = this
 		substitution.forEach { (key, value) -> result = result.replace(key, value) }
 		return result
 	}
-	 */
 }
 

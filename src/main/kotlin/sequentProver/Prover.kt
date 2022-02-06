@@ -22,19 +22,21 @@ fun Node.completeProof(substitution: Substitution) {
 	when(val applyData = applyData) {
 		AXIOM.ApplyData, null -> {}
 		is UnaryTactic.ApplyData -> {
-			child!!.sequentToBeApplied = applyData.applyTactic(sequentToBeApplied)
+			val newApplyData = applyData.copy(fml = applyData.fml.replace(substitution))
+			child!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied)
 			child!!.completeProof(substitution)
 		}
 		is BinaryTactic.ApplyData -> {
-			leftChild!!.sequentToBeApplied = applyData.applyTactic(sequentToBeApplied).first
-			rightChild!!.sequentToBeApplied = applyData.applyTactic(sequentToBeApplied).second
+			val newApplyData = applyData.copy(fml = applyData.fml.replace(substitution))
+			leftChild!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied).first
+			rightChild!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied).second
 			leftChild!!.completeProof(substitution)
 			rightChild!!.completeProof(substitution)
 		}
 		is UnificationTermTactic.ApplyData -> {
 			val unificationTerm = applyData.unificationTerm
 			val term = substitution[unificationTerm] ?: unificationTerm
-			val newApplyData = applyData.toTermTacticApplyData(term)
+			val newApplyData = applyData.toTermTacticApplyData(term).copy(fml = applyData.fml.replace(substitution))
 			this.applyData = newApplyData
 			child!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied)
 			child!!.completeProof(substitution)

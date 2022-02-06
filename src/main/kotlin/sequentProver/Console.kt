@@ -19,7 +19,7 @@ fun Sequent.prove(loopCountMax: Int = 500_000, unificationTermInstantiationMaxCo
 	val rootNode = Node(this, null)
 	val nodes = mutableListOf(rootNode)
 	val substitution = mutableMapOf<UnificationTerm,Term>()
-	val allUnificationTermsWithSiblingLabel = mutableMapOf<Int, MutableSet<UnificationTerm>>()
+	val allUnificationTerms = mutableSetOf<UnificationTerm>()
 
 	loop@ while (true) {
 		count++
@@ -46,10 +46,9 @@ fun Sequent.prove(loopCountMax: Int = 500_000, unificationTermInstantiationMaxCo
 		for ((index, node) in nodes.withIndex()) {
 			val sequentToBeApplied = node.sequentToBeApplied
 			for (tactic in UnaryTactic.values()) {
-				val fmlIndex = tactic.getAvailableFmlIndex(sequentToBeApplied)
-				if (fmlIndex == -1) continue
+				val fml = tactic.getAvailableFml(sequentToBeApplied) ?: continue
 				// TODO: 2022/01/29 二重ループ改善?
-				val applyData = UnaryTactic.ApplyData(tactic, fmlIndex)
+				val applyData = UnaryTactic.ApplyData(tactic, fml)
 				val sequent = applyData.applyTactic(sequentToBeApplied)
 				val newNode = Node(sequent, node.siblingLabel)
 				node.applyData = applyData
@@ -63,9 +62,8 @@ fun Sequent.prove(loopCountMax: Int = 500_000, unificationTermInstantiationMaxCo
 		for ((index, node) in nodes.withIndex()) {
 			val sequentToBeApplied = node.sequentToBeApplied
 			for (tactic in BinaryTactic.values()) {
-				val fmlIndex = tactic.getAvailableFmlIndex(sequentToBeApplied)
-				if (fmlIndex == -1) continue
-				val applyData = BinaryTactic.ApplyData(tactic, fmlIndex)
+				val fml = tactic.getAvailableFml(sequentToBeApplied) ?: continue
+				val applyData = BinaryTactic.ApplyData(tactic, fml)
 				val leftSequent = applyData.applyTactic(sequentToBeApplied).first
 				val rightSequent = applyData.applyTactic(sequentToBeApplied).second
 				val leftNode = Node(leftSequent, node.siblingLabel)
@@ -88,20 +86,18 @@ fun Sequent.prove(loopCountMax: Int = 500_000, unificationTermInstantiationMaxCo
 			break
 		}
 
-		val siblingNodesListWithLabel = nodes.groupBy { it.siblingLabel }.minus(null)
-		for ((siblingLabel, siblingNodes) in siblingNodesListWithLabel) {
+		val siblingNodesList = nodes.groupBy { it.siblingLabel }.minus(null).values
+		for (siblingNodes in siblingNodesList) {
 			val siblingSubstitutionsList = siblingNodes.map { it.sequentToBeApplied }.map { it.getSubstitutions() }
 			if (siblingSubstitutionsList.any { it.isEmpty() }) continue
-			val siblingSubstitution0: Substitution?
+			val siblingSubstitution: Substitution?
 			val unificationTime = measureTimeMillis {
-				siblingSubstitution0 = getSubstitution(siblingSubstitutionsList)
+				siblingSubstitution = getSubstitution(siblingSubstitutionsList)
 			}
 			println("Unification try: $unificationTime ms")
 			totalUnificationTime += unificationTime
-			if (siblingSubstitution0 == null) continue
-			//val siblingSubstitution0 = getSubstitution(siblingSubstitutionsList) ?: continue
-			val additionalSubstitution = allUnificationTermsWithSiblingLabel[siblingLabel]!!.subtract(siblingSubstitution0.keys).associateWith { it.availableVars.first() }
-			val siblingSubstitution = (siblingSubstitution0 + additionalSubstitution).getCompleteSubstitution()
+			if (siblingSubstitution == null) continue
+			//val siblingSubstitution = getSubstitution(siblingSubstitutionsList) ?: continue
 			substitution.putAll(siblingSubstitution)
 			nodes.removeAll(siblingNodes)
 			println("node size: ${siblingNodes.size}")
@@ -115,14 +111,14 @@ fun Sequent.prove(loopCountMax: Int = 500_000, unificationTermInstantiationMaxCo
 
 		for ((index, node) in nodes.withIndex()) {
 			val sequentToBeApplied = node.sequentToBeApplied
-			val fmlAllIndex 	= UnificationTermTactic.ALL_LEFT.getAvailableFmlIndex(sequentToBeApplied, unificationTermInstantiationMaxCount)
-			val fmlExistsIndex 	= UnificationTermTactic.EXISTS_RIGHT.getAvailableFmlIndex(sequentToBeApplied, unificationTermInstantiationMaxCount)
-			val availableVars = sequentToBeApplied.freeVars.ifEmpty { setOf(Var("v")) }
+			val fmlAll 		= UnificationTermTactic.ALL_LEFT.getAvailableFml(sequentToBeApplied, unificationTermInstantiationMaxCount)
+			val fmlExists 	= UnificationTermTactic.EXISTS_RIGHT.getAvailableFml(sequentToBeApplied, unificationTermInstantiationMaxCount)
+			val availableVars = setOf(Var("v")) + sequentToBeApplied.freeVars
 			val unificationTerm = UnificationTerm(unificationTermIndex, availableVars)
-			val applyData = if (fmlAllIndex != -1) {
-				UnificationTermTactic.ApplyData(UnificationTermTactic.ALL_LEFT, fmlAllIndex, unificationTerm)
-			} else if (fmlExistsIndex != -1) {
-				UnificationTermTactic.ApplyData(UnificationTermTactic.EXISTS_RIGHT, fmlExistsIndex, unificationTerm)
+			val applyData = if (fmlAll != null) {
+				UnificationTermTactic.ApplyData(UnificationTermTactic.ALL_LEFT, fmlAll, unificationTerm)
+			} else if (fmlExists != null) {
+				UnificationTermTactic.ApplyData(UnificationTermTactic.EXISTS_RIGHT, fmlExists, unificationTerm)
 			} else {
 				continue
 			}
@@ -150,7 +146,7 @@ fun Sequent.prove(loopCountMax: Int = 500_000, unificationTermInstantiationMaxCo
 			node.child = newNode
 			nodes[index] = newNode
 			unificationTermIndex++
-			allUnificationTermsWithSiblingLabel.getOrPut(siblingLabel) { mutableSetOf() }.add(unificationTerm)
+			allUnificationTerms.add(unificationTerm)
 			println(">>> ${applyData.tactic}")
 			continue@loop
 		}
@@ -171,9 +167,12 @@ fun Sequent.prove(loopCountMax: Int = 500_000, unificationTermInstantiationMaxCo
 	println("other time: ${time - totalUnificationTime} ms")
 	println("loop count: $count")
 
-	print("Complete Proof Start... ")
+	println("Complete Proof Start... ")
 	val completeProofTime = measureTimeMillis{
-		rootNode.completeProof(substitution)
+		val remainedSubstitution = allUnificationTerms.subtract(substitution.keys).associateWith { it.availableVars.first() }
+		val completeSubstitution = (substitution + remainedSubstitution).getCompleteSubstitution()
+		rootNode.completeProof(completeSubstitution)
+		(completeSubstitution).forEach { println(it) }
 	}
 	println("Completed in $completeProofTime ms")
 
