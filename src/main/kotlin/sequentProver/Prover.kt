@@ -18,31 +18,35 @@ fun Node.toIndependentNode(): IndependentNode = IndependentNode(sequentToBeAppli
 fun Node.completeProof(substitution: Substitution) {
 	if (AXIOM.canApply(sequentToBeApplied)) {
 		applyData = AXIOM.ApplyData
+		child = null
 	}
-	when(val applyData = applyData) {
+	when(val oldApplyData = applyData) {
 		AXIOM.ApplyData, null -> {}
 		is UnaryTactic.ApplyData -> {
-			val newApplyData = applyData.copy(fml = applyData.fml.replace(substitution))
+			val newApplyData = oldApplyData.copy(fml = oldApplyData.fml.replace(substitution))
+			applyData = newApplyData
 			child!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied)
 			child!!.completeProof(substitution)
 		}
 		is BinaryTactic.ApplyData -> {
-			val newApplyData = applyData.copy(fml = applyData.fml.replace(substitution))
+			val newApplyData = oldApplyData.copy(fml = oldApplyData.fml.replace(substitution))
+			applyData = newApplyData
 			leftChild!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied).first
 			rightChild!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied).second
 			leftChild!!.completeProof(substitution)
 			rightChild!!.completeProof(substitution)
 		}
 		is FreshVarInstantiationTactic.ApplyData -> {
-			val newApplyData = applyData.copy(fml = applyData.fml.replace(substitution))
+			val newApplyData = oldApplyData.copy(fml = oldApplyData.fml.replace(substitution))
+			applyData = newApplyData
 			child!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied)
 			child!!.completeProof(substitution)
 		}
 		is TermInstantiationTactic.ApplyData -> {
-			val unificationTerm = applyData.term
+			val unificationTerm = oldApplyData.term
 			val term = substitution[unificationTerm] ?: unificationTerm
-			val newApplyData = TermInstantiationTactic.ApplyData(applyData.fml.replace(substitution), term)
-			this.applyData = newApplyData
+			val newApplyData = TermInstantiationTactic.ApplyData(oldApplyData.fml.replace(substitution), term)
+			applyData = newApplyData
 			child!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied)
 			child!!.completeProof(substitution)
 		}
@@ -55,6 +59,7 @@ private fun Node.getProof(): List<IApplyData> = listOf(applyData!!) + when(apply
 	is BinaryTactic.ApplyData -> leftChild!!.getProof() + rightChild!!.getProof()
 }
 
+// TODO: 2022/02/07 要修正
 fun Node.printProof() {
 	val proof = getProof()
 	val sequents = mutableListOf(this.sequentToBeApplied)
@@ -90,3 +95,21 @@ fun Node.getProofTree(): String = getReversedProof().reversed().joinToString(sep
 		is BinaryTactic.ApplyData -> "\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\BinaryInf$${it.sequentToBeApplied.toLatex()}$"
 	}
 }
+
+fun Node.checkProof(): Boolean {
+	TODO()
+}
+
+/*
+fun Node.checkCorrectness(): Boolean = try {
+	when(val applyDataWithNode = applyDataWithNode) {
+		null -> false
+		AxiomApplyData 						-> AXIOM.canApply(sequentToBeApplied)
+		is UnaryApplyDataWithNode 			-> applyDataWithNode.applyData.applyTactic(sequentToBeApplied) == applyDataWithNode.node.sequentToBeApplied && applyDataWithNode.node.checkCorrectness()
+		is BinaryApplyDataWithNodes 		-> applyDataWithNode.applyData.applyTactic(sequentToBeApplied) == applyDataWithNode.leftNode.sequentToBeApplied to applyDataWithNode.rightNode.sequentToBeApplied && applyDataWithNode.leftNode.checkCorrectness() && applyDataWithNode.rightNode.checkCorrectness()
+		is UnificationTermApplyDataWithNode -> applyDataWithNode.applyData.applyTactic(sequentToBeApplied) == applyDataWithNode.node.sequentToBeApplied && applyDataWithNode.node.checkCorrectness()
+		is TermApplyDataWithNode 			-> applyDataWithNode.applyData.applyTactic(sequentToBeApplied) == applyDataWithNode.node.sequentToBeApplied && applyDataWithNode.node.checkCorrectness()
+}
+} catch (e: IllegalTacticException) {
+	false
+ */

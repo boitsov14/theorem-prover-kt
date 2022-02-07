@@ -164,7 +164,11 @@ fun Sequent.prove(loopCountMax: Int = 500_000, unificationTermInstantiationMaxCo
 	println("Complete Proof Start... ")
 	val completeProofTime = measureTimeMillis{
 		val remainedSubstitution = allUnificationTerms.subtract(substitution.keys).associateWith { it.availableVars.first() }
-		val completeSubstitution = (substitution + remainedSubstitution).getCompleteSubstitution()
+		val completeSubstitution = if (nodes.isEmpty()) {
+			(substitution + remainedSubstitution).getCompleteSubstitution()
+		} else {
+			substitution.getCompleteSubstitution()
+		}
 		rootNode.completeProof(completeSubstitution)
 		(completeSubstitution).forEach { println(it) }
 	}
