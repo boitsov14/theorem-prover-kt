@@ -53,13 +53,12 @@ fun Node.completeProof(substitution: Substitution) {
 	}
 }
 
+/*
 private fun Node.getProof(): List<IApplyData> = listOf(applyData!!) + when(applyData!!) {
 	AXIOM.ApplyData -> emptyList()
 	is UnaryTactic.ApplyData, is FreshVarInstantiationTactic.ApplyData, is TermInstantiationTactic.ApplyData -> child!!.getProof()
 	is BinaryTactic.ApplyData -> leftChild!!.getProof() + rightChild!!.getProof()
 }
-
-// TODO: 2022/02/07 要修正
 fun Node.printProof() {
 	val proof = getProof()
 	val sequents = mutableListOf(this.sequentToBeApplied)
@@ -80,6 +79,7 @@ fun Node.printProof() {
 	}
 	if (sequents.isNotEmpty()) throw IllegalArgumentException()
 }
+ */
 
 private fun Node.getReversedProof(): List<IndependentNode> = listOf(toIndependentNode()) + when(applyData) {
 	AXIOM.ApplyData, null -> emptyList()
@@ -95,6 +95,25 @@ fun Node.getProofTree(): String = getReversedProof().reversed().joinToString(sep
 		is BinaryTactic.ApplyData -> "\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\BinaryInf$${it.sequentToBeApplied.toLatex()}$"
 	}
 }
+
+fun Node.getLatexOutput(): String = "\\documentclass[preview,varwidth=10000px,border=3mm]{standalone}\n" +
+		"\\usepackage{bussproofs}\n" +
+		"\\begin{document}\n" +
+		"\\begin{prooftree}\n" +
+		"\\def\\fCenter{\\mbox{\$\\vdash\$}}\n" +
+		getProofTree() +
+		"\n" +
+		"\\end{prooftree}\n" +
+		"\\end{document}"
+
+/*
+	val latexProof: String
+	print("Latex Start...")
+	val getLatexProofTime = measureTimeMillis{
+		latexProof = this.getProofTree()
+	}
+	println("Completed in $getLatexProofTime ms")
+ */
 
 fun Node.checkProof(): Boolean {
 	TODO()
@@ -113,3 +132,13 @@ fun Node.checkCorrectness(): Boolean = try {
 } catch (e: IllegalTacticException) {
 	false
  */
+
+enum class ProofState {
+	Success,
+	Unprovable,
+	LoopCountFail,
+	UnificationTermInstantiationCountFail,
+	UnificationTimeFail
+}
+
+data class NodeWithInfo(val node: Node, val proofState: ProofState)

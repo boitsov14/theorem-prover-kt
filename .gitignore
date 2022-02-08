@@ -2,3 +2,5 @@
 *.class
 *.class
 *.class
+src/main/resources/Output.tex
+out/production/LogicGame/Output.tex
