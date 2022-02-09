@@ -96,9 +96,11 @@ fun Node.getProofTree(): String = getReversedProof().reversed().joinToString(sep
 	}
 }
 
-fun Node.getLatexOutput(): String = "\\documentclass[preview,varwidth=10000px,border=3mm]{standalone}\n" +
+fun Node.getLatexOutput(proofState: ProofState): String = "\\documentclass[preview,varwidth=10000px,border=3mm]{standalone}\n" +
 		"\\usepackage{bussproofs}\n" +
 		"\\begin{document}\n" +
+		"\$${sequentToBeApplied.toLatex().replace("\\fCenter", "\\vdash").replace("""^\s\\\s""".toRegex(), "")}\$\\par\n" +
+		"$proofState\n" +
 		"\\begin{prooftree}\n" +
 		"\\def\\fCenter{\\mbox{\$\\vdash\$}}\n" +
 		getProofTree() +
@@ -134,11 +136,14 @@ fun Node.checkCorrectness(): Boolean = try {
  */
 
 enum class ProofState {
-	Success,
-	Unprovable,
-	LoopCountFail,
-	UnificationTermInstantiationCountFail,
-	UnificationTimeFail
+	Success, Unprovable, LoopCountFail, UnificationTermInstantiationCountFail, UnificationTimeFail;
+	override fun toString(): String = when(this) {
+		Success -> "Provable"
+		Unprovable -> "Unprovable"
+		LoopCountFail -> "Proof Failed: too many loops"
+		UnificationTermInstantiationCountFail -> "Proof Failed: too many unification terms"
+		UnificationTimeFail -> "Proof Failed: too long unification time"
+	}
 }
 
 data class NodeWithInfo(val node: Node, val proofState: ProofState)

@@ -15,8 +15,8 @@ sealed interface IApplyData {
 class IllegalTacticException: Exception()
 
 object AXIOM: ITactic {
-	override fun toString(): String = "axiom"
-	override fun toLatex(): String = "axiom"
+	override fun toString(): String = "Axiom"
+	override fun toLatex(): String = "Axiom"
 	fun canApply(sequent: Sequent): Boolean = (sequent.assumptions intersect sequent.conclusions).isNotEmpty() || TRUE in sequent.conclusions || FALSE in sequent.assumptions
 	object ApplyData: IApplyData { override val tactic = AXIOM	}
 }
