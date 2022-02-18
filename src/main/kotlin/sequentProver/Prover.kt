@@ -106,6 +106,7 @@ fun Node.getLatexOutput(proofState: ProofState): String = "\\documentclass[previ
 		getProofTree() +
 		"\n" +
 		"\\end{prooftree}\n" +
+		"\\rightline{@sequent\\_bot}\n" +
 		"\\end{document}"
 
 /*
@@ -138,11 +139,11 @@ fun Node.checkCorrectness(): Boolean = try {
 enum class ProofState {
 	Success, Unprovable, LoopCountFail, UnificationTermInstantiationCountFail, UnificationTimeFail;
 	override fun toString(): String = when(this) {
-		Success -> "Provable"
-		Unprovable -> "Unprovable"
-		LoopCountFail -> "Proof Failed: too many loops"
-		UnificationTermInstantiationCountFail -> "Proof Failed: too many unification terms"
-		UnificationTimeFail -> "Proof Failed: too long unification time"
+		Success -> "Provable."
+		Unprovable -> "Unprovable."
+		LoopCountFail -> "Proof Failed: too many loops."
+		UnificationTermInstantiationCountFail -> "Proof Failed: too many unification terms."
+		UnificationTimeFail -> "Proof Failed: too long unification time."
 	}
 }
 
