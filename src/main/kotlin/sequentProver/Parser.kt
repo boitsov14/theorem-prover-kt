@@ -2,12 +2,6 @@ package sequentProver
 
 import core.*
 
-private fun String.toOneLetter(): String {
-	var result = this
-	listOf("proves", "prove", "\\vdash", "vdash").forEach { result = result.replace(it, "⊢", true) }
-	return result
-}
-
 private fun String.toFormulas(): Set<Formula> {
 	val fmls = mutableSetOf<Formula>()
 	var counter = 0
@@ -18,7 +12,7 @@ private fun String.toFormulas(): Set<Formula> {
 			')' -> counter--
 			',' -> {
 				if (counter == 0) {
-					val fml = this.substring(startPos, index).parseToFormula()
+					val fml = this.substring(startPos, index).toOneLetter().parseToFormula()
 					fmls.add(fml)
 					startPos = index + 1
 				}
@@ -26,22 +20,30 @@ private fun String.toFormulas(): Set<Formula> {
 		}
 	}
 	if (counter != 0) throw FormulaParserException("Parenthesis Error")
-	val fml = this.substring(startPos).parseToFormula()
-	fmls.add(fml)
+	val lastFml = this.substring(startPos).toOneLetter().parseToFormula()
+	fmls.add(lastFml)
 	return fmls
 }
 
 fun String.parseToSequent(): Sequent {
 	val str = this.toOneLetter()
-	return when (str.filter { it == '⊢' }.length) {
+	return when (str.count { it == '⊢' }) {
 		0 -> {
 			val fml = str.parseToFormula()
 			Sequent(emptySet(), setOf(fml))
 		}
 		1 -> {
 			val strList = str.split("⊢")
-			val assumptions = strList[0].toFormulas()
-			val conclusions = strList[1].toFormulas()
+			val assumptions = if (strList[0].isNotEmpty()) {
+				strList[0].toFormulas()
+			} else {
+				emptySet()
+			}
+			val conclusions = if (strList[1].isNotEmpty()) {
+				strList[1].toFormulas()
+			} else {
+				emptySet()
+			}
 			Sequent(assumptions, conclusions)
 		}
 		else -> {

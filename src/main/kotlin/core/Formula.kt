@@ -64,7 +64,7 @@ sealed class Formula {
 	fun toLatex(): String = toString()
 		.replace("true", "\\top ")
 		.replace("false", "\\bot ")
-		.replace("¬", "\\neg ")
+		.replace("¬", "\\lnot ")
 		.replace("∧", "\\land")
 		.replace("∨", "\\lor")
 		.replace("→", "\\rightarrow")

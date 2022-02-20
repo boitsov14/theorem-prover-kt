@@ -5,10 +5,10 @@ import core.Term.*
 
 class FormulaParserException(message: String): Exception(message)
 
-fun String.parseToFormula(): Formula = this.toOneLetter().trimWhiteSpaces().tokenize().toReversePolishNotation().getFormula()
+fun String.parseToFormula(): Formula = this.trimWhiteSpaces().tokenize().toReversePolishNotation().getFormula()
 
 /*
-fun String.parse(): Formula {
+fun String.parseToFormula(): Formula {
 	println(this)
 	val str = this.toOneLetter().trimWhiteSpaces()
 	println(str)
@@ -43,25 +43,25 @@ private sealed interface Token {
 	object TRUE: Token
 }
 
-private fun String.toOneLetter(): String {
+fun String.toOneLetter(): String {
 	var result = this
 	oneLetterMap.forEach { (key, values) -> values.forEach { value -> result = result.replace(value, key, true) } }
 	return result
 }
 
 private val oneLetterMap = mapOf(
+	"⊢" to setOf("\\vdash", "vdash", "proves", "|-"),
 	"T" to setOf("true", "tautology", "top"),
 	"⊥" to setOf("false", "contradiction", "bottom", "bot"),
-	"¬" to setOf("not ", "~", "negation ", "\\neg ", "neg "),
-	"∧" to setOf(" \\land ", " and ", "/\\", "&&", "&"),
-	"∨" to setOf(" \\or ", " or ", "\\/", "||", "|"),
-	"↔" to setOf(" \\iff ", " iff ", "<-->", "<==>", "<->", "<=>", "if and only if"),
-	"→" to setOf(" \\to ", " implies ", "-->", "==>", "->", "=>", " to ", " imply "),
+	"¬" to setOf("\\lnot ", "lnot ", "not ", "~", "negation ", "\\neg ", "neg ", "￢", "-"),
+	"∧" to setOf(" \\land ", " and ", "/\\", "&&", "&", "＆", "\\wedge", "wedge"),
+	"∨" to setOf(" \\or ", " or ", "\\/", "||", "|", "｜", "\\vee", "vee"),
+	"↔" to setOf(" \\iff ", " iff ", "<-->", "<==>", "<->", "<=>", "if and only if", " \\leftrightarrow ", "leftrightarrow", "equiv", "equivalent", "⇔"),
+	"→" to setOf(" \\to ", " implies ", "-->", "==>", "->", "=>", " to ", " imply ", " \\rightarrow ", "rightarrow", "⇒"),
 	"∀" to setOf("\\forall ", "forall ", "all "),
 	"∃" to setOf("\\exists ", "exists ", "ex "),
 	"(" to setOf("（"),
 	")" to setOf("）"),
-	"⊢" to setOf("\\vdash", "vdash", "proves"),
 	" " to setOf("　")
 )
 
