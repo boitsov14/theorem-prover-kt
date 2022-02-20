@@ -103,7 +103,7 @@ private fun String.toTerms(): List<Term> {
 	val idEndPos = this.getIdEndPos(0)
 	val id = this.substring(0, idEndPos + 1)
 	if (idEndPos + 1 < this.length && this[idEndPos + 1] == '(') {
-		val parenthesisEndPos = this.getParenthesisEndPos(idEndPos + 1) ?: throw FormulaParserException("Parenthesis Error")
+		val parenthesisEndPos = this.getParenthesisEndPos(idEndPos + 1) ?: throw FormulaParserException("Parenthesis Error.")
 		val operandTermsStr = this.substring(idEndPos + 2, parenthesisEndPos)
 		val operandTerms = operandTermsStr.toTerms()
 		firstTerm = Function(id, operandTerms)
@@ -138,7 +138,7 @@ private fun String.tokenize(): List<Token> {
 			'⊤' -> tokens.add(Token.TRUE)
 			'∀' -> {
 				if (!(index < this.lastIndex && this[index + 1].isLetter())) {
-					throw FormulaParserException("Quantifier must be used in the form '∀x'")
+					throw FormulaParserException("The quantifier must be used in the form '∀x'")
 				}
 				val endPos = this.getIdEndPos(index + 1)
 				val bddVar = Var(this.substring(index + 1, endPos + 1))
@@ -147,7 +147,7 @@ private fun String.tokenize(): List<Token> {
 			}
 			'∃' -> {
 				if (!(index < this.lastIndex && this[index + 1].isLetter())) {
-					throw FormulaParserException("Quantifier must be used in the form '∃x'")
+					throw FormulaParserException("The quantifier must be used in the form '∃x'")
 				}
 				val endPos = this.getIdEndPos(index + 1)
 				val bddVar = Var(this.substring(index + 1, endPos + 1))
@@ -159,7 +159,7 @@ private fun String.tokenize(): List<Token> {
 				val id = this.substring(index, idEndPos + 1)
 				index = idEndPos
 				if (index + 1 < this.length && this[index + 1] == '(') {
-					val parenthesisEndPos = this.getParenthesisEndPos(index + 1) ?: throw FormulaParserException("Parenthesis Error")
+					val parenthesisEndPos = this.getParenthesisEndPos(index + 1) ?: throw FormulaParserException("Parenthesis Error.")
 					val termsStr = this.substring(index + 2, parenthesisEndPos)
 					val terms = termsStr.toTerms()
 					tokens.add(Token.PREDICATE(id, terms))
@@ -189,7 +189,7 @@ private fun List<Token>.toReversePolishNotation(): List<Token> {
 					outputTokens.add(stack.removeLast())
 				}
 				if (stack.isEmpty()) {
-					throw FormulaParserException("Parenthesis Error")
+					throw FormulaParserException("Parenthesis Error.")
 				}
 				stack.removeLast()
 			}
@@ -205,7 +205,7 @@ private fun List<Token>.toReversePolishNotation(): List<Token> {
 		}
 	}
 	if (Token.LP in stack) {
-		throw FormulaParserException("Parenthesis Error")
+		throw FormulaParserException("Parenthesis Error.")
 	}
 	outputTokens.addAll(stack.reversed())
 	return outputTokens
@@ -220,7 +220,7 @@ private fun List<Token>.getFormula(): Formula {
 			is Token.PREDICATE -> stack.add(PREDICATE(token.id, token.terms))
 			is Token.Operator.Unary -> {
 				if (stack.isEmpty()) {
-					throw FormulaParserException("Parse Error")
+					throw FormulaParserException("Parse Error.")
 				}
 				val fml = stack.removeLast()
 				when(token) {
@@ -229,21 +229,21 @@ private fun List<Token>.getFormula(): Formula {
 						try {
 							stack.add(ALL(token.bddVar, fml))
 						} catch (e: DuplicateBddVarException) {
-							throw FormulaParserException("bounded variable is duplicated.")
+							throw FormulaParserException("Duplicated Bounded Variables >> ${token.bddVar}")
 						}
 					}
 					is Token.Operator.Unary.EXISTS -> {
 						try {
 							stack.add(EXISTS(token.bddVar, fml))
 						} catch (e: DuplicateBddVarException) {
-							throw FormulaParserException("bounded variable is duplicated.")
+							throw FormulaParserException("Duplicated Bounded Variables >> ${token.bddVar}")
 						}
 					}
 				}
 			}
 			is Token.Operator.Binary -> {
 				if (stack.size < 2) {
-					throw FormulaParserException("Parse Error")
+					throw FormulaParserException("Parse Error.")
 				}
 				val rightFml = stack.removeLast()
 				val leftFml = stack.removeLast()
@@ -259,5 +259,5 @@ private fun List<Token>.getFormula(): Formula {
 			Token.LP, Token.RP -> throw IllegalArgumentException()
 		}
 	}
-	return stack.singleOrNull() ?: throw FormulaParserException("Parse Error")
+	return stack.singleOrNull() ?: throw FormulaParserException("Parse Error.")
 }

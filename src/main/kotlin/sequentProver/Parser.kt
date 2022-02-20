@@ -19,7 +19,7 @@ private fun String.toFormulas(): Set<Formula> {
 			}
 		}
 	}
-	if (counter != 0) throw FormulaParserException("Parenthesis Error")
+	if (counter != 0) throw FormulaParserException("Parenthesis Error.")
 	val lastFml = this.substring(startPos).toOneLetter().parseToFormula()
 	fmls.add(lastFml)
 	return fmls
@@ -47,7 +47,7 @@ fun String.parseToSequent(): Sequent {
 			Sequent(assumptions, conclusions)
 		}
 		else -> {
-			throw FormulaParserException("⊢ must occur one time")
+			throw FormulaParserException("⊢ must occur one time.")
 		}
 	}
 }
