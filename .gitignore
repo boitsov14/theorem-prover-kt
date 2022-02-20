@@ -1,6 +1,6 @@
-
-*.class
-*.class
-*.class
-src/main/resources/Output.tex
-out/production/LogicGame/Output.tex
+/.idea/
+/libs/
+/out/
+/src/main/kotlin/META-INF/
+/.gitattributes
+*.tex
