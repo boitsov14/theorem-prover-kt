@@ -3,4 +3,5 @@
 /out/
 /src/main/kotlin/META-INF/
 /.gitattributes
+/LogicGame.iml
 *.tex
