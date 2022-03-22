@@ -80,6 +80,14 @@ private fun String.getIdEndPos(startPos: Int): Int {
 	return startPos + str.length - 1
 }
 
+@OptIn(ExperimentalStdlibApi::class)
+private fun String.getBddVarIdEndPos(startPos: Int): Int {
+	if (!(this[startPos].isLetter())) throw FormulaParserException("Illegal Argument >> ${this[startPos]}")
+	val regex = "[a-zA-Z][0-9]*".toRegex()
+	val str = regex.matchAt(this, startPos)!!.value
+	return startPos + str.length - 1
+}
+
 private fun String.getParenthesisEndPos(startPos: Int): Int? {
 	if (this[startPos] != '(') throw IllegalArgumentException()
 	var counter = 0
@@ -140,7 +148,7 @@ private fun String.tokenize(): List<Token> {
 				if (!(index < this.lastIndex && this[index + 1].isLetter())) {
 					throw FormulaParserException("The quantifier must be used in the form '∀x'")
 				}
-				val endPos = this.getIdEndPos(index + 1)
+				val endPos = this.getBddVarIdEndPos(index + 1)
 				val bddVar = Var(this.substring(index + 1, endPos + 1))
 				tokens.add(Token.Operator.Unary.ALL(bddVar))
 				index = endPos
@@ -149,7 +157,7 @@ private fun String.tokenize(): List<Token> {
 				if (!(index < this.lastIndex && this[index + 1].isLetter())) {
 					throw FormulaParserException("The quantifier must be used in the form '∃x'")
 				}
-				val endPos = this.getIdEndPos(index + 1)
+				val endPos = this.getBddVarIdEndPos(index + 1)
 				val bddVar = Var(this.substring(index + 1, endPos + 1))
 				tokens.add(Token.Operator.Unary.EXISTS(bddVar))
 				index = endPos
