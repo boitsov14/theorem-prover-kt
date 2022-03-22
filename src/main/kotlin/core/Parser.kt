@@ -53,7 +53,7 @@ private val oneLetterMap = mapOf(
 	"⊢" to setOf("\\vdash", "vdash", "proves", "|-", "├", "┣"),
 	"T" to setOf("true", "tautology", "top"),
 	"⊥" to setOf("false", "contradiction", "bottom", "bot"),
-	"¬" to setOf("\\lnot ", "lnot ", "not ", "~", "negation ", "\\neg ", "neg ", "￢", "-"),
+	"¬" to setOf("\\lnot ", "lnot ", "not ", "~", "negation ", "\\neg ", "neg ", "￢"),
 	"∧" to setOf(" \\land ", " and ", "/\\", "&&", "&", "＆", "\\wedge", "wedge"),
 	"∨" to setOf(" \\or ", " or ", "\\/", "||", "|", "｜", "\\vee", "vee"),
 	"↔" to setOf(" \\iff ", " iff ", "<-->", "<==>", "<->", "<=>", "if and only if", " \\leftrightarrow ", "leftrightarrow", "equiv", "equivalent", "⇔"),

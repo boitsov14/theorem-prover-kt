@@ -72,13 +72,15 @@ P(a) to all x (P(x) to P(f(x))) to P(f(f(a)))
 ∃y P(x, y) → ∃ x1 ∃x2 ∃x3 (P(x, x1)∧P(x1, x2)∧P(x2, x3))
 ∃y∀x∃z∀u∃v∀w ((F (x, y, z) ∧ G (u, v, w)) → H (x, y, z, u, v, w)) → ∀x∃y∀u∃z∀w∃v ((￢F (x, y, z) ∨ ￢G (u, v, w)) ∨ H (x, y, z, u, v, w))
 ∃y∀x∃z∀u∃v∀w P(x,y,z,u,v,w) → ∀x∃y∀u∃z∀w∃v P(x,y,z,u,v,w)
+
+P(a), ∀x(P(x) -> P(f(x))) |- P(f(f(f(a))))
  */
 
 fun main(args: Array<String>) {
 
-	mainForJar(args)
+	//mainForJar(args)
 
-	//mainForConsole()
+	mainForConsole()
 
 	/*
 	while (true) {
