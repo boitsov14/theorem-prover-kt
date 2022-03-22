@@ -7,22 +7,21 @@ import core.*
 import sequentProver.ProofState.*
 import kotlin.system.measureTimeMillis
 
-fun Sequent.prove(
+fun Node.prove(
 	printBasicInfo: Boolean = true,
 	printTacticInfo: Boolean = true,
 	printSequents: Boolean = true,
 	loopCountMax: Int = 500_000,
-	unificationTermInstantiationMaxCountMax: Int = 5,
+	unificationTermInstantiationMaxCountMax: Int = 4,
 	totalUnificationTimeMax: Long = 30_000
-): NodeWithInfo {
+): ProofState {
 	val start = System.currentTimeMillis()
 	var count = 0
 	var unificationTermInstantiationMaxCount = 0
 	var unificationTermIndex = 0
 	var totalUnificationTime = 0L
 
-	val rootNode = Node(this, null)
-	val nodes = mutableListOf(rootNode)
+	val nodes = mutableListOf(this)
 	val substitution = mutableMapOf<UnificationTerm,Term>()
 	val allUnificationTerms = mutableSetOf<UnificationTerm>()
 	val proofState: ProofState
@@ -185,12 +184,12 @@ fun Sequent.prove(
 		} else {
 			substitution.getCompleteSubstitution()
 		}
-		rootNode.completeProof(completeSubstitution)
+		this.completeProof(completeSubstitution)
 		if (printBasicInfo) (completeSubstitution).forEach { println(it) }
 	}
 	if (printBasicInfo)	println("Completed in $completeProofTime ms")
 
-	return NodeWithInfo(rootNode, proofState)
+	return proofState
 
 	/*
 	if (nodes.isEmpty()) {

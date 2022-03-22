@@ -67,6 +67,11 @@ not all a all b all c P(a,b,c) proves ex a ex b ex c not P(a,b,c)
 ∀x∀y (F (x) ∧ F (y) → E(x, y)) ⊢  (F (a) → E(a, b)), (F (c) → E(c, a))
 ex x (P(x) to all y P(y))
 ex x (P(x) to P(f(x)))
+P(a) to all x (P(x) to P(f(x))) to P(f(f(a)))
+(∀x ∃y P(x, y)) → ∀ x0 ∃ x1 ∃x2 ∃x3 (P(x0, x1)∧P(x1, x2)∧P(x2, x3))
+∃y P(x, y) → ∃ x1 ∃x2 ∃x3 (P(x, x1)∧P(x1, x2)∧P(x2, x3))
+∃y∀x∃z∀u∃v∀w ((F (x, y, z) ∧ G (u, v, w)) → H (x, y, z, u, v, w)) → ∀x∃y∀u∃z∀w∃v ((￢F (x, y, z) ∨ ￢G (u, v, w)) ∨ H (x, y, z, u, v, w))
+∃y∀x∃z∀u∃v∀w P(x,y,z,u,v,w) → ∀x∃y∀u∃z∀w∃v P(x,y,z,u,v,w)
  */
 
 fun main(args: Array<String>) {
@@ -104,11 +109,15 @@ fun mainForJar(args: Array<String>) {
 		messageFile.writeText(e.message!!)
 		return
 	}
-	val nodeWithInfo = sequent.prove(printSequents = false, printTacticInfo = false, printBasicInfo = false)
-	val proofState = nodeWithInfo.proofState
+	val rootNode = Node(sequent, null)
+	val proofState = try {
+		rootNode.prove(printSequents = false, printTacticInfo = false, printBasicInfo = false)
+	} catch (e: OutOfMemoryError) {
+		ProofState.MemoryError
+	}
 	messageFile.writeText(proofState.toString())
 	val latexOutput = try {
-		nodeWithInfo.node.getLatexOutput(proofState)
+		rootNode.getLatexOutput(proofState)
 	} catch (e: OutOfMemoryError) {
 		messageFile.appendText("\nThe proof tree is too long to output.")
 		return
@@ -120,10 +129,12 @@ fun mainForJar(args: Array<String>) {
 fun mainForConsole() {
 	print("INPUT A FORMULA >>> ")
 	val sequent = readln().parseToSequent()
-	val nodeWithInfo = sequent.prove(printSequents = false, printTacticInfo = false, printBasicInfo = false)
-	println(nodeWithInfo.proofState)
+	val rootNode = Node(sequent, null)
+	//val proofState = rootNode.prove()
+	val proofState = rootNode.prove(printSequents = true, printTacticInfo = true, printBasicInfo = true)
+	println(proofState)
 	val output = File("src/main/resources/Output.tex")
-	output.writeText(nodeWithInfo.node.getLatexOutput(nodeWithInfo.proofState))
+	output.writeText(rootNode.getLatexOutput(proofState))
 }
 
 fun mainForTest() {

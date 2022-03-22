@@ -107,7 +107,7 @@ fun Node.getLatexOutput(proofState: ProofState): String = "\\documentclass[previ
 		"\n" +
 		"\\end{prooftree}\n" +
 		"\\rightline{@sequent\\_bot}\n" +
-		"\\end{document}"
+		"\\end{document}\n"
 
 /*
 	val latexProof: String
@@ -137,14 +137,13 @@ fun Node.checkCorrectness(): Boolean = try {
  */
 
 enum class ProofState {
-	Success, Unprovable, LoopCountFail, UnificationTermInstantiationCountFail, UnificationTimeFail;
+	Success, Unprovable, LoopCountFail, UnificationTermInstantiationCountFail, UnificationTimeFail, MemoryError;
 	override fun toString(): String = when(this) {
 		Success -> "Provable."
 		Unprovable -> "Unprovable."
 		LoopCountFail -> "Proof Failed: too many loops."
 		UnificationTermInstantiationCountFail -> "Proof Failed: too many unification terms."
 		UnificationTimeFail -> "Proof Failed: too long unification time."
+		MemoryError -> "Proof Failed: out of memory error."
 	}
 }
-
-data class NodeWithInfo(val node: Node, val proofState: ProofState)
