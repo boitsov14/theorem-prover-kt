@@ -141,7 +141,7 @@ fun Node.prove(
 			val fml = TermInstantiationTactic.ALL_LEFT.getAvailableFml(sequentToBeApplied, unificationTermInstantiationMaxCount)
 				?: TermInstantiationTactic.EXISTS_RIGHT.getAvailableFml(sequentToBeApplied, unificationTermInstantiationMaxCount)
 				?: continue
-			val availableVars = setOf(Var("v")) + sequentToBeApplied.freeVars
+			val availableVars = sequentToBeApplied.freeVars.ifEmpty { setOf(fml.bddVar) }
 			val unificationTerm = UnificationTerm(unificationTermIndex, availableVars)
 			val applyData = TermInstantiationTactic.ApplyData(fml, unificationTerm)
 			val sequent = applyData.applyTactic(sequentToBeApplied)
@@ -178,7 +178,7 @@ fun Node.prove(
 
 	if (printBasicInfo)	println("Complete Proof Start... ")
 	val completeProofTime = measureTimeMillis{
-		val remainedSubstitution = allUnificationTerms.subtract(substitution.keys).associateWith { it.availableVars.first() }
+		val remainedSubstitution = allUnificationTerms.subtract(substitution.keys).associateWith { Dummy }
 		val completeSubstitution = if (nodes.isEmpty()) {
 			(substitution + remainedSubstitution).getCompleteSubstitution()
 		} else {
