@@ -33,6 +33,12 @@ sealed class Term {
 			is UnificationTerm -> setOf(this)
 			is Function -> terms.map { it.unificationTerms }.flatten().toSet()
 		}
+	val functionIds: Set<String>
+		get() = when (this) {
+			is Var -> emptySet()
+			is UnificationTerm -> emptySet()
+			is Function -> setOf(id) + terms.map { it.functionIds }.flatten()
+		}
 	fun replace(oldVar: Var, newTerm: Term): Term = when(this) {
 		is Var -> if (this == oldVar) newTerm else this
 		is UnificationTerm -> this

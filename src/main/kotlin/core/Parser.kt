@@ -237,14 +237,22 @@ private fun List<Token>.getFormula(): Formula {
 						try {
 							stack.add(ALL(token.bddVar, fml))
 						} catch (e: DuplicateBddVarException) {
-							throw FormulaParserException("Duplicated Bounded Variables >> ${token.bddVar}")
+							throw FormulaParserException("Duplicated Bounded Variables: ${token.bddVar}")
+						} catch (e: CannotQuantifyPredicateException) {
+							throw FormulaParserException("Cannot Quantify Predicate: ${token.bddVar}")
+						} catch (e: CannotQuantifyFunctionException) {
+							throw FormulaParserException("Cannot Quantify Function: ${token.bddVar}")
 						}
 					}
 					is Token.Operator.Unary.EXISTS -> {
 						try {
 							stack.add(EXISTS(token.bddVar, fml))
 						} catch (e: DuplicateBddVarException) {
-							throw FormulaParserException("Duplicated Bounded Variables >> ${token.bddVar}")
+							throw FormulaParserException("Duplicated Bounded Variables: ${token.bddVar}")
+						} catch (e: CannotQuantifyPredicateException) {
+							throw FormulaParserException("Cannot Quantify Predicate: ${token.bddVar}")
+						} catch (e: CannotQuantifyFunctionException) {
+							throw FormulaParserException("Cannot Quantify Function: ${token.bddVar}")
 						}
 					}
 				}

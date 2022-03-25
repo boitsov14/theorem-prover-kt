@@ -3,6 +3,8 @@ package core
 import core.Term.*
 
 class DuplicateBddVarException: Exception()
+class CannotQuantifyPredicateException: Exception()
+class CannotQuantifyFunctionException: Exception()
 
 sealed class Formula {
 	object TRUE: Formula()
@@ -35,11 +37,15 @@ sealed class Formula {
 	data class ALL(override val bddVar: Var, override val operandFml: Formula, val unificationTermInstantiationCount: Int = 0): Quantified() {
 		init {
 			if (bddVar in operandFml.bddVars) { throw DuplicateBddVarException() }
+			if (bddVar.id in operandFml.predicateIds) { throw CannotQuantifyPredicateException() }
+			if (bddVar.id in operandFml.functionIds) { throw CannotQuantifyFunctionException() }
 		}
 	}
 	data class EXISTS(override val bddVar: Var, override val operandFml: Formula, val unificationTermInstantiationCount: Int = 0): Quantified() {
 		init {
 			if (bddVar in operandFml.bddVars) { throw DuplicateBddVarException() }
+			if (bddVar.id in operandFml.predicateIds) { throw CannotQuantifyPredicateException() }
+			if (bddVar.id in operandFml.functionIds) { throw CannotQuantifyFunctionException() }
 		}
 	}
 	private fun recToString(): String = when(this) {
@@ -89,10 +95,10 @@ sealed class Formula {
 			FALSE 			-> emptySet()
 			is PREDICATE 	-> emptySet()
 			is NOT 			-> operandFml.bddVars
-			is AND 			-> leftFml.bddVars + leftFml.bddVars
-			is OR 			-> leftFml.bddVars + leftFml.bddVars
-			is IMPLIES 		-> leftFml.bddVars + leftFml.bddVars
-			is IFF 			-> leftFml.bddVars + leftFml.bddVars
+			is AND 			-> leftFml.bddVars + rightFml.bddVars
+			is OR 			-> leftFml.bddVars + rightFml.bddVars
+			is IMPLIES 		-> leftFml.bddVars + rightFml.bddVars
+			is IFF 			-> leftFml.bddVars + rightFml.bddVars
 			is Quantified	-> operandFml.bddVars + bddVar
 		}
 	/*
@@ -110,6 +116,30 @@ sealed class Formula {
 			is EXISTS 		-> operandFml.unificationTerms
 		}
 	 */
+	private val predicateIds: Set<String>
+		get() = when(this) {
+			TRUE 			-> emptySet()
+			FALSE 			-> emptySet()
+			is PREDICATE 	-> setOf(id)
+			is NOT 			-> operandFml.predicateIds
+			is AND 			-> leftFml.predicateIds + rightFml.predicateIds
+			is OR 			-> leftFml.predicateIds + rightFml.predicateIds
+			is IMPLIES 		-> leftFml.predicateIds + rightFml.predicateIds
+			is IFF 			-> leftFml.predicateIds + rightFml.predicateIds
+			is Quantified	-> operandFml.predicateIds
+		}
+	private val functionIds: Set<String>
+		get() = when(this) {
+			TRUE 			-> emptySet()
+			FALSE 			-> emptySet()
+			is PREDICATE 	-> terms.map { it.functionIds }.flatten().toSet()
+			is NOT 			-> operandFml.functionIds
+			is AND 			-> leftFml.functionIds + rightFml.functionIds
+			is OR 			-> leftFml.functionIds + rightFml.functionIds
+			is IMPLIES 		-> leftFml.functionIds + rightFml.functionIds
+			is IFF 			-> leftFml.functionIds + rightFml.functionIds
+			is Quantified	-> operandFml.functionIds
+		}
 	fun replace(oldVar: Var, newTerm: Term): Formula = when(this) {
 		TRUE 			-> this
 		FALSE 			-> this
