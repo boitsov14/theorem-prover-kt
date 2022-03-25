@@ -250,10 +250,9 @@ enum class TermInstantiationTactic: ITactic {
 			}
 		fun applyTactic(sequent: Sequent): Sequent = tactic.applyTactic(sequent, fml, term)
 	}
-	// TODO: 2022/02/05 <= or <
 	fun getAvailableFml(sequent: Sequent, unificationTermInstantiationMaxCount: Int): Quantified? = when(this) {
-		ALL_LEFT 		-> sequent.assumptions.firstOrNull { it is ALL && it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount } as Quantified?
-		EXISTS_RIGHT 	-> sequent.conclusions.firstOrNull { it is EXISTS && it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount } as Quantified?
+		ALL_LEFT 		-> sequent.assumptions.filterIsInstance<ALL>().filter { it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount }.minByOrNull { it.unificationTermInstantiationCount }
+		EXISTS_RIGHT 	-> sequent.conclusions.filterIsInstance<EXISTS>().filter { it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount }.minByOrNull { it.unificationTermInstantiationCount }
 	}
 	private fun applyTactic(sequent: Sequent, fml: Formula, term: Term): Sequent = when(this) {
 		ALL_LEFT -> {
