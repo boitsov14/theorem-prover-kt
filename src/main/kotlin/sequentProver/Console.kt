@@ -101,10 +101,9 @@ fun Node.prove(
 			}
 		}
 
-		if (unificationTermInstantiationMaxCount == 0
-			&& nodes.none {
-				it.sequentToBeApplied.assumptions.filterIsInstance<ALL>().isNotEmpty()
-						|| it.sequentToBeApplied.conclusions.filterIsInstance<EXISTS>().isNotEmpty() }) {
+		if (nodes.all {
+				it.sequentToBeApplied.assumptions.filterIsInstance<ALL>().isEmpty()
+						&& it.sequentToBeApplied.conclusions.filterIsInstance<EXISTS>().isEmpty() }) {
 			if (printBasicInfo) println("UNPROVABLE")
 			proofState = Unprovable
 			break
