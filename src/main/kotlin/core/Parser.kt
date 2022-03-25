@@ -56,7 +56,7 @@ private val oneLetterMap = mapOf(
 	"¬" to setOf("\\lnot ", "lnot ", "not ", "~", "negation ", "\\neg ", "neg ", "￢"),
 	"∧" to setOf(" \\land ", " and ", "/\\", "&&", "&", "＆", "\\wedge", "wedge"),
 	"∨" to setOf(" \\or ", " or ", "\\/", "||", "|", "｜", "\\vee", "vee"),
-	"↔" to setOf(" \\iff ", " iff ", "<-->", "<==>", "<->", "<=>", "if and only if", " \\leftrightarrow ", "leftrightarrow", "equiv", "equivalent", "⇔"),
+	"↔" to setOf(" \\iff ", " iff ", "<-->", "<==>", "<->", "<=>", "if and only if", " \\leftrightarrow ", "leftrightarrow", "equiv", "equivalent", "⇔", "≡"),
 	"→" to setOf(" \\to ", " implies ", "-->", "==>", "->", "=>", " to ", " imply ", " \\rightarrow ", "rightarrow", "⇒"),
 	"∀" to setOf("\\forall ", "forall ", "all "),
 	"∃" to setOf("\\exists ", "exists ", "ex "),
@@ -74,7 +74,7 @@ private fun String.trimWhiteSpaces(): String = this
 
 @OptIn(ExperimentalStdlibApi::class)
 private fun String.getIdEndPos(startPos: Int): Int {
-	if (!(this[startPos].isLetter())) throw FormulaParserException("Illegal Argument >> ${this[startPos]}")
+	if (!(this[startPos].isLetter())) throw FormulaParserException("Illegal Argument: '${this[startPos]}'")
 	val regex = "[a-zA-Z0-9]+".toRegex()
 	val str = regex.matchAt(this, startPos)!!.value
 	return startPos + str.length - 1
@@ -82,7 +82,7 @@ private fun String.getIdEndPos(startPos: Int): Int {
 
 @OptIn(ExperimentalStdlibApi::class)
 private fun String.getBddVarIdEndPos(startPos: Int): Int {
-	if (!(this[startPos].isLetter())) throw FormulaParserException("Illegal Argument >> ${this[startPos]}")
+	if (!(this[startPos].isLetter())) throw FormulaParserException("Illegal Argument: '${this[startPos]}'")
 	val regex = "[a-zA-Z][0-9]*".toRegex()
 	val str = regex.matchAt(this, startPos)!!.value
 	return startPos + str.length - 1
@@ -105,7 +105,7 @@ private fun String.getParenthesisEndPos(startPos: Int): Int? {
 
 private fun String.toTerms(): List<Term> {
 	if (this.isEmpty()) return emptyList()
-	if (!(this.first().isLetter())) throw FormulaParserException("Illegal Argument >> ${this.first()}")
+	if (!(this.first().isLetter())) throw FormulaParserException("Illegal Argument: '${this.first()}'")
 	val firstTerm: Term
 	val firstTermEndPos: Int
 	val idEndPos = this.getIdEndPos(0)
@@ -126,7 +126,7 @@ private fun String.toTerms(): List<Term> {
 	if (firstTermEndPos == this.lastIndex) {
 		return listOf(firstTerm)
 	}
-	throw FormulaParserException("Illegal Argument >> ${this[firstTermEndPos + 1]}")
+	throw FormulaParserException("Illegal Argument: '${this[firstTermEndPos + 1]}'")
 }
 
 private fun String.tokenize(): List<Token> {
@@ -176,7 +176,7 @@ private fun String.tokenize(): List<Token> {
 					tokens.add(Token.PREDICATE(id, emptyList()))
 				}
 			}
-			else -> throw FormulaParserException("Illegal Argument >> ${this[index]}")
+			else -> throw FormulaParserException("Illegal Argument: '${this[index]}'")
 		}
 		index++
 	}
