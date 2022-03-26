@@ -202,28 +202,27 @@ enum class FreshVarInstantiationTactic: ITactic {
 		ALL_RIGHT 		-> "$\\forall$: Right"
 		EXISTS_LEFT 	-> "$\\exists$: Left"
 	}
-	data class ApplyData(val fml: Formula, val freshVar: Var) : IApplyData {
+	data class ApplyData(val fml: Quantified, val freshVar: Var) : IApplyData {
 		override val tactic: FreshVarInstantiationTactic
 			get() = when(fml) {
 				is ALL 		-> ALL_RIGHT
 				is EXISTS 	-> EXISTS_LEFT
-				else -> throw IllegalTacticException()
 			}
 		fun applyTactic(sequent: Sequent): Sequent = tactic.applyTactic(sequent, fml, freshVar)
 	}
 	fun getAvailableFml(sequent: Sequent): Quantified? = when(this) {
-		ALL_RIGHT 		-> sequent.conclusions.firstOrNull { it is ALL } as Quantified?
-		EXISTS_LEFT 	-> sequent.assumptions.firstOrNull { it is EXISTS } as Quantified?
+		ALL_RIGHT 		-> sequent.conclusions.filterIsInstance<ALL>().firstOrNull()
+		EXISTS_LEFT 	-> sequent.assumptions.filterIsInstance<EXISTS>().firstOrNull()
 	}
 	private fun applyTactic(sequent: Sequent, fml: Formula, freshVar: Var): Sequent = when (this) {
 		ALL_RIGHT -> {
-			if (fml !is ALL) { throw IllegalTacticException() }
+			if (fml !is ALL) throw IllegalTacticException()
 			sequent.copy(
 				conclusions = sequent.conclusions - fml + fml.instantiate(freshVar)
 			)
 		}
 		EXISTS_LEFT -> {
-			if (fml !is EXISTS) { throw IllegalTacticException() }
+			if (fml !is EXISTS) throw IllegalTacticException()
 			sequent.copy(
 				assumptions = sequent.assumptions - fml + fml.instantiate(freshVar)
 			)
@@ -241,12 +240,11 @@ enum class TermInstantiationTactic: ITactic {
 		ALL_LEFT 		-> "$\\forall$: Left"
 		EXISTS_RIGHT 	-> "$\\exists$: Right"
 	}
-	data class ApplyData(val fml: Formula, val term: Term) : IApplyData {
+	data class ApplyData(val fml: Quantified, val term: Term) : IApplyData {
 		override val tactic: TermInstantiationTactic
 			get() = when(fml) {
 				is ALL 		-> ALL_LEFT
 				is EXISTS 	-> EXISTS_RIGHT
-				else -> throw IllegalTacticException()
 			}
 		fun applyTactic(sequent: Sequent): Sequent = tactic.applyTactic(sequent, fml, term)
 	}
@@ -256,23 +254,23 @@ enum class TermInstantiationTactic: ITactic {
 	}
 	private fun applyTactic(sequent: Sequent, fml: Formula, term: Term): Sequent = when(this) {
 		ALL_LEFT -> {
-			//if (fml !is ALL) { throw IllegalTacticException() }
-			val fml0 = sequent.assumptions.filterIsInstance<ALL>().firstOrNull { it == fml } ?: throw IllegalTacticException()
-			val newConclusion = fml0.instantiate(term)
-			val newFml = fml0.copy(unificationTermInstantiationCount = fml0.unificationTermInstantiationCount + 1)
+			if (fml !is ALL) throw IllegalTacticException()
+			val newConclusion = fml.instantiate(term)
+			val newFml = fml.copy(unificationTermInstantiationCount = fml.unificationTermInstantiationCount + 1)
 			// TODO: 2022/02/03 もっと良い書き方ある？
 			sequent.copy(
 				assumptions = sequent.assumptions.map { if (it == fml) newFml else it }.toSet() + newConclusion
 			)
 		}
 		EXISTS_RIGHT -> {
-			//if (fml !is EXISTS) { throw IllegalTacticException() }
-			val fml0 = sequent.conclusions.filterIsInstance<EXISTS>().firstOrNull { it == fml } ?: throw IllegalTacticException()
-			val newConclusion = fml0.instantiate(term)
-			val newFml = fml0.copy(unificationTermInstantiationCount = fml0.unificationTermInstantiationCount + 1)
+			if (fml !is EXISTS) throw IllegalTacticException()
+			val newConclusion = fml.instantiate(term)
+			val newFml = fml.copy(unificationTermInstantiationCount = fml.unificationTermInstantiationCount + 1)
 			sequent.copy(
 				conclusions = sequent.conclusions.map { if (it == fml) newFml else it }.toSet() + newConclusion
 			)
 		}
 	}
 }
+
+private fun NOT.getSameFml(fmls: Set<Formula>): NOT? = fmls.filterIsInstance<NOT>().firstOrNull()

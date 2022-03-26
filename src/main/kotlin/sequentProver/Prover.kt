@@ -1,6 +1,7 @@
 package sequentProver
 
 import core.*
+import core.Formula.*
 
 data class Node(
 	var sequentToBeApplied: Sequent,
@@ -23,13 +24,19 @@ fun Node.completeProof(substitution: Substitution) {
 	when(val oldApplyData = applyData) {
 		AXIOM.ApplyData, null -> {}
 		is UnaryTactic.ApplyData -> {
-			val newApplyData = oldApplyData.copy(fml = oldApplyData.fml.replace(substitution))
+			val newFml = (sequentToBeApplied.assumptions + sequentToBeApplied.conclusions)
+				.firstOrNull { it == oldApplyData.fml.replace(substitution) }
+				?: throw IllegalTacticException()
+			val newApplyData = oldApplyData.copy(fml = newFml)
 			applyData = newApplyData
 			child!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied)
 			child!!.completeProof(substitution)
 		}
 		is BinaryTactic.ApplyData -> {
-			val newApplyData = oldApplyData.copy(fml = oldApplyData.fml.replace(substitution))
+			val newFml = (sequentToBeApplied.assumptions + sequentToBeApplied.conclusions)
+				.firstOrNull { it == oldApplyData.fml.replace(substitution) }
+				?: throw IllegalTacticException()
+			val newApplyData = oldApplyData.copy(fml = newFml)
 			applyData = newApplyData
 			leftChild!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied).first
 			rightChild!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied).second
@@ -37,7 +44,11 @@ fun Node.completeProof(substitution: Substitution) {
 			rightChild!!.completeProof(substitution)
 		}
 		is FreshVarInstantiationTactic.ApplyData -> {
-			val newApplyData = oldApplyData.copy(fml = oldApplyData.fml.replace(substitution))
+			val newFml = (sequentToBeApplied.assumptions + sequentToBeApplied.conclusions)
+				.filterIsInstance<Quantified>()
+				.firstOrNull { it == oldApplyData.fml.replace(substitution) }
+				?: throw IllegalTacticException()
+			val newApplyData = oldApplyData.copy(fml = newFml)
 			applyData = newApplyData
 			child!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied)
 			child!!.completeProof(substitution)
@@ -45,7 +56,11 @@ fun Node.completeProof(substitution: Substitution) {
 		is TermInstantiationTactic.ApplyData -> {
 			val unificationTerm = oldApplyData.term
 			val term = substitution[unificationTerm] ?: unificationTerm
-			val newApplyData = TermInstantiationTactic.ApplyData(oldApplyData.fml.replace(substitution), term)
+			val newFml = (sequentToBeApplied.assumptions + sequentToBeApplied.conclusions)
+				.filterIsInstance<Quantified>()
+				.firstOrNull { it == oldApplyData.fml.replace(substitution) }
+				?: throw IllegalTacticException()
+			val newApplyData = TermInstantiationTactic.ApplyData(newFml, term)
 			applyData = newApplyData
 			child!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied)
 			child!!.completeProof(substitution)
