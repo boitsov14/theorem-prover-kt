@@ -70,34 +70,34 @@ enum class UnaryTactic: ITactic {
 			)
 		}
 		OR_RIGHT -> {
-			if (fml !is OR) { throw IllegalTacticException() }
+			if (fml !is OR) throw IllegalTacticException()
 			sequent.copy(
 				conclusions = sequent.conclusions - fml + fml.leftFml + fml.rightFml
 			)
 		}
 		IMPLIES_RIGHT -> {
-			if (fml !is IMPLIES) { throw IllegalTacticException() }
+			if (fml !is IMPLIES) throw IllegalTacticException()
 			sequent.copy(
 				assumptions = sequent.assumptions + fml.leftFml,
 				conclusions = sequent.conclusions - fml + fml.rightFml
 			)
 		}
 		NOT_LEFT -> {
-			if (fml !is NOT) { throw IllegalTacticException() }
+			if (fml !is NOT) throw IllegalTacticException()
 			sequent.copy(
 				assumptions = sequent.assumptions - fml,
 				conclusions = sequent.conclusions + fml.operandFml
 			)
 		}
 		NOT_RIGHT -> {
-			if (fml !is NOT) { throw IllegalTacticException() }
+			if (fml !is NOT) throw IllegalTacticException()
 			sequent.copy(
 				assumptions = sequent.assumptions + fml.operandFml,
 				conclusions = sequent.conclusions - fml
 			)
 		}
 		IFF_LEFT -> {
-			if (fml !is IFF) { throw IllegalTacticException() }
+			if (fml !is IFF) throw IllegalTacticException()
 			val toRight = IMPLIES(fml.leftFml, fml.rightFml)
 			val toLeft  = IMPLIES(fml.rightFml, fml.leftFml)
 			sequent.copy(
@@ -149,7 +149,7 @@ enum class BinaryTactic: ITactic {
 	 */
 	private fun applyTactic(sequent: Sequent, fml: Formula): Pair<Sequent, Sequent> = when (this) {
 		AND_RIGHT -> {
-			if (fml !is AND) { throw IllegalTacticException() }
+			if (fml !is AND) throw IllegalTacticException()
 			val leftSequent = sequent.copy(
 				conclusions = sequent.conclusions - fml + fml.leftFml
 			)
@@ -159,7 +159,7 @@ enum class BinaryTactic: ITactic {
 			leftSequent to rightSequent
 		}
 		OR_LEFT -> {
-			if (fml !is OR) { throw IllegalTacticException() }
+			if (fml !is OR) throw IllegalTacticException()
 			val leftSequent = sequent.copy(
 				assumptions = sequent.assumptions - fml + fml.leftFml
 			)
@@ -169,7 +169,7 @@ enum class BinaryTactic: ITactic {
 			leftSequent to rightSequent
 		}
 		IMPLIES_LEFT -> {
-			if (fml !is IMPLIES) { throw IllegalTacticException() }
+			if (fml !is IMPLIES) throw IllegalTacticException()
 			val newSequent1 = sequent.copy(
 				assumptions = sequent.assumptions - fml,
 				conclusions = sequent.conclusions + fml.leftFml
@@ -180,7 +180,7 @@ enum class BinaryTactic: ITactic {
 			newSequent1 to newSequent2
 		}
 		IFF_RIGHT -> {
-			if (fml !is IFF) { throw IllegalTacticException() }
+			if (fml !is IFF) throw IllegalTacticException()
 			val leftSequent = sequent.copy(
 				conclusions = sequent.conclusions - fml + IMPLIES(fml.leftFml, fml.rightFml)
 			)
