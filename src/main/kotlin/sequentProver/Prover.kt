@@ -21,21 +21,21 @@ fun Node.completeProof(substitution: Substitution) {
 		applyData = AXIOM.ApplyData
 		child = null
 	}
-	when(val oldApplyData = applyData) {
+	when (val oldApplyData = applyData) {
 		AXIOM.ApplyData, null -> {}
 		is UnaryTactic.ApplyData -> {
-			val newFml = (sequentToBeApplied.assumptions + sequentToBeApplied.conclusions)
-				.firstOrNull { it == oldApplyData.fml.replace(substitution) }
-				?: throw IllegalTacticException()
+			val newFml = (sequentToBeApplied.assumptions + sequentToBeApplied.conclusions).firstOrNull {
+				it == oldApplyData.fml.replace(substitution)
+			} ?: throw IllegalTacticException()
 			val newApplyData = oldApplyData.copy(fml = newFml)
 			applyData = newApplyData
 			child!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied)
 			child!!.completeProof(substitution)
 		}
 		is BinaryTactic.ApplyData -> {
-			val newFml = (sequentToBeApplied.assumptions + sequentToBeApplied.conclusions)
-				.firstOrNull { it == oldApplyData.fml.replace(substitution) }
-				?: throw IllegalTacticException()
+			val newFml = (sequentToBeApplied.assumptions + sequentToBeApplied.conclusions).firstOrNull {
+				it == oldApplyData.fml.replace(substitution)
+			} ?: throw IllegalTacticException()
 			val newApplyData = oldApplyData.copy(fml = newFml)
 			applyData = newApplyData
 			leftChild!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied).first
@@ -44,10 +44,9 @@ fun Node.completeProof(substitution: Substitution) {
 			rightChild!!.completeProof(substitution)
 		}
 		is FreshVarInstantiationTactic.ApplyData -> {
-			val newFml = (sequentToBeApplied.assumptions + sequentToBeApplied.conclusions)
-				.filterIsInstance<Quantified>()
-				.firstOrNull { it == oldApplyData.fml.replace(substitution) }
-				?: throw IllegalTacticException()
+			val newFml =
+				(sequentToBeApplied.assumptions + sequentToBeApplied.conclusions).filterIsInstance<Quantified>()
+					.firstOrNull { it == oldApplyData.fml.replace(substitution) } ?: throw IllegalTacticException()
 			val newApplyData = oldApplyData.copy(fml = newFml)
 			applyData = newApplyData
 			child!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied)
@@ -56,10 +55,9 @@ fun Node.completeProof(substitution: Substitution) {
 		is TermInstantiationTactic.ApplyData -> {
 			val unificationTerm = oldApplyData.term
 			val term = substitution[unificationTerm] ?: unificationTerm
-			val newFml = (sequentToBeApplied.assumptions + sequentToBeApplied.conclusions)
-				.filterIsInstance<Quantified>()
-				.firstOrNull { it == oldApplyData.fml.replace(substitution) }
-				?: throw IllegalTacticException()
+			val newFml =
+				(sequentToBeApplied.assumptions + sequentToBeApplied.conclusions).filterIsInstance<Quantified>()
+					.firstOrNull { it == oldApplyData.fml.replace(substitution) } ?: throw IllegalTacticException()
 			val newApplyData = TermInstantiationTactic.ApplyData(newFml, term)
 			applyData = newApplyData
 			child!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied)
@@ -96,14 +94,14 @@ fun Node.printProof() {
 }
  */
 
-private fun Node.getReversedProof(): List<IndependentNode> = listOf(toIndependentNode()) + when(applyData) {
+private fun Node.getReversedProof(): List<IndependentNode> = listOf(toIndependentNode()) + when (applyData) {
 	AXIOM.ApplyData, null -> emptyList()
 	is UnaryTactic.ApplyData, is TermInstantiationTactic.ApplyData, is FreshVarInstantiationTactic.ApplyData -> child!!.getReversedProof()
 	is BinaryTactic.ApplyData -> rightChild!!.getReversedProof() + leftChild!!.getReversedProof()
 }
 
 fun Node.getProofTree(): String = getReversedProof().reversed().joinToString(separator = "\n") {
-	when(it.applyData) {
+	when (it.applyData) {
 		null -> "\\Axiom$${it.sequentToBeApplied.toLatex()}$"
 		AXIOM.ApplyData -> "\\AxiomC{}\n\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\UnaryInf$${it.sequentToBeApplied.toLatex()}$"
 		is UnaryTactic.ApplyData, is FreshVarInstantiationTactic.ApplyData, is TermInstantiationTactic.ApplyData -> "\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\UnaryInf$${it.sequentToBeApplied.toLatex()}$"
@@ -111,18 +109,10 @@ fun Node.getProofTree(): String = getReversedProof().reversed().joinToString(sep
 	}
 }
 
-fun Node.getLatexOutput(proofState: ProofState): String = "\\documentclass[preview,varwidth=10000px,border=3mm]{standalone}\n" +
-		"\\usepackage{bussproofs}\n" +
-		"\\begin{document}\n" +
-		"\$${sequentToBeApplied.toLatex().replace("\\fCenter", "\\vdash").replace("""^\s\\\s""".toRegex(), "")}\$\\par\n" +
-		"$proofState\n" +
-		"\\begin{prooftree}\n" +
-		"\\def\\fCenter{\\mbox{\$\\vdash\$}}\n" +
-		getProofTree() +
-		"\n" +
-		"\\end{prooftree}\n" +
-		"\\rightline{@sequent\\_bot}\n" +
-		"\\end{document}\n"
+fun Node.getLatexOutput(proofState: ProofState): String =
+	"\\documentclass[preview,varwidth=10000px,border=3mm]{standalone}\n" + "\\usepackage{bussproofs}\n" + "\\begin{document}\n" + "\$${
+		sequentToBeApplied.toLatex().replace("\\fCenter", "\\vdash").replace("""^\s\\\s""".toRegex(), "")
+	}\$\\par\n" + "$proofState\n" + "\\begin{prooftree}\n" + "\\def\\fCenter{\\mbox{\$\\vdash\$}}\n" + getProofTree() + "\n" + "\\end{prooftree}\n" + "\\rightline{@sequent\\_bot}\n" + "\\end{document}\n"
 
 /*
 	val latexProof: String
@@ -153,7 +143,8 @@ fun Node.checkCorrectness(): Boolean = try {
 
 enum class ProofState {
 	Success, Unprovable, LoopCountFail, UnificationTermInstantiationCountFail, UnificationTimeFail, MemoryError;
-	override fun toString(): String = when(this) {
+
+	override fun toString(): String = when (this) {
 		Success -> "Provable."
 		Unprovable -> "Unprovable."
 		LoopCountFail -> "Proof Failed: too many loops."

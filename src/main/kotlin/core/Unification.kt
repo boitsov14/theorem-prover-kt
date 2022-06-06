@@ -13,12 +13,11 @@ private fun Substitution.unify(pairs: List<Pair<Term, Term>>): Substitution? {
 		} else {
 			null
 		}
-		first is Term.Function && second is Term.Function ->
-			return if (first.id == second.id && first.terms.size == second.terms.size) {
-				unify(first.terms.zip(second.terms) + pairs.drop(1))
-			} else {
-				null
-			}
+		first is Term.Function && second is Term.Function -> return if (first.id == second.id && first.terms.size == second.terms.size) {
+			unify(first.terms.zip(second.terms) + pairs.drop(1))
+		} else {
+			null
+		}
 		first is Var && second is Term.Function -> return null
 		first is Term.Function && second is Var -> return null
 		first is UnificationTerm -> {
@@ -30,9 +29,9 @@ private fun Substitution.unify(pairs: List<Pair<Term, Term>>): Substitution? {
 			if (first == newSecond) return unify(pairs.drop(1))
 			if (first in newSecond.unificationTerms) return null
 			// TODO: 2022/02/05 本当にこのfilterでよいのかチェック
-			val unificationTermShrinkMap = newSecond.unificationTerms
-				.filter { it.availableVars.size > first.availableVars.size }
-				.associateWith { UnificationTerm(it.id, first.availableVars) }
+			val unificationTermShrinkMap =
+				newSecond.unificationTerms.filter { it.availableVars.size > first.availableVars.size }
+					.associateWith { UnificationTerm(it.id, first.availableVars) }
 			if (!first.availableVars.containsAll(newSecond.replace(unificationTermShrinkMap).freeVars)) return null
 			return (this + (first to newSecond) + unificationTermShrinkMap).unify(pairs.drop(1))
 		}
@@ -41,7 +40,8 @@ private fun Substitution.unify(pairs: List<Pair<Term, Term>>): Substitution? {
 	}
 }
 
-fun getSubstitution(substitutionsList: List<List<Substitution>>): Substitution? = emptyMap<UnificationTerm, Term>().getSubstitution(substitutionsList)
+fun getSubstitution(substitutionsList: List<List<Substitution>>): Substitution? =
+	emptyMap<UnificationTerm, Term>().getSubstitution(substitutionsList)
 
 private fun Substitution.getSubstitution(substitutionsList: List<List<Substitution>>): Substitution? {
 	var index = 0
@@ -65,4 +65,5 @@ private fun Substitution.getSubstitution(substitutionsList: List<List<Substituti
 }
 
 fun Substitution.getCompleteSubstitution(): Substitution =
-	this.toList().mapIndexed { index, pair -> pair.first to pair.second.replace(this.toList().drop(index + 1).toMap()) }.toMap()
+	this.toList().mapIndexed { index, pair -> pair.first to pair.second.replace(this.toList().drop(index + 1).toMap()) }
+		.toMap()

@@ -3,7 +3,7 @@ package core
 import core.Formula.*
 import core.Term.*
 
-class FormulaParserException(message: String): Exception(message)
+class FormulaParserException(message: String) : Exception(message)
 
 fun String.parseToFormula(): Formula = this.trimWhiteSpaces().tokenize().toReversePolishNotation().getFormula()
 
@@ -22,25 +22,33 @@ fun String.parseToFormula(): Formula {
 */
 
 private sealed interface Token {
-	object LP: Token
-	object RP: Token
-	sealed interface Operator: Token {
+	object LP : Token
+	object RP : Token
+	sealed interface Operator : Token {
 		val precedence: Int
-		enum class Binary(override val precedence: Int): Operator {
-			AND(3),
-			OR(2),
-			IMPLIES(1),
-			IFF(0)
+
+		enum class Binary(override val precedence: Int) : Operator {
+			AND(3), OR(2), IMPLIES(1), IFF(0)
 		}
-		sealed interface Unary: Operator {
-			object NOT: Unary {	override val precedence = 4 }
-			data class ALL(val bddVar: Var): Unary { override val precedence = 4 }
-			data class EXISTS(val bddVar: Var): Unary { override val precedence = 4 }
+
+		sealed interface Unary : Operator {
+			object NOT : Unary {
+				override val precedence = 4
+			}
+
+			data class ALL(val bddVar: Var) : Unary {
+				override val precedence = 4
+			}
+
+			data class EXISTS(val bddVar: Var) : Unary {
+				override val precedence = 4
+			}
 		}
 	}
-	data class PREDICATE(val id: String, val terms: List<Term>): Token
-	object FALSE: Token
-	object TRUE: Token
+
+	data class PREDICATE(val id: String, val terms: List<Term>) : Token
+	object FALSE : Token
+	object TRUE : Token
 }
 
 fun String.toOneLetter(): String {
@@ -56,8 +64,34 @@ private val oneLetterMap = mapOf(
 	"¬" to setOf("\\lnot ", "lnot ", "not ", "~", "negation ", "\\neg ", "neg ", "￢"),
 	"∧" to setOf(" \\land ", " and ", "/\\", "&&", "&", "＆", "\\wedge", "wedge"),
 	"∨" to setOf(" \\or ", " or ", "\\/", "||", "|", "｜", "\\vee", "vee"),
-	"↔" to setOf(" \\iff ", " iff ", "<-->", "<==>", "<->", "<=>", "if and only if", " \\leftrightarrow ", "leftrightarrow", "equiv", "equivalent", "⇔", "≡"),
-	"→" to setOf(" \\to ", " implies ", "-->", "==>", "->", "=>", " to ", " imply ", " \\rightarrow ", "rightarrow", "⇒"),
+	"↔" to setOf(
+		" \\iff ",
+		" iff ",
+		"<-->",
+		"<==>",
+		"<->",
+		"<=>",
+		"if and only if",
+		" \\leftrightarrow ",
+		"leftrightarrow",
+		"equiv",
+		"equivalent",
+		"⇔",
+		"≡"
+	),
+	"→" to setOf(
+		" \\to ",
+		" implies ",
+		"-->",
+		"==>",
+		"->",
+		"=>",
+		" to ",
+		" imply ",
+		" \\rightarrow ",
+		"rightarrow",
+		"⇒"
+	),
 	"∀" to setOf("\\forall ", "forall ", "all "),
 	"∃" to setOf("\\exists ", "exists ", "ex "),
 	"(" to setOf("（"),
@@ -65,12 +99,9 @@ private val oneLetterMap = mapOf(
 	" " to setOf("　")
 )
 
-private fun String.trimWhiteSpaces(): String = this
-	.replace("\\s*[(]\\s*".toRegex(), "(")
-	.replace("\\s*[)]\\s*".toRegex(), ")")
-	.replace("\\s*[,]\\s*".toRegex(), ",")
-	.replace("[∀]\\s*".toRegex(), "∀")
-	.replace("[∃]\\s*".toRegex(), "∃")
+private fun String.trimWhiteSpaces(): String =
+	this.replace("\\s*[(]\\s*".toRegex(), "(").replace("\\s*[)]\\s*".toRegex(), ")")
+		.replace("\\s*[,]\\s*".toRegex(), ",").replace("[∀]\\s*".toRegex(), "∀").replace("[∃]\\s*".toRegex(), "∃")
 
 @OptIn(ExperimentalStdlibApi::class)
 private fun String.getIdEndPos(startPos: Int): Int {
@@ -93,7 +124,7 @@ private fun String.getParenthesisEndPos(startPos: Int): Int? {
 	var counter = 0
 	var pos = startPos
 	while (pos < this.length) {
-		when(this[pos]) {
+		when (this[pos]) {
 			'(' -> counter++
 			')' -> counter--
 		}
@@ -111,7 +142,8 @@ private fun String.toTerms(): List<Term> {
 	val idEndPos = this.getIdEndPos(0)
 	val id = this.substring(0, idEndPos + 1)
 	if (idEndPos + 1 < this.length && this[idEndPos + 1] == '(') {
-		val parenthesisEndPos = this.getParenthesisEndPos(idEndPos + 1) ?: throw FormulaParserException("Parenthesis Error.")
+		val parenthesisEndPos =
+			this.getParenthesisEndPos(idEndPos + 1) ?: throw FormulaParserException("Parenthesis Error.")
 		val operandTermsStr = this.substring(idEndPos + 2, parenthesisEndPos)
 		val operandTerms = operandTermsStr.toTerms()
 		firstTerm = Function(id, operandTerms)
@@ -133,7 +165,7 @@ private fun String.tokenize(): List<Token> {
 	val tokens = mutableListOf<Token>()
 	var index = 0
 	while (index < this.length) {
-		when(this[index]) {
+		when (this[index]) {
 			' ' -> {}
 			'(' -> tokens.add(Token.LP)
 			')' -> tokens.add(Token.RP)
@@ -162,12 +194,13 @@ private fun String.tokenize(): List<Token> {
 				tokens.add(Token.Operator.Unary.EXISTS(bddVar))
 				index = endPos
 			}
-			in ('A'..'Z')+('a'..'z') -> {
+			in ('A'..'Z') + ('a'..'z') -> {
 				val idEndPos = this.getIdEndPos(index)
 				val id = this.substring(index, idEndPos + 1)
 				index = idEndPos
 				if (index + 1 < this.length && this[index + 1] == '(') {
-					val parenthesisEndPos = this.getParenthesisEndPos(index + 1) ?: throw FormulaParserException("Parenthesis Error.")
+					val parenthesisEndPos =
+						this.getParenthesisEndPos(index + 1) ?: throw FormulaParserException("Parenthesis Error.")
 					val termsStr = this.substring(index + 2, parenthesisEndPos)
 					val terms = termsStr.toTerms()
 					tokens.add(Token.PREDICATE(id, terms))
@@ -187,9 +220,9 @@ private fun List<Token>.toReversePolishNotation(): List<Token> {
 	val outputTokens = ArrayDeque<Token>()
 	val stack = mutableListOf<Token>()
 	for (token in this) {
-		when(token) {
+		when (token) {
 			Token.FALSE -> outputTokens.add(token)
-			Token.TRUE 	-> outputTokens.add(token)
+			Token.TRUE -> outputTokens.add(token)
 			is Token.PREDICATE -> outputTokens.add(token)
 			Token.LP -> stack.add(token)
 			Token.RP -> {
@@ -203,9 +236,7 @@ private fun List<Token>.toReversePolishNotation(): List<Token> {
 			}
 			is Token.Operator.Unary -> stack.add(token)
 			is Token.Operator.Binary -> {
-				while (stack.isNotEmpty()
-					&& stack.last() is Token.Operator
-					&& token.precedence < (stack.last() as Token.Operator).precedence) {
+				while (stack.isNotEmpty() && stack.last() is Token.Operator && token.precedence < (stack.last() as Token.Operator).precedence) {
 					outputTokens.add(stack.removeLast())
 				}
 				stack.add(token)
@@ -222,16 +253,16 @@ private fun List<Token>.toReversePolishNotation(): List<Token> {
 private fun List<Token>.getFormula(): Formula {
 	val stack = mutableListOf<Formula>()
 	for (token in this) {
-		when(token) {
+		when (token) {
 			Token.FALSE -> stack.add(FALSE)
-			Token.TRUE 	-> stack.add(TRUE)
+			Token.TRUE -> stack.add(TRUE)
 			is Token.PREDICATE -> stack.add(PREDICATE(token.id, token.terms))
 			is Token.Operator.Unary -> {
 				if (stack.isEmpty()) {
 					throw FormulaParserException("Parse Error.")
 				}
 				val fml = stack.removeLast()
-				when(token) {
+				when (token) {
 					Token.Operator.Unary.NOT -> stack.add(NOT(fml))
 					is Token.Operator.Unary.ALL -> {
 						try {
@@ -264,11 +295,11 @@ private fun List<Token>.getFormula(): Formula {
 				val rightFml = stack.removeLast()
 				val leftFml = stack.removeLast()
 				stack.add(
-					when(token) {
-						Token.Operator.Binary.AND 		-> AND(leftFml, rightFml)
-						Token.Operator.Binary.OR 		-> OR(leftFml, rightFml)
-						Token.Operator.Binary.IMPLIES 	-> IMPLIES(leftFml, rightFml)
-						Token.Operator.Binary.IFF 		-> IFF(leftFml, rightFml)
+					when (token) {
+						Token.Operator.Binary.AND -> AND(leftFml, rightFml)
+						Token.Operator.Binary.OR -> OR(leftFml, rightFml)
+						Token.Operator.Binary.IMPLIES -> IMPLIES(leftFml, rightFml)
+						Token.Operator.Binary.IFF -> IFF(leftFml, rightFml)
 					}
 				)
 			}

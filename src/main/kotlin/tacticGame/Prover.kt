@@ -3,10 +3,11 @@ package tacticGame
 import core.Formula.*
 import tacticGame.Tactic0.*
 import tacticGame.Tactic1WithFml.*
+
 // import tacticGame.Tactic1WithVar.*
 // import tacticGame.Tactic2WithVar.*
 
-class UnableToProveException: Exception()
+class UnableToProveException : Exception()
 
 fun applyBasicTactic(goal: Goal): IApplyData = when {
 	ASSUMPTION.canApply(goal) -> {
@@ -27,8 +28,9 @@ fun applyBasicTactic(goal: Goal): IApplyData = when {
 	}
 	HAVE_IMPLIES.canApply(goal) -> {
 		// TODO: 2021/11/30 (a to b) to c, a to b, a のようなときに先にa to bされると渋い？
-		val assumption = HAVE_IMPLIES.availableAssumptions(goal).sortedWith(compareBy { it.toString().length }).reversed().first()
-		Tactic1WithFml.ApplyData(HAVE_IMPLIES,assumption)
+		val assumption =
+			HAVE_IMPLIES.availableAssumptions(goal).sortedWith(compareBy { it.toString().length }).reversed().first()
+		Tactic1WithFml.ApplyData(HAVE_IMPLIES, assumption)
 	}
 	CASES_AND.canApply(goal) -> {
 		val assumption = CASES_AND.availableAssumptions(goal).first()

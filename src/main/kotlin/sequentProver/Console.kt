@@ -22,7 +22,7 @@ fun Node.prove(
 	var totalUnificationTime = 0L
 
 	val nodes = mutableListOf(this)
-	val substitution = mutableMapOf<UnificationTerm,Term>()
+	val substitution = mutableMapOf<UnificationTerm, Term>()
 	val allUnificationTerms = mutableSetOf<UnificationTerm>()
 	val proofState: ProofState
 
@@ -102,8 +102,9 @@ fun Node.prove(
 		}
 
 		if (nodes.all {
-				it.sequentToBeApplied.assumptions.filterIsInstance<ALL>().isEmpty()
-						&& it.sequentToBeApplied.conclusions.filterIsInstance<EXISTS>().isEmpty() }) {
+				it.sequentToBeApplied.assumptions.filterIsInstance<ALL>()
+					.isEmpty() && it.sequentToBeApplied.conclusions.filterIsInstance<EXISTS>().isEmpty()
+			}) {
 			if (printBasicInfo) println("UNPROVABLE")
 			proofState = Unprovable
 			break
@@ -123,7 +124,7 @@ fun Node.prove(
 			val unificationTime = measureTimeMillis {
 				siblingSubstitution = getSubstitution(siblingSubstitutionsList)
 			}
-			if (printBasicInfo)	println("Unification try: $unificationTime ms")
+			if (printBasicInfo) println("Unification try: $unificationTime ms")
 			totalUnificationTime += unificationTime
 			if (siblingSubstitution == null) continue
 			//val siblingSubstitution = getSubstitution(siblingSubstitutionsList) ?: continue
@@ -137,9 +138,11 @@ fun Node.prove(
 
 		for ((index, node) in nodes.withIndex()) {
 			val sequentToBeApplied = node.sequentToBeApplied
-			val fml = TermInstantiationTactic.ALL_LEFT.getAvailableFml(sequentToBeApplied, unificationTermInstantiationMaxCount)
-				?: TermInstantiationTactic.EXISTS_RIGHT.getAvailableFml(sequentToBeApplied, unificationTermInstantiationMaxCount)
-				?: continue
+			val fml = TermInstantiationTactic.ALL_LEFT.getAvailableFml(
+				sequentToBeApplied, unificationTermInstantiationMaxCount
+			) ?: TermInstantiationTactic.EXISTS_RIGHT.getAvailableFml(
+				sequentToBeApplied, unificationTermInstantiationMaxCount
+			) ?: continue
 			val availableVars = sequentToBeApplied.freeVars.ifEmpty { setOf(fml.bddVar) }
 			val unificationTerm = UnificationTerm(unificationTermIndex, availableVars)
 			val applyData = TermInstantiationTactic.ApplyData(fml, unificationTerm)
@@ -156,7 +159,7 @@ fun Node.prove(
 		}
 
 		if (unificationTermInstantiationMaxCount == unificationTermInstantiationMaxCountMax) {
-			if (printBasicInfo)	println("PROOF FAILED: PROOF IS TOO LONG OR UNPROVABLE")
+			if (printBasicInfo) println("PROOF FAILED: PROOF IS TOO LONG OR UNPROVABLE")
 			proofState = UnificationTermInstantiationCountFail
 			break
 		}
@@ -175,8 +178,8 @@ fun Node.prove(
 		println("loop count: $count")
 	}
 
-	if (printBasicInfo)	println("Complete Proof Start... ")
-	val completeProofTime = measureTimeMillis{
+	if (printBasicInfo) println("Complete Proof Start... ")
+	val completeProofTime = measureTimeMillis {
 		val remainedSubstitution = allUnificationTerms.subtract(substitution.keys).associateWith { Dummy }
 		val completeSubstitution = if (nodes.isEmpty()) {
 			(substitution + remainedSubstitution).getCompleteSubstitution()
@@ -186,7 +189,7 @@ fun Node.prove(
 		this.completeProof(completeSubstitution)
 		if (printBasicInfo) (completeSubstitution).forEach { println(it) }
 	}
-	if (printBasicInfo)	println("Completed in $completeProofTime ms")
+	if (printBasicInfo) println("Completed in $completeProofTime ms")
 
 	return proofState
 

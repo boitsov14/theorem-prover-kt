@@ -56,7 +56,9 @@ fun letMeProve(firstGoals: Goals) {
 	val history = mutableListOf<IApplyData>()
 	while (true) {
 		val goals = history.applyTactics(firstGoals)
-		if (goals.isEmpty()) { break }
+		if (goals.isEmpty()) {
+			break
+		}
 		println("--------------------------------------")
 		printGoals(goals)
 		val goal = goals.first()
@@ -68,7 +70,7 @@ fun letMeProve(firstGoals: Goals) {
 			history.removeLast()
 			continue
 		}
-		when(val tactic = goal.applicableTactics().find { "$it" == tacticStr }!!) {
+		when (val tactic = goal.applicableTactics().find { "$it" == tacticStr }!!) {
 			is Tactic0 -> {
 				history.add(Tactic0.ApplyData(tactic))
 				if (tactic == USE_WITHOUT_FREE_VARS) {
@@ -151,7 +153,7 @@ fun printHistory(firstGoals: Goals, history: History) {
 	}
 }
 
-fun IApplyData.getString(): String = when(this) {
+fun IApplyData.getString(): String = when (this) {
 	is Tactic0.ApplyData -> "${this.tactic}"
 	is Tactic1WithFml.ApplyData -> "${this.tactic} ${this.assumption}"
 	is Tactic1WithVar.ApplyData -> "${this.tactic} ${this.freeVar}"

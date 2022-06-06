@@ -7,7 +7,7 @@ private fun String.toFormulas(): Set<Formula> {
 	var counter = 0
 	var startPos = 0
 	for ((index, chr) in this.withIndex()) {
-		when(chr) {
+		when (chr) {
 			'(' -> counter++
 			')' -> counter--
 			',' -> {
