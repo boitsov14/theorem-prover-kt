@@ -37,9 +37,7 @@ sealed class Formula {
 	}
 
 	data class ALL(
-		override val bddVar: Var,
-		override val operandFml: Formula,
-		val unificationTermInstantiationCount: Int = 0
+		override val bddVar: Var, override val operandFml: Formula, val unificationTermInstantiationCount: Int = 0
 	) : Quantified() {
 		init {
 			if (bddVar in operandFml.bddVars) {
@@ -55,9 +53,7 @@ sealed class Formula {
 	}
 
 	data class EXISTS(
-		override val bddVar: Var,
-		override val operandFml: Formula,
-		val unificationTermInstantiationCount: Int = 0
+		override val bddVar: Var, override val operandFml: Formula, val unificationTermInstantiationCount: Int = 0
 	) : Quantified() {
 		init {
 			if (bddVar in operandFml.bddVars) {
@@ -76,9 +72,7 @@ sealed class Formula {
 		TRUE -> "true"
 		FALSE -> "false"
 		is PREDICATE -> id + if (terms.isNotEmpty()) terms.joinToString(
-			separator = ",",
-			prefix = "(",
-			postfix = ")"
+			separator = ",", prefix = "(", postfix = ")"
 		) else ""
 		is NOT -> "¬${operandFml.recToString()}"
 		is AND -> {
@@ -215,8 +209,7 @@ sealed class Formula {
 		is AND -> AND(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
 		is OR -> OR(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
 		is IMPLIES -> IMPLIES(
-			leftFml.replace(oldUnificationTerm, newTerm),
-			rightFml.replace(oldUnificationTerm, newTerm)
+			leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm)
 		)
 		is IFF -> IFF(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
 		is ALL -> {
@@ -249,5 +242,39 @@ sealed class Formula {
 		var result = this
 		substitution.forEach { (key, value) -> result = result.replace(key, value) }
 		return result
+	}
+
+	// TODO: 2022/06/06 internalとは?
+	internal fun simplify0(): Formula = when (this) {
+		NOT(FALSE) -> TRUE
+		NOT(TRUE) -> FALSE
+		is NOT -> if (operandFml is NOT) operandFml.operandFml else this
+		is AND -> if (leftFml == FALSE || rightFml == FALSE) FALSE
+		else if (leftFml == TRUE) rightFml
+		else if (rightFml == TRUE) leftFml
+		else this
+		is OR -> if (leftFml == TRUE || rightFml == TRUE) TRUE
+		else if (leftFml == FALSE) rightFml
+		else if (rightFml == FALSE) leftFml
+		else this
+		is IMPLIES -> if (leftFml == FALSE || rightFml == TRUE) TRUE
+		else if (leftFml == TRUE) rightFml
+		else if (rightFml == FALSE) NOT(leftFml)
+		else this
+		is IFF -> if (leftFml == TRUE) rightFml
+		else if (rightFml == TRUE) leftFml
+		else if (leftFml == FALSE) NOT(rightFml)
+		else if (rightFml == FALSE) NOT(leftFml)
+		else this
+		else -> this
+	}
+
+	fun simplify(): Formula = when (this) {
+		is NOT -> NOT(operandFml.simplify()).simplify0()
+		is AND -> AND(leftFml.simplify(), rightFml.simplify()).simplify0()
+		is OR -> OR(leftFml.simplify(), rightFml.simplify()).simplify0()
+		is IMPLIES -> IMPLIES(leftFml.simplify(), rightFml.simplify()).simplify0()
+		is IFF -> IFF(leftFml.simplify(), rightFml.simplify()).simplify0()
+		else -> this
 	}
 }
