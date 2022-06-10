@@ -5,7 +5,8 @@ import core.Term.*
 
 class FormulaParserException(message: String) : Exception(message)
 
-fun String.parseToFormula(): Formula = this.trimWhiteSpaces().tokenize().toReversePolishNotation().getFormula()
+fun String.parseToFormula(): Formula =
+	this.toOneLetter().trimWhiteSpaces().tokenize().toReversePolishNotation().getFormula()
 
 /*
 fun String.parseToFormula(): Formula {
@@ -58,21 +59,22 @@ fun String.toOneLetter(): String {
 }
 
 private val oneLetterMap = mapOf(
+	" " to setOf("　"),
 	"⊢" to setOf("\\vdash", "vdash", "proves", "|-", "├", "┣"),
-	"T" to setOf("true", "tautology", "top"),
+	"⊤" to setOf("true", "tautology", "top"),
 	"⊥" to setOf("false", "contradiction", "bottom", "bot"),
-	"¬" to setOf("\\lnot ", "lnot ", "not ", "~", "negation ", "\\neg ", "neg ", "￢"),
-	"∧" to setOf(" \\land ", " and ", "/\\", "&&", "&", "＆", "\\wedge", "wedge"),
-	"∨" to setOf(" \\or ", " or ", "\\/", "||", "|", "｜", "\\vee", "vee"),
+	"¬" to setOf("\\lnot", "lnot", "not", "~", "negation", "\\neg", "neg", "￢"),
+	"∧" to setOf("\\land", "and", "/\\", "&&", "&", "＆", "\\wedge", "wedge"),
+	"∨" to setOf("\\or", "or", "\\/", "||", "|", "｜", "\\vee", "vee"),
 	"↔" to setOf(
-		" \\iff ",
-		" iff ",
+		"\\iff",
+		"iff",
 		"<-->",
 		"<==>",
 		"<->",
 		"<=>",
 		"if and only if",
-		" \\leftrightarrow ",
+		"\\leftrightarrow",
 		"leftrightarrow",
 		"equiv",
 		"equivalent",
@@ -80,33 +82,22 @@ private val oneLetterMap = mapOf(
 		"≡"
 	),
 	"→" to setOf(
-		" \\to ",
-		" implies ",
-		"-->",
-		"==>",
-		"->",
-		"=>",
-		" to ",
-		" imply ",
-		" \\rightarrow ",
-		"rightarrow",
-		"⇒"
+		"\\to", "implies", "-->", "==>", "->", "=>", "to", "imply", "\\rightarrow", "rightarrow", "⇒"
 	),
 	"∀" to setOf("\\forall ", "forall ", "all "),
 	"∃" to setOf("\\exists ", "exists ", "ex "),
 	"(" to setOf("（"),
-	")" to setOf("）"),
-	" " to setOf("　")
+	")" to setOf("）")
 )
 
 private fun String.trimWhiteSpaces(): String =
-	this.replace("\\s*[(]\\s*".toRegex(), "(").replace("\\s*[)]\\s*".toRegex(), ")")
-		.replace("\\s*[,]\\s*".toRegex(), ",").replace("[∀]\\s*".toRegex(), "∀").replace("[∃]\\s*".toRegex(), "∃")
+	this.replace("\\s*[(]\\s*".toRegex(), "(").replace("\\s*[)]\\s*".toRegex(), ")").replace("\\s*,\\s*".toRegex(), ",")
+		.replace("∀\\s*".toRegex(), "∀").replace("∃\\s*".toRegex(), "∃")
 
 @OptIn(ExperimentalStdlibApi::class)
 private fun String.getIdEndPos(startPos: Int): Int {
 	if (!(this[startPos].isLetter())) throw FormulaParserException("Illegal Argument: '${this[startPos]}'")
-	val regex = "[a-zA-Z0-9]+".toRegex()
+	val regex = "[a-zA-Z\\d]+".toRegex()
 	val str = regex.matchAt(this, startPos)!!.value
 	return startPos + str.length - 1
 }
@@ -114,7 +105,7 @@ private fun String.getIdEndPos(startPos: Int): Int {
 @OptIn(ExperimentalStdlibApi::class)
 private fun String.getBddVarIdEndPos(startPos: Int): Int {
 	if (!(this[startPos].isLetter())) throw FormulaParserException("Illegal Argument: '${this[startPos]}'")
-	val regex = "[a-zA-Z][0-9]*".toRegex()
+	val regex = "[a-zA-Z]\\d*".toRegex()
 	val str = regex.matchAt(this, startPos)!!.value
 	return startPos + str.length - 1
 }
