@@ -118,7 +118,8 @@ fun Node.prove(
 
 		val siblingNodesList = nodes.groupBy { it.siblingLabel }.minus(null).values
 		for (siblingNodes in siblingNodesList) {
-			val siblingSubstitutionsList = siblingNodes.map { it.sequentToBeApplied }.map { it.getSubstitutions() }
+			val siblingSubstitutionsList =
+				siblingNodes.map { it.sequentToBeApplied }.map { it.getSubstitutions() }.sortedBy { it.size }
 			if (siblingSubstitutionsList.any { it.isEmpty() }) continue
 			val siblingSubstitution: Substitution?
 			val unificationTime = measureTimeMillis {
@@ -187,7 +188,7 @@ fun Node.prove(
 			substitution.getCompleteSubstitution()
 		}
 		this.completeProof(completeSubstitution)
-		if (printBasicInfo) (completeSubstitution).forEach { println(it) }
+		if (printBasicInfo) completeSubstitution.forEach { println(it) }
 	}
 	if (printBasicInfo) println("Completed in $completeProofTime ms")
 
