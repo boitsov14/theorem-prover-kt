@@ -277,4 +277,133 @@ sealed class Formula {
 		is IFF -> IFF(leftFml.simplify(), rightFml.simplify()).simplify0()
 		else -> this
 	}
+
+	private fun negate(): Formula = if (this is NOT) operandFml else NOT(this)
+
+	internal fun nnf0(): Formula = when (this) {
+		is NOT -> when (operandFml) {
+			is NOT -> operandFml.operandFml.nnf0()
+			is AND -> OR(NOT(operandFml.leftFml).nnf0(), NOT(operandFml.rightFml).nnf0())
+			is OR -> AND(NOT(operandFml.leftFml).nnf0(), NOT(operandFml.rightFml).nnf0())
+			is IMPLIES -> AND(operandFml.leftFml.nnf0(), NOT(operandFml.rightFml).nnf0())
+			is IFF -> OR(
+				AND(operandFml.leftFml.nnf0(), NOT(operandFml.rightFml).nnf0()),
+				AND(NOT(operandFml.leftFml).nnf0(), operandFml.rightFml.nnf0())
+			)
+			else -> this
+		}
+		is AND -> AND(leftFml.nnf0(), rightFml.nnf0())
+		is OR -> OR(leftFml.nnf0(), rightFml.nnf0())
+		is IMPLIES -> OR(NOT(leftFml).nnf0(), rightFml.nnf0())
+		is IFF -> OR(AND(leftFml.nnf0(), rightFml.nnf0()), AND(NOT(leftFml).nnf0(), NOT(rightFml).nnf0()))
+		else -> this
+	}
+
+	fun nnf(): Formula = simplify().nnf0()
+
+	internal fun nenf0(): Formula = when (this) {
+		is NOT -> when (operandFml) {
+			is NOT -> operandFml.operandFml.nenf0()
+			is AND -> OR(NOT(operandFml.leftFml).nenf0(), NOT(operandFml.rightFml).nenf0())
+			is OR -> AND(NOT(operandFml.leftFml).nenf0(), NOT(operandFml.rightFml).nenf0())
+			is IMPLIES -> AND(operandFml.leftFml.nenf0(), NOT(operandFml.rightFml).nenf0())
+			is IFF -> IFF(operandFml.leftFml.nenf0(), NOT(operandFml.rightFml).nenf0())
+			else -> this
+		}
+		is AND -> AND(leftFml.nenf0(), rightFml.nenf0())
+		is OR -> OR(leftFml.nenf0(), rightFml.nenf0())
+		is IMPLIES -> OR(NOT(leftFml).nenf0(), rightFml.nenf0())
+		is IFF -> IFF(leftFml.nenf0(), rightFml.nenf0())
+		else -> this
+	}
+
+	fun nenf(): Formula = simplify().nenf0()
+
+	fun pureDNF(): Set<Set<Formula>> = when (this) {
+		is AND -> distribute(leftFml.pureDNF(), rightFml.pureDNF())
+		is OR -> leftFml.pureDNF() + rightFml.pureDNF()
+		else -> setOf(setOf(this))
+	}
+
+	fun simpleDNF(): Set<Set<Formula>> = when (this) {
+		TRUE -> setOf(emptySet())
+		FALSE -> emptySet()
+		else -> {
+			val disjunctions = nnf().pureDNF().filterNot { isTrivial(it) }
+			disjunctions.filter { d -> disjunctions.none { d0 -> d.containsAll(d0) && d0 != d } }.toSet()
+		}
+	}
+
+	fun pureCNF(): Set<Set<Formula>> = when (this) {
+		is AND -> leftFml.pureCNF() + rightFml.pureCNF()
+		is OR -> distribute(leftFml.pureCNF(), rightFml.pureCNF())
+		else -> setOf(setOf(this))
+	}
+
+	fun simpleCNF(): Set<Set<Formula>> = when (this) {
+		TRUE -> emptySet()
+		FALSE -> setOf(emptySet())
+		else -> {
+			val conjunctions = nnf().pureCNF().filterNot { isTrivial(it) }
+			conjunctions.filter { d -> conjunctions.none { d0 -> d.containsAll(d0) && d0 != d } }.toSet()
+		}
+	}
+
+	fun mainCNF(defs: Map<Formula, PREDICATE>, n: Int): Triple<Formula, Map<Formula, PREDICATE>, Int> = when (this) {
+		is AND -> {
+			val (fml0, defs0, n0) = leftFml.mainCNF(defs, n)
+			val (fml1, defs1, n1) = rightFml.mainCNF(defs0, n0)
+			val fml = AND(fml0, fml1)
+			if (fml in defs1.keys) {
+				Triple(defs1[fml]!!, defs1, n1)
+			} else {
+				val atom = PREDICATE("Def_$n1", emptyList())
+				val newDefs = defs1 + (fml to atom)
+				Triple(atom, newDefs, n1 + 1)
+			}
+		}
+		is OR -> {
+			val (fml0, defs0, n0) = leftFml.mainCNF(defs, n)
+			val (fml1, defs1, n1) = rightFml.mainCNF(defs0, n0)
+			val fml = OR(fml0, fml1)
+			if (fml in defs1.keys) {
+				Triple(defs1[fml]!!, defs1, n1)
+			} else {
+				val atom = PREDICATE("Def_$n1", emptyList())
+				val newDefs = defs1 + (fml to atom)
+				Triple(atom, newDefs, n1 + 1)
+			}
+		}
+		is IFF -> {
+			val (fml0, defs0, n0) = leftFml.mainCNF(defs, n)
+			val (fml1, defs1, n1) = rightFml.mainCNF(defs0, n0)
+			val fml = IFF(fml0, fml1)
+			if (fml in defs1.keys) {
+				Triple(defs1[fml]!!, defs1, n1)
+			} else {
+				val atom = PREDICATE("Def_$n1", emptyList())
+				val newDefs = defs1 + (fml to atom)
+				Triple(atom, newDefs, n1 + 1)
+			}
+		}
+		else -> Triple(this, defs, n)
+	}
 }
+
+private fun distribute(fmlsSet0: Set<Set<Formula>>, fmlsSet1: Set<Set<Formula>>): Set<Set<Formula>> {
+	val result = mutableSetOf<Set<Formula>>()
+	for (fmls0 in fmlsSet0) {
+		for (fmls1 in fmlsSet1) {
+			result.add(fmls0 + fmls1)
+		}
+	}
+	return result
+}
+
+fun isTrivial(fmls: Set<Formula>) =
+	(fmls.filterIsInstance<Formula.NOT>().map { it.operandFml }.toSet() intersect fmls.filter { it !is Formula.NOT }
+		.toSet()).isNotEmpty()
+
+fun Iterable<Formula>.makeConjunction(): Formula = reduceOrNull { conj, fml -> Formula.AND(conj, fml) } ?: Formula.TRUE
+
+fun Iterable<Formula>.makeDisjunction(): Formula = reduceOrNull { conj, fml -> Formula.OR(conj, fml) } ?: Formula.FALSE
