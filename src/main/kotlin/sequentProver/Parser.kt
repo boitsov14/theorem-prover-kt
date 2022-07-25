@@ -34,12 +34,12 @@ fun String.parseToSequent(): Sequent {
 		}
 		1 -> {
 			val strList = str.split("⊢")
-			val assumptions = if (strList[0].isNotEmpty()) {
+			val assumptions = if (strList[0].trim().isNotEmpty()) {
 				strList[0].toFormulas()
 			} else {
 				emptySet()
 			}
-			val conclusions = if (strList[1].isNotEmpty()) {
+			val conclusions = if (strList[1].trim().isNotEmpty()) {
 				strList[1].toFormulas()
 			} else {
 				emptySet()
