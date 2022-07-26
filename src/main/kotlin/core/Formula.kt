@@ -244,7 +244,7 @@ sealed class Formula {
 		return result
 	}
 
-	// TODO: 2022/06/06 internalとは?
+	// TODO: 2022/07/21 check the errata!
 	internal fun simplify0(): Formula = when (this) {
 		NOT(FALSE) -> TRUE
 		NOT(TRUE) -> FALSE
@@ -269,7 +269,7 @@ sealed class Formula {
 		else -> this
 	}
 
-	fun simplify(): Formula = when (this) {
+	internal fun simplify(): Formula = when (this) {
 		is NOT -> NOT(operandFml.simplify()).simplify0()
 		is AND -> AND(leftFml.simplify(), rightFml.simplify()).simplify0()
 		is OR -> OR(leftFml.simplify(), rightFml.simplify()).simplify0()
@@ -280,114 +280,156 @@ sealed class Formula {
 
 	private fun negate(): Formula = if (this is NOT) operandFml else NOT(this)
 
-	internal fun nnf0(): Formula = when (this) {
+	internal fun pureNNF(): Formula = when (this) {
 		is NOT -> when (operandFml) {
-			is NOT -> operandFml.operandFml.nnf0()
-			is AND -> OR(NOT(operandFml.leftFml).nnf0(), NOT(operandFml.rightFml).nnf0())
-			is OR -> AND(NOT(operandFml.leftFml).nnf0(), NOT(operandFml.rightFml).nnf0())
-			is IMPLIES -> AND(operandFml.leftFml.nnf0(), NOT(operandFml.rightFml).nnf0())
+			is NOT -> operandFml.operandFml.pureNNF()
+			is AND -> OR(NOT(operandFml.leftFml).pureNNF(), NOT(operandFml.rightFml).pureNNF())
+			is OR -> AND(NOT(operandFml.leftFml).pureNNF(), NOT(operandFml.rightFml).pureNNF())
+			is IMPLIES -> AND(operandFml.leftFml.pureNNF(), NOT(operandFml.rightFml).pureNNF())
 			is IFF -> OR(
-				AND(operandFml.leftFml.nnf0(), NOT(operandFml.rightFml).nnf0()),
-				AND(NOT(operandFml.leftFml).nnf0(), operandFml.rightFml.nnf0())
+				AND(operandFml.leftFml.pureNNF(), NOT(operandFml.rightFml).pureNNF()),
+				AND(NOT(operandFml.leftFml).pureNNF(), operandFml.rightFml.pureNNF())
 			)
 			else -> this
 		}
-		is AND -> AND(leftFml.nnf0(), rightFml.nnf0())
-		is OR -> OR(leftFml.nnf0(), rightFml.nnf0())
-		is IMPLIES -> OR(NOT(leftFml).nnf0(), rightFml.nnf0())
-		is IFF -> OR(AND(leftFml.nnf0(), rightFml.nnf0()), AND(NOT(leftFml).nnf0(), NOT(rightFml).nnf0()))
+		is AND -> AND(leftFml.pureNNF(), rightFml.pureNNF())
+		is OR -> OR(leftFml.pureNNF(), rightFml.pureNNF())
+		is IMPLIES -> OR(NOT(leftFml).pureNNF(), rightFml.pureNNF())
+		is IFF -> OR(AND(leftFml.pureNNF(), rightFml.pureNNF()), AND(NOT(leftFml).pureNNF(), NOT(rightFml).pureNNF()))
 		else -> this
 	}
 
-	fun nnf(): Formula = simplify().nnf0()
-
-	internal fun nenf0(): Formula = when (this) {
+	internal fun efficientNNF(): Formula = when (this) {
 		is NOT -> when (operandFml) {
-			is NOT -> operandFml.operandFml.nenf0()
-			is AND -> OR(NOT(operandFml.leftFml).nenf0(), NOT(operandFml.rightFml).nenf0())
-			is OR -> AND(NOT(operandFml.leftFml).nenf0(), NOT(operandFml.rightFml).nenf0())
-			is IMPLIES -> AND(operandFml.leftFml.nenf0(), NOT(operandFml.rightFml).nenf0())
-			is IFF -> IFF(operandFml.leftFml.nenf0(), NOT(operandFml.rightFml).nenf0())
+			is NOT -> operandFml.operandFml.efficientNNF()
+			is AND -> OR(NOT(operandFml.leftFml).efficientNNF(), NOT(operandFml.rightFml).efficientNNF())
+			is OR -> AND(NOT(operandFml.leftFml).efficientNNF(), NOT(operandFml.rightFml).efficientNNF())
+			is IMPLIES -> AND(operandFml.leftFml.efficientNNF(), NOT(operandFml.rightFml).efficientNNF())
+			is IFF -> IFF(operandFml.leftFml.efficientNNF(), NOT(operandFml.rightFml).efficientNNF())
 			else -> this
 		}
-		is AND -> AND(leftFml.nenf0(), rightFml.nenf0())
-		is OR -> OR(leftFml.nenf0(), rightFml.nenf0())
-		is IMPLIES -> OR(NOT(leftFml).nenf0(), rightFml.nenf0())
-		is IFF -> IFF(leftFml.nenf0(), rightFml.nenf0())
+		is AND -> AND(leftFml.efficientNNF(), rightFml.efficientNNF())
+		is OR -> OR(leftFml.efficientNNF(), rightFml.efficientNNF())
+		is IMPLIES -> OR(NOT(leftFml).efficientNNF(), rightFml.efficientNNF())
+		is IFF -> IFF(leftFml.efficientNNF(), rightFml.efficientNNF())
 		else -> this
 	}
 
-	fun nenf(): Formula = simplify().nenf0()
-
-	fun pureDNF(): Set<Set<Formula>> = when (this) {
+	internal fun pureDNF(): Set<Set<Formula>> = when (this) {
 		is AND -> distribute(leftFml.pureDNF(), rightFml.pureDNF())
 		is OR -> leftFml.pureDNF() + rightFml.pureDNF()
 		else -> setOf(setOf(this))
 	}
 
-	fun simpleDNF(): Set<Set<Formula>> = when (this) {
+	internal fun simpleDNF(): Set<Set<Formula>> = when (this) {
 		TRUE -> setOf(emptySet())
 		FALSE -> emptySet()
 		else -> {
-			val disjunctions = nnf().pureDNF().filterNot { isTrivial(it) }
+			val disjunctions = simplify().pureNNF().pureDNF().filterNot { isTrivial(it) }
 			disjunctions.filter { d -> disjunctions.none { d0 -> d.containsAll(d0) && d0 != d } }.toSet()
 		}
 	}
 
-	fun pureCNF(): Set<Set<Formula>> = when (this) {
+	private fun pureCNF(): Set<Set<Formula>> = when (this) {
 		is AND -> leftFml.pureCNF() + rightFml.pureCNF()
 		is OR -> distribute(leftFml.pureCNF(), rightFml.pureCNF())
 		else -> setOf(setOf(this))
 	}
 
-	fun simpleCNF(): Set<Set<Formula>> = when (this) {
+	internal fun simpleCNF(): Set<Set<Formula>> = when (this) {
 		TRUE -> emptySet()
 		FALSE -> setOf(emptySet())
 		else -> {
-			val conjunctions = nnf().pureCNF().filterNot { isTrivial(it) }
+			val conjunctions = simplify().pureNNF().pureCNF().filterNot { isTrivial(it) }
 			conjunctions.filter { d -> conjunctions.none { d0 -> d.containsAll(d0) && d0 != d } }.toSet()
 		}
 	}
 
-	fun mainCNF(defs: Map<Formula, PREDICATE>, n: Int): Triple<Formula, Map<Formula, PREDICATE>, Int> = when (this) {
-		is AND -> {
-			val (fml0, defs0, n0) = leftFml.mainCNF(defs, n)
-			val (fml1, defs1, n1) = rightFml.mainCNF(defs0, n0)
-			val fml = AND(fml0, fml1)
-			if (fml in defs1.keys) {
-				Triple(defs1[fml]!!, defs1, n1)
-			} else {
-				val atom = PREDICATE("Def_$n1", emptyList())
-				val newDefs = defs1 + (fml to atom)
-				Triple(atom, newDefs, n1 + 1)
+	private fun mainCNF(defs: Map<Formula, PREDICATE>, n: Int): Triple<Formula, Map<Formula, PREDICATE>, Int> =
+		when (this) {
+			is AND -> {
+				val (fml0, defs0, n0) = leftFml.mainCNF(defs, n)
+				val (fml1, defs1, n1) = rightFml.mainCNF(defs0, n0)
+				val fml = AND(fml0, fml1)
+				if (fml in defs1.keys) {
+					Triple(defs1[fml]!!, defs1, n1)
+				} else {
+					val atom = PREDICATE("Def_$n1", emptyList())
+					val newDefs = defs1 + (fml to atom)
+					Triple(atom, newDefs, n1 + 1)
+				}
 			}
-		}
-		is OR -> {
-			val (fml0, defs0, n0) = leftFml.mainCNF(defs, n)
-			val (fml1, defs1, n1) = rightFml.mainCNF(defs0, n0)
-			val fml = OR(fml0, fml1)
-			if (fml in defs1.keys) {
-				Triple(defs1[fml]!!, defs1, n1)
-			} else {
-				val atom = PREDICATE("Def_$n1", emptyList())
-				val newDefs = defs1 + (fml to atom)
-				Triple(atom, newDefs, n1 + 1)
+			is OR -> {
+				val (fml0, defs0, n0) = leftFml.mainCNF(defs, n)
+				val (fml1, defs1, n1) = rightFml.mainCNF(defs0, n0)
+				val fml = OR(fml0, fml1)
+				if (fml in defs1.keys) {
+					Triple(defs1[fml]!!, defs1, n1)
+				} else {
+					val atom = PREDICATE("Def_$n1", emptyList())
+					val newDefs = defs1 + (fml to atom)
+					Triple(atom, newDefs, n1 + 1)
+				}
 			}
-		}
-		is IFF -> {
-			val (fml0, defs0, n0) = leftFml.mainCNF(defs, n)
-			val (fml1, defs1, n1) = rightFml.mainCNF(defs0, n0)
-			val fml = IFF(fml0, fml1)
-			if (fml in defs1.keys) {
-				Triple(defs1[fml]!!, defs1, n1)
-			} else {
-				val atom = PREDICATE("Def_$n1", emptyList())
-				val newDefs = defs1 + (fml to atom)
-				Triple(atom, newDefs, n1 + 1)
+			is IFF -> {
+				val (fml0, defs0, n0) = leftFml.mainCNF(defs, n)
+				val (fml1, defs1, n1) = rightFml.mainCNF(defs0, n0)
+				val fml = IFF(fml0, fml1)
+				if (fml in defs1.keys) {
+					Triple(defs1[fml]!!, defs1, n1)
+				} else {
+					val atom = PREDICATE("Def_$n1", emptyList())
+					val newDefs = defs1 + (fml to atom)
+					Triple(atom, newDefs, n1 + 1)
+				}
 			}
+			else -> Triple(this, defs, n)
 		}
-		else -> Triple(this, defs, n)
+
+	internal fun makeDefCNF(): Set<Set<Formula>> {
+		val (fml, defs0, _) = simplify().efficientNNF().mainCNF(emptyMap(), 0)
+		return defs0.map { (key, value) -> IFF(value, key).simpleCNF() }
+			.reduce { acc, sets -> acc + sets } + fml.simpleCNF()
 	}
+
+	private fun subCNF(defs: Map<Formula, PREDICATE>, n: Int): Triple<Formula, Map<Formula, PREDICATE>, Int> =
+		when (this) {
+			is AND -> {
+				val (fml0, defs0, n0) = leftFml.andCNF(defs, n)
+				val (fml1, defs1, n1) = rightFml.andCNF(defs0, n0)
+				Triple(AND(fml0, fml1), defs1, n1)
+			}
+			is OR -> {
+				val (fml0, defs0, n0) = leftFml.orCNF(defs, n)
+				val (fml1, defs1, n1) = rightFml.orCNF(defs0, n0)
+				Triple(OR(fml0, fml1), defs1, n1)
+			}
+			else -> throw IllegalArgumentException()
+		}
+
+	private fun orCNF(defs: Map<Formula, PREDICATE>, n: Int): Triple<Formula, Map<Formula, PREDICATE>, Int> =
+		when (this) {
+			is OR -> {
+				subCNF(defs, n)
+			}
+			else -> mainCNF(defs, n)
+		}
+
+	private fun andCNF(defs: Map<Formula, PREDICATE>, n: Int): Triple<Formula, Map<Formula, PREDICATE>, Int> =
+		when (this) {
+			is AND -> {
+				subCNF(defs, n)
+			}
+			else -> orCNF(defs, n)
+		}
+
+	fun defCNF(): Set<Set<Formula>> {
+		val (fml, defs0, _) = simplify().efficientNNF().andCNF(emptyMap(), 0)
+		return defs0.map { (key, value) -> IFF(value, key).simpleCNF() }
+			.fold(fml.simpleCNF()) { acc, sets -> acc + sets }
+	}
+
+
 }
 
 private fun distribute(fmlsSet0: Set<Set<Formula>>, fmlsSet1: Set<Set<Formula>>): Set<Set<Formula>> {
@@ -400,10 +442,12 @@ private fun distribute(fmlsSet0: Set<Set<Formula>>, fmlsSet1: Set<Set<Formula>>)
 	return result
 }
 
-fun isTrivial(fmls: Set<Formula>) =
+private fun isTrivial(fmls: Set<Formula>) =
 	(fmls.filterIsInstance<Formula.NOT>().map { it.operandFml }.toSet() intersect fmls.filter { it !is Formula.NOT }
 		.toSet()).isNotEmpty()
 
-fun Iterable<Formula>.makeConjunction(): Formula = reduceOrNull { conj, fml -> Formula.AND(conj, fml) } ?: Formula.TRUE
+private fun Iterable<Formula>.makeConjunction(): Formula =
+	reduceOrNull { conj, fml -> Formula.AND(conj, fml) } ?: Formula.TRUE
 
-fun Iterable<Formula>.makeDisjunction(): Formula = reduceOrNull { conj, fml -> Formula.OR(conj, fml) } ?: Formula.FALSE
+private fun Iterable<Formula>.makeDisjunction(): Formula =
+	reduceOrNull { conj, fml -> Formula.OR(conj, fml) } ?: Formula.FALSE
