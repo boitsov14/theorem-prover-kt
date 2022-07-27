@@ -142,10 +142,10 @@ fun Node.checkCorrectness(): Boolean = try {
  */
 
 enum class ProofState {
-	Success, Unprovable, LoopCountFail, UnificationTermInstantiationCountFail, UnificationTimeFail, MemoryError;
+	Provable, Unprovable, LoopCountFail, UnificationTermInstantiationCountFail, UnificationTimeFail, MemoryError;
 
 	override fun toString(): String = when (this) {
-		Success -> "Provable."
+		Provable -> "Provable."
 		Unprovable -> "Unprovable."
 		LoopCountFail -> "Proof Failed: too many loops."
 		UnificationTermInstantiationCountFail -> "Proof Failed: too many unification terms."
