@@ -12,11 +12,11 @@ suspend fun main(args: Array<String>) {
 
 suspend fun mainForJar(args: Array<String>) {
 	val id = args[0]
+	val sequentStr = args[1]
 	val messageFile = File("${id}_message.txt")
-	val sequentFile = File("${id}_sequent.txt")
 	// Parser
 	val sequent = try {
-		sequentFile.readText().parseToSequent()
+		sequentStr.parseToSequent()
 	} catch (e: FormulaParserException) {
 		messageFile.writeText(e.message!!)
 		return
@@ -27,7 +27,7 @@ suspend fun mainForJar(args: Array<String>) {
 	// Prover
 	val rootNode = Node(sequent, null)
 	val proofState = try {
-		withTimeout(600_000) {
+		withTimeout(300_000) {
 			rootNode.prove()
 		}
 	} catch (e: TimeoutCancellationException) {
