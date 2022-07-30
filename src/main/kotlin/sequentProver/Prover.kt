@@ -142,14 +142,11 @@ fun Node.checkCorrectness(): Boolean = try {
  */
 
 enum class ProofState {
-	Provable, Unprovable, LoopCountFail, UnificationTermInstantiationCountFail, UnificationTimeFail, MemoryError;
+	Provable, Unprovable, UnificationTermInstantiationCountFail;
 
 	override fun toString(): String = when (this) {
 		Provable -> "Provable."
 		Unprovable -> "Unprovable."
-		LoopCountFail -> "Proof Failed: too many loops."
-		UnificationTermInstantiationCountFail -> "Proof Failed: too many unification terms."
-		UnificationTimeFail -> "Proof Failed: too long unification time."
-		MemoryError -> "Proof Failed: out of memory error."
+		UnificationTermInstantiationCountFail -> "Proof Failed: Too many unification terms."
 	}
 }

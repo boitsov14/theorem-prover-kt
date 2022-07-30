@@ -7,13 +7,12 @@ import core.*
 import sequentProver.ProofState.*
 import kotlin.system.measureTimeMillis
 
-fun Node.prove(
-	printBasicInfo: Boolean = true,
-	printTacticInfo: Boolean = true,
-	printSequents: Boolean = true,
-	loopCountMax: Int = 500_000,
+suspend fun Node.prove(
+	printTimeInfo: Boolean = false,
+	printUnificationInfo: Boolean = false,
+	printTacticInfo: Boolean = false,
+	printSequents: Boolean = false,
 	unificationTermInstantiationMaxCountMax: Int = 4,
-	totalUnificationTimeMax: Long = 30_000
 ): ProofState {
 	val start = System.currentTimeMillis()
 	var count = 0
@@ -30,15 +29,8 @@ fun Node.prove(
 		count++
 		if (printSequents) nodes.forEach { println(it.sequentToBeApplied) }
 
-		if (count >= loopCountMax) {
-			if (printBasicInfo) println("PROOF FAILED: PROOF IS TOO LONG OR UNPROVABLE")
-			proofState = LoopCountFail
-			break
-		}
-
 		if (nodes.isEmpty()) {
-			if (printBasicInfo) println("PROOF SUCCEED!")
-			proofState = Success
+			proofState = Provable
 			break
 		}
 
@@ -105,14 +97,7 @@ fun Node.prove(
 				it.sequentToBeApplied.assumptions.filterIsInstance<ALL>()
 					.isEmpty() && it.sequentToBeApplied.conclusions.filterIsInstance<EXISTS>().isEmpty()
 			}) {
-			if (printBasicInfo) println("UNPROVABLE")
 			proofState = Unprovable
-			break
-		}
-
-		if (totalUnificationTime > totalUnificationTimeMax) {
-			if (printBasicInfo) println("PROOF FAILED: PROOF IS TOO LONG OR UNPROVABLE")
-			proofState = UnificationTimeFail
 			break
 		}
 
@@ -125,13 +110,13 @@ fun Node.prove(
 			val unificationTime = measureTimeMillis {
 				siblingSubstitution = getSubstitution(siblingSubstitutionsList)
 			}
-			if (printBasicInfo) println("Unification try: $unificationTime ms")
+			if (printUnificationInfo) println("Unification try: $unificationTime ms")
 			totalUnificationTime += unificationTime
 			if (siblingSubstitution == null) continue
 			//val siblingSubstitution = getSubstitution(siblingSubstitutionsList) ?: continue
 			substitution.putAll(siblingSubstitution)
 			nodes.removeAll(siblingNodes)
-			if (printBasicInfo) {
+			if (printUnificationInfo) {
 				println("node size: ${siblingNodes.size}")
 				(siblingSubstitution).forEach { println(it) }
 			}
@@ -160,7 +145,6 @@ fun Node.prove(
 		}
 
 		if (unificationTermInstantiationMaxCount == unificationTermInstantiationMaxCountMax) {
-			if (printBasicInfo) println("PROOF FAILED: PROOF IS TOO LONG OR UNPROVABLE")
 			proofState = UnificationTermInstantiationCountFail
 			break
 		}
@@ -172,14 +156,13 @@ fun Node.prove(
 
 	val end = System.currentTimeMillis()
 	val time = end - start
-	if (printBasicInfo) {
+	if (printTimeInfo) {
 		println("Completed in $time ms")
 		println("unification time: $totalUnificationTime ms")
 		println("other time: ${time - totalUnificationTime} ms")
 		println("loop count: $count")
 	}
 
-	if (printBasicInfo) println("Complete Proof Start... ")
 	val completeProofTime = measureTimeMillis {
 		val remainedSubstitution = allUnificationTerms.subtract(substitution.keys).associateWith { Dummy }
 		val completeSubstitution = if (nodes.isEmpty()) {
@@ -188,9 +171,11 @@ fun Node.prove(
 			substitution.getCompleteSubstitution()
 		}
 		this.completeProof(completeSubstitution)
-		if (printBasicInfo) completeSubstitution.forEach { println(it) }
+		if (printUnificationInfo) completeSubstitution.forEach { println(it) }
 	}
-	if (printBasicInfo) println("Completed in $completeProofTime ms")
+	if (printTimeInfo) println("Proof formatted in $completeProofTime ms")
+
+	if (printTimeInfo) println(">>>>>>>>>>>>> $time ms")
 
 	return proofState
 
