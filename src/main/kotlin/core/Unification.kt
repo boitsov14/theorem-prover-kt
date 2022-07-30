@@ -41,15 +41,15 @@ private fun Substitution.unify(pairs: List<Pair<Term, Term>>): Substitution? {
 	}
 }
 
-suspend fun getSubstitution(substitutionsList: List<List<Substitution>>): Substitution? =
+suspend fun getSubstitution(substitutionsList: List<Substitutions>): Substitution? =
 	emptyMap<UnificationTerm, Term>().getSubstitutionAsync(substitutionsList)
 
-private fun Substitution.getSubstitution(substitutionsList: List<List<Substitution>>): Substitution? =
+private fun Substitution.getSubstitution(substitutionsList: List<Substitutions>): Substitution? =
 	if (substitutionsList.isEmpty()) this
 	else substitutionsList.first().asSequence().map { this.unify(it.toList()) }.filterNotNull()
 		.map { it.getSubstitution(substitutionsList.drop(1)) }.filterNotNull().firstOrNull()
 
-private suspend fun Substitution.getSubstitutionAsync(substitutionsList: List<List<Substitution>>): Substitution? =
+private suspend fun Substitution.getSubstitutionAsync(substitutionsList: List<Substitutions>): Substitution? =
 	coroutineScope {
 		val substitutions = substitutionsList.firstOrNull() ?: return@coroutineScope this@getSubstitutionAsync
 		substitutions.map {
@@ -60,7 +60,7 @@ private suspend fun Substitution.getSubstitutionAsync(substitutionsList: List<Li
 		}.awaitAll().filterNotNull().firstOrNull()
 	}
 
-private suspend fun Substitution.getSubstitutionAsync1(substitutionsList: List<List<Substitution>>): Substitution? =
+private suspend fun Substitution.getSubstitutionAsync1(substitutionsList: List<Substitutions>): Substitution? =
 	coroutineScope {
 		val substitutions = substitutionsList.firstOrNull() ?: return@coroutineScope this@getSubstitutionAsync1
 		substitutions.map {

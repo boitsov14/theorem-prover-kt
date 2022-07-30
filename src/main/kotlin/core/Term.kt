@@ -6,7 +6,7 @@ sealed class Term {
 			if (this !in oldVars) {
 				return this
 			}
-			val regex = "_[\\d]+".toRegex()
+			val regex = "_\\d+".toRegex()
 			val preId = regex.replace(id, "")
 			var n = regex.find(id)?.value?.drop(1)?.toInt() ?: 1
 			while (true) {
@@ -74,3 +74,4 @@ sealed class Term {
 }
 
 typealias Substitution = Map<Term.UnificationTerm, Term>
+typealias Substitutions = List<Substitution>

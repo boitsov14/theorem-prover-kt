@@ -14,7 +14,7 @@ data class Sequent(val assumptions: Set<Formula>, val conclusions: Set<Formula>)
 		) { it.toLatex() }
 
 	val freeVars: Set<Var> = (assumptions + conclusions).map { it.freeVars }.flatten().toSet()
-	fun getSubstitutions(): List<Substitution> {
+	fun getSubstitutions(): Substitutions {
 		val result = mutableListOf<Substitution>()
 		val assumptions = this.assumptions.filterIsInstance<PREDICATE>()
 		val conclusions = this.conclusions.filterIsInstance<PREDICATE>()
