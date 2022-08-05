@@ -446,8 +446,8 @@ private fun isTrivial(fmls: Set<Formula>) =
 	(fmls.filterIsInstance<Formula.NOT>().map { it.operandFml }.toSet() intersect fmls.filter { it !is Formula.NOT }
 		.toSet()).isNotEmpty()
 
-private fun Iterable<Formula>.makeConjunction(): Formula =
-	reduceOrNull { conj, fml -> Formula.AND(conj, fml) } ?: Formula.TRUE
+internal fun Iterable<Formula>.makeConjunction(): Formula =
+	reversed().reduceOrNull { conj, fml -> Formula.AND(fml, conj) } ?: Formula.TRUE
 
-private fun Iterable<Formula>.makeDisjunction(): Formula =
-	reduceOrNull { conj, fml -> Formula.OR(conj, fml) } ?: Formula.FALSE
+internal fun Iterable<Formula>.makeDisjunction(): Formula =
+	reversed().reduceOrNull { disj, fml -> Formula.OR(fml, disj) } ?: Formula.FALSE
