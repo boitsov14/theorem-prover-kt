@@ -1,12 +1,15 @@
 //import tacticGame.*
 import core.FormulaParserException
-import kotlinx.coroutines.*
 import sequentProver.*
 import java.io.File
 import kotlin.system.measureTimeMillis
 
 suspend fun main(args: Array<String>) {
-	mainForJar(args)
+	try {
+		mainForJar(args)
+	} catch (e: Exception) {
+		print("An unexpected error has occurred: $e")
+	}
 	//temp()
 	//mainForConsole()
 }
@@ -20,37 +23,12 @@ suspend fun mainForJar(args: Array<String>) {
 	} catch (e: FormulaParserException) {
 		print(e.message)
 		return
-	} catch (e: Throwable) {
-		print("An unexpected error has occurred: $e")
-		return
 	}
 	// Prover
 	val rootNode = Node(sequent)
-	val proofState = try {
-		withTimeout(300_000) {
-			rootNode.prove()
-		}
-	} catch (e: TimeoutCancellationException) {
-		print("Proof Failed: Timeout.")
-		return
-	} catch (e: OutOfMemoryError) {
-		print("Proof Failed: OutOfMemoryError.")
-		return
-	} catch (e: Throwable) {
-		print("An unexpected error has occurred: $e")
-		return
-	}
+	val proofState = rootNode.prove()
 	// TeX
-	val latexOutput = try {
-		rootNode.getLatexOutput(proofState)
-	} catch (e: OutOfMemoryError) {
-		print("The proof tree is too large to output: OutOfMemoryError.")
-		return
-	} catch (e: Throwable) {
-		print("An unexpected error has occurred: $e")
-		return
-	}
-	File("${id}.tex").writeText(latexOutput)
+	File("${id}.tex").writeText(rootNode.getLatexOutput(proofState))
 }
 
 suspend fun mainForConsole() {
