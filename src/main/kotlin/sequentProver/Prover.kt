@@ -5,7 +5,7 @@ import core.Formula.*
 
 data class Node(
 	var sequentToBeApplied: Sequent,
-	val siblingLabel: Int?,
+	val siblingLabel: Int? = null,
 	var applyData: IApplyData? = null,
 	var child: Node? = null,
 	var leftChild: Node? = null,
@@ -32,6 +32,7 @@ fun Node.completeProof(substitution: Substitution) {
 			child!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied)
 			child!!.completeProof(substitution)
 		}
+
 		is BinaryTactic.ApplyData -> {
 			val newFml = (sequentToBeApplied.assumptions + sequentToBeApplied.conclusions).firstOrNull {
 				it == oldApplyData.fml.replace(substitution)
@@ -43,6 +44,7 @@ fun Node.completeProof(substitution: Substitution) {
 			leftChild!!.completeProof(substitution)
 			rightChild!!.completeProof(substitution)
 		}
+
 		is FreshVarInstantiationTactic.ApplyData -> {
 			val newFml =
 				(sequentToBeApplied.assumptions + sequentToBeApplied.conclusions).filterIsInstance<Quantified>()
@@ -52,6 +54,7 @@ fun Node.completeProof(substitution: Substitution) {
 			child!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied)
 			child!!.completeProof(substitution)
 		}
+
 		is TermInstantiationTactic.ApplyData -> {
 			val unificationTerm = oldApplyData.term
 			val term = substitution[unificationTerm] ?: unificationTerm

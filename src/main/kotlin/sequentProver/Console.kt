@@ -154,9 +154,12 @@ suspend fun Node.prove(
 
 	}
 
+	print(proofState)
+
 	val end = System.currentTimeMillis()
 	val time = end - start
 	if (printTimeInfo) {
+		println()
 		println("Completed in $time ms")
 		println("unification time: $totalUnificationTime ms")
 		println("other time: ${time - totalUnificationTime} ms")

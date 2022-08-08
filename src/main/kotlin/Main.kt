@@ -3,6 +3,7 @@ import core.FormulaParserException
 import kotlinx.coroutines.*
 import sequentProver.*
 import java.io.File
+import kotlin.system.measureTimeMillis
 
 suspend fun main(args: Array<String>) {
 	mainForJar(args)
@@ -24,7 +25,7 @@ suspend fun mainForJar(args: Array<String>) {
 		return
 	}
 	// Prover
-	val rootNode = Node(sequent, null)
+	val rootNode = Node(sequent)
 	val proofState = try {
 		withTimeout(300_000) {
 			rootNode.prove()
@@ -39,7 +40,6 @@ suspend fun mainForJar(args: Array<String>) {
 		print("An unexpected error has occurred: $e")
 		return
 	}
-	print(proofState)
 	// TeX
 	val latexOutput = try {
 		rootNode.getLatexOutput(proofState)
@@ -56,13 +56,23 @@ suspend fun mainForJar(args: Array<String>) {
 suspend fun mainForConsole() {
 	print("INPUT A FORMULA >>> ")
 	val sequent = readln().parseToSequent()
-	val rootNode = Node(sequent, null)
+	val rootNode = Node(sequent)
 	val proofState = rootNode.prove(
 		printSequents = false, printTacticInfo = false, printTimeInfo = true, printUnificationInfo = true
 	)
-	println(proofState)
 	//val output = File("src/main/resources/Output.tex")
 	//output.writeText(rootNode.getLatexOutput(proofState))
+	/*
+	val time = measureTimeMillis {
+		try {
+			val output = File("src/main/resources/Output.tex")
+			output.writeText(rootNode.getLatexOutput(proofState))
+		} catch (e: OutOfMemoryError) {
+			println(e)
+		}
+	}
+	println("Latex produced in $time ms")
+	*/
 }
 
 fun mainForTest() {
