@@ -158,6 +158,11 @@ suspend fun Node.prove(
 
 	val end = System.currentTimeMillis()
 	val time = end - start
+
+	if (proofState == Provable || proofState == Unprovable) {
+		print(" Completed in ${time / 1000.0} s.")
+	}
+
 	if (printTimeInfo) {
 		println()
 		println("Completed in $time ms")
