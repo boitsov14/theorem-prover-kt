@@ -2,7 +2,34 @@
 import core.*
 import core.makeConjunction
 import kotlinx.coroutines.*
+import kotlin.system.measureTimeMillis
 import sequentProver.*
+
+suspend fun mainForConsole() {
+	print("INPUT A FORMULA >>> ")
+	val sequent = readln().parseToSequent()
+	val rootNode = Node(sequent)
+	val proofState = rootNode.prove(
+		printSequents = false, printTacticInfo = false, printTimeInfo = true, printUnificationInfo = true
+	)
+	//val output = File("src/main/resources/Output.tex")
+	//output.writeText(rootNode.getLatexOutput(proofState))
+	/*
+	val time = measureTimeMillis {
+		try {
+			val output = File("src/main/resources/Output.tex")
+			output.writeText(rootNode.getLatexOutput(proofState))
+		} catch (e: OutOfMemoryError) {
+			println(e)
+		}
+	}
+	println("Latex produced in $time ms")
+	*/
+}
+
+fun mainForTest() {
+	TODO()
+}
 
 fun temp() {
 	/*
@@ -59,10 +86,12 @@ fun temp() {
 		"((o11 ∨ o12 ∨ o13 ∨ o14) ∧ (o21 ∨ o22 ∨ o23 ∨ o24) ∧ (o31 ∨ o32 ∨ o33 ∨ o34) ∧ (o41 ∨ o42 ∨ o43 ∨ o44) ∧ (o51 ∨ o52 ∨ o53 ∨ o54))"
 	val long2 = "(o11 ∨ o12 ∨ o13) ∧ (o21 ∨ o22 ∨ o23) ∧ (o31 ∨ o32 ∨ o33) ∧ (o41 ∨ o42 ∨ o43)"
 	//println(long2.parseToFormula().pureDNF().map { it.makeConjunction() }.makeDisjunction())
+	/*
 	println(
 		"(o11 ∨ o12) ∧ (o21 ∨ o22) ∧ (o31 ∨ o32) ∧ (o41 ∨ o42)".parseToFormula().simpleDNF()
 			.map { it.makeConjunction() }.makeDisjunction()
 	)
+	*/
 
 }
 
