@@ -2,11 +2,12 @@ package core
 
 import core.Formula.*
 import core.Term.*
+import java.text.Normalizer.*
 
 class FormulaParserException(message: String) : Exception(message)
 
 fun String.parseToFormula(): Formula =
-	this.toOneLetter().trimWhiteSpaces().tokenize().toReversePolishNotation().getFormula()
+	normalize(this, Form.NFKC).toOneLetter().trimWhiteSpaces().tokenize().toReversePolishNotation().getFormula()
 
 /*
 fun String.parseToFormula(): Formula {
@@ -21,6 +22,8 @@ fun String.parseToFormula(): Formula {
 	return reversePolishNotation.getFormula()
 }
 */
+
+val letters = ('A'..'Z') + ('a'..'z') + ('Α'..'Ω') + ('α'..'ω')
 
 private sealed interface Token {
 	object LP : Token
@@ -59,7 +62,6 @@ fun String.toOneLetter(): String {
 }
 
 private val oneLetterMap = mapOf(
-	" " to setOf("　"),
 	"⊢" to setOf("\\vdash", "vdash", "proves", "|-", "├", "┣"),
 	"⊤" to setOf("true", "tautology", "top"),
 	"⊥" to setOf("false", "contradiction", "bottom", "bot"),
@@ -85,27 +87,25 @@ private val oneLetterMap = mapOf(
 		"\\to", "implies", "-->", "==>", "->", "=>", "to", "imply", "\\rightarrow", "rightarrow", "⇒"
 	),
 	"∀" to setOf("\\forall ", "forall ", "all "),
-	"∃" to setOf("\\exists ", "exists ", "ex "),
-	"(" to setOf("（"),
-	")" to setOf("）")
+	"∃" to setOf("\\exists ", "exists ", "ex ")
 )
 
+// TODO: すべての空白をTrimすればよいのでは？
 private fun String.trimWhiteSpaces(): String =
 	this.replace("\\s*[(]\\s*".toRegex(), "(").replace("\\s*[)]\\s*".toRegex(), ")").replace("\\s*,\\s*".toRegex(), ",")
 		.replace("∀\\s*".toRegex(), "∀").replace("∃\\s*".toRegex(), "∃")
 
+// TODO: EndPosはendの位置のひとつ手前に変更する？
 @OptIn(ExperimentalStdlibApi::class)
 private fun String.getIdEndPos(startPos: Int): Int {
-	if (!(this[startPos].isLetter())) throw FormulaParserException("Illegal Argument: '${this[startPos]}'")
-	val regex = "[a-zA-Z\\d]+".toRegex()
+	val regex = "[a-zA-Zα-ωΑ-Ω\\d]+".toRegex()
 	val str = regex.matchAt(this, startPos)!!.value
 	return startPos + str.length - 1
 }
 
 @OptIn(ExperimentalStdlibApi::class)
 private fun String.getBddVarIdEndPos(startPos: Int): Int {
-	if (!(this[startPos].isLetter())) throw FormulaParserException("Illegal Argument: '${this[startPos]}'")
-	val regex = "[a-zA-Z]\\d*".toRegex()
+	val regex = "[a-zA-Zα-ωΑ-Ω]\\d*".toRegex()
 	val str = regex.matchAt(this, startPos)!!.value
 	return startPos + str.length - 1
 }
@@ -127,7 +127,7 @@ private fun String.getParenthesisEndPos(startPos: Int): Int? {
 
 private fun String.toTerms(): List<Term> {
 	if (this.isEmpty()) return emptyList()
-	if (!(this.first().isLetter())) throw FormulaParserException("Illegal Argument: '${this.first()}'")
+	if (this.first() !in letters) throw FormulaParserException("Illegal Argument: '${this.first()}'")
 	val firstTerm: Term
 	val firstTermEndPos: Int
 	val idEndPos = this.getIdEndPos(0)
@@ -168,7 +168,7 @@ private fun String.tokenize(): List<Token> {
 			'⊥' -> tokens.add(Token.FALSE)
 			'⊤' -> tokens.add(Token.TRUE)
 			'∀' -> {
-				if (!(index < this.lastIndex && this[index + 1].isLetter())) {
+				if (!(index < this.lastIndex && this[index + 1] in letters)) {
 					throw FormulaParserException("The quantifier must be used in the form '∀x'")
 				}
 				val endPos = this.getBddVarIdEndPos(index + 1)
@@ -176,8 +176,9 @@ private fun String.tokenize(): List<Token> {
 				tokens.add(Token.Operator.Unary.ALL(bddVar))
 				index = endPos
 			}
+
 			'∃' -> {
-				if (!(index < this.lastIndex && this[index + 1].isLetter())) {
+				if (!(index < this.lastIndex && this[index + 1] in letters)) {
 					throw FormulaParserException("The quantifier must be used in the form '∃x'")
 				}
 				val endPos = this.getBddVarIdEndPos(index + 1)
@@ -185,7 +186,8 @@ private fun String.tokenize(): List<Token> {
 				tokens.add(Token.Operator.Unary.EXISTS(bddVar))
 				index = endPos
 			}
-			in ('A'..'Z') + ('a'..'z') -> {
+
+			in letters -> {
 				val idEndPos = this.getIdEndPos(index)
 				val id = this.substring(index, idEndPos + 1)
 				index = idEndPos
@@ -200,6 +202,7 @@ private fun String.tokenize(): List<Token> {
 					tokens.add(Token.PREDICATE(id, emptyList()))
 				}
 			}
+
 			else -> throw FormulaParserException("Illegal Argument: '${this[index]}'")
 		}
 		index++
@@ -225,6 +228,7 @@ private fun List<Token>.toReversePolishNotation(): List<Token> {
 				}
 				stack.removeLast()
 			}
+
 			is Token.Operator.Unary -> stack.add(token)
 			is Token.Operator.Binary -> {
 				while (stack.isNotEmpty() && stack.last() is Token.Operator && token.precedence < (stack.last() as Token.Operator).precedence) {
@@ -266,6 +270,7 @@ private fun List<Token>.getFormula(): Formula {
 							throw FormulaParserException("Cannot Quantify Function: ${token.bddVar}")
 						}
 					}
+
 					is Token.Operator.Unary.EXISTS -> {
 						try {
 							stack.add(EXISTS(token.bddVar, fml))
@@ -279,6 +284,7 @@ private fun List<Token>.getFormula(): Formula {
 					}
 				}
 			}
+
 			is Token.Operator.Binary -> {
 				if (stack.size < 2) {
 					throw FormulaParserException("Parse Error.")
@@ -294,6 +300,7 @@ private fun List<Token>.getFormula(): Formula {
 					}
 				)
 			}
+
 			Token.LP, Token.RP -> throw IllegalArgumentException()
 		}
 	}
