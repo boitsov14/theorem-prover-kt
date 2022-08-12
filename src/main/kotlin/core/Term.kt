@@ -66,11 +66,8 @@ sealed class Term {
 		Dummy -> this
 	}
 
-	fun replace(substitution: Substitution): Term {
-		var result = this
-		substitution.forEach { (key, value) -> result = result.replace(key, value) }
-		return result
-	}
+	fun replace(substitution: Substitution): Term =
+		substitution.asIterable().fold(this) { tmp, (key, value) -> tmp.replace(key, value) }
 }
 
 typealias Substitution = Map<Term.UnificationTerm, Term>

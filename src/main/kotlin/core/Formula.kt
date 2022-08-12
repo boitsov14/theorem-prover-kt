@@ -29,11 +29,7 @@ sealed class Formula {
 			return false
 		}
 
-		final override fun hashCode(): Int {
-			var result = javaClass.hashCode()
-			result = 31 * result + operandFml.javaClass.hashCode()
-			return result
-		}
+		final override fun hashCode(): Int = 31 * javaClass.hashCode() + operandFml.javaClass.hashCode()
 	}
 
 	data class ALL(
@@ -74,17 +70,20 @@ sealed class Formula {
 		is PREDICATE -> id + if (terms.isNotEmpty()) terms.joinToString(
 			separator = ",", prefix = "(", postfix = ")"
 		) else ""
+
 		is NOT -> "¬${operandFml.recToString()}"
 		is AND -> {
 			val rightFmlStr =
 				if (rightFml is AND) rightFml.recToString().removeSurrounding("(", ")") else rightFml.recToString()
 			"(${leftFml.recToString()} ∧ $rightFmlStr)"
 		}
+
 		is OR -> {
 			val rightFmlStr =
 				if (rightFml is OR) rightFml.recToString().removeSurrounding("(", ")") else rightFml.recToString()
 			"(${leftFml.recToString()} ∨ $rightFmlStr)"
 		}
+
 		is IMPLIES -> "(${leftFml.recToString()} → ${rightFml.recToString()})"
 		is IFF -> "(${leftFml.recToString()} ↔ ${rightFml.recToString()})"
 		is ALL -> "∀$bddVar${operandFml.recToString()}"
@@ -185,6 +184,7 @@ sealed class Formula {
 				)
 			}
 		}
+
 		is EXISTS -> {
 			if (oldVar == bddVar) {
 				this
@@ -211,6 +211,7 @@ sealed class Formula {
 		is IMPLIES -> IMPLIES(
 			leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm)
 		)
+
 		is IFF -> IFF(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
 		is ALL -> {
 			if (!(oldUnificationTerm.availableVars.containsAll(newTerm.freeVars))) {
@@ -224,6 +225,7 @@ sealed class Formula {
 				)
 			}
 		}
+
 		is EXISTS -> {
 			if (!(oldUnificationTerm.availableVars.containsAll(newTerm.freeVars))) {
 				throw IllegalArgumentException()
@@ -238,11 +240,8 @@ sealed class Formula {
 		}
 	}
 
-	fun replace(substitution: Substitution): Formula {
-		var result = this
-		substitution.forEach { (key, value) -> result = result.replace(key, value) }
-		return result
-	}
+	fun replace(substitution: Substitution): Formula =
+		substitution.asIterable().fold(this) { tmp, (key, value) -> tmp.replace(key, value) }
 
 	// TODO: 2022/07/21 check the errata!
 	internal fun simplify0(): Formula = when (this) {
@@ -253,19 +252,23 @@ sealed class Formula {
 		else if (leftFml == TRUE) rightFml
 		else if (rightFml == TRUE) leftFml
 		else this
+
 		is OR -> if (leftFml == TRUE || rightFml == TRUE) TRUE
 		else if (leftFml == FALSE) rightFml
 		else if (rightFml == FALSE) leftFml
 		else this
+
 		is IMPLIES -> if (leftFml == FALSE || rightFml == TRUE) TRUE
 		else if (leftFml == TRUE) rightFml
 		else if (rightFml == FALSE) NOT(leftFml)
 		else this
+
 		is IFF -> if (leftFml == TRUE) rightFml
 		else if (rightFml == TRUE) leftFml
 		else if (leftFml == FALSE) NOT(rightFml)
 		else if (rightFml == FALSE) NOT(leftFml)
 		else this
+
 		else -> this
 	}
 
@@ -290,8 +293,10 @@ sealed class Formula {
 				AND(operandFml.leftFml.pureNNF(), NOT(operandFml.rightFml).pureNNF()),
 				AND(NOT(operandFml.leftFml).pureNNF(), operandFml.rightFml.pureNNF())
 			)
+
 			else -> this
 		}
+
 		is AND -> AND(leftFml.pureNNF(), rightFml.pureNNF())
 		is OR -> OR(leftFml.pureNNF(), rightFml.pureNNF())
 		is IMPLIES -> OR(NOT(leftFml).pureNNF(), rightFml.pureNNF())
@@ -308,6 +313,7 @@ sealed class Formula {
 			is IFF -> IFF(operandFml.leftFml.efficientNNF(), NOT(operandFml.rightFml).efficientNNF())
 			else -> this
 		}
+
 		is AND -> AND(leftFml.efficientNNF(), rightFml.efficientNNF())
 		is OR -> OR(leftFml.efficientNNF(), rightFml.efficientNNF())
 		is IMPLIES -> OR(NOT(leftFml).efficientNNF(), rightFml.efficientNNF())
@@ -359,6 +365,7 @@ sealed class Formula {
 					Triple(atom, newDefs, n1 + 1)
 				}
 			}
+
 			is OR -> {
 				val (fml0, defs0, n0) = leftFml.mainCNF(defs, n)
 				val (fml1, defs1, n1) = rightFml.mainCNF(defs0, n0)
@@ -371,6 +378,7 @@ sealed class Formula {
 					Triple(atom, newDefs, n1 + 1)
 				}
 			}
+
 			is IFF -> {
 				val (fml0, defs0, n0) = leftFml.mainCNF(defs, n)
 				val (fml1, defs1, n1) = rightFml.mainCNF(defs0, n0)
@@ -383,6 +391,7 @@ sealed class Formula {
 					Triple(atom, newDefs, n1 + 1)
 				}
 			}
+
 			else -> Triple(this, defs, n)
 		}
 
@@ -399,11 +408,13 @@ sealed class Formula {
 				val (fml1, defs1, n1) = rightFml.andCNF(defs0, n0)
 				Triple(AND(fml0, fml1), defs1, n1)
 			}
+
 			is OR -> {
 				val (fml0, defs0, n0) = leftFml.orCNF(defs, n)
 				val (fml1, defs1, n1) = rightFml.orCNF(defs0, n0)
 				Triple(OR(fml0, fml1), defs1, n1)
 			}
+
 			else -> throw IllegalArgumentException()
 		}
 
@@ -412,6 +423,7 @@ sealed class Formula {
 			is OR -> {
 				subCNF(defs, n)
 			}
+
 			else -> mainCNF(defs, n)
 		}
 
@@ -420,6 +432,7 @@ sealed class Formula {
 			is AND -> {
 				subCNF(defs, n)
 			}
+
 			else -> orCNF(defs, n)
 		}
 
