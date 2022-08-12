@@ -7,7 +7,7 @@ import java.text.Normalizer.*
 class FormulaParserException(message: String) : Exception(message)
 
 fun String.parseToFormula(): Formula =
-	normalize(this, Form.NFKC).toOneLetter().toGreekName().trimWhiteSpaces().tokenize().toReversePolishNotation()
+	normalize(this, Form.NFKC).toOneLetter().trimWhiteSpaces().tokenize().toReversePolishNotation()
 		.getFormula()
 
 /*
@@ -89,60 +89,6 @@ private val oneLetters = listOf(
 	),
 	'∀' to setOf("\\forall ", "forall ", "all "),
 	'∃' to setOf("\\exists ", "exists ", "ex ")
-)
-
-fun String.toGreekName(): String = "αβγδεζηθικλμνξοπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ".map { "$it" }.zip(greekNames)
-	.fold(this) { temp, (letter, name) -> temp.replace(letter, name) }
-
-private val greekNames = listOf(
-	"\\alpha ",
-	"\\beta ",
-	"\\gamma ",
-	"\\delta ",
-	"\\varepsilon ",
-	"\\zeta ",
-	"\\eta ",
-	"\\theta ",
-	"\\iota ",
-	"\\kappa ",
-	"\\lambda ",
-	"\\mu ",
-	"\\nu ",
-	"\\xi ",
-	"o",
-	"\\pi ",
-	"\\rho ",
-	"\\sigma ",
-	"\\tau ",
-	"\\upsilon ",
-	"\\varphi ",
-	"\\chi ",
-	"\\psi ",
-	"\\omega ",
-	"A",
-	"B",
-	"\\Gamma ",
-	"\\Delta ",
-	"E",
-	"Z",
-	"H",
-	"\\Theta ",
-	"I",
-	"K",
-	"\\Lambda ",
-	"M",
-	"N",
-	"\\Xi ",
-	"O",
-	"\\Pi ",
-	"P",
-	"\\Sigma ",
-	"T",
-	"\\Upsilon ",
-	"\\Phi ",
-	"X",
-	"\\Psi ",
-	"\\Omega "
 )
 
 // TODO: すべての空白をTrimすればよいのでは？

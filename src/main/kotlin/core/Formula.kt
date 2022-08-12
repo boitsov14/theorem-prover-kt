@@ -94,7 +94,7 @@ sealed class Formula {
 	fun toLatex(): String =
 		toString().replace("true", "\\top ").replace("false", "\\bot ").replace("¬", "\\lnot ").replace("∧", "\\land")
 			.replace("∨", "\\lor").replace("→", "\\rightarrow").replace("↔", "\\leftrightarrow")
-			.replace("∀", "\\forall ").replace("∃", "\\exists ")
+			.replace("∀", "\\forall ").replace("∃", "\\exists ").toGreekName()
 
 	val freeVars: Set<Var>
 		get() = when (this) {
@@ -464,3 +464,58 @@ internal fun Iterable<Formula>.makeConjunction(): Formula =
 
 internal fun Iterable<Formula>.makeDisjunction(): Formula =
 	reversed().reduceOrNull { disj, fml -> Formula.OR(fml, disj) } ?: Formula.FALSE
+
+private fun String.toGreekName(): String =
+	"αβγδεζηθικλμνξοπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ".map { "$it" }.zip(greekNames)
+		.fold(this) { temp, (letter, name) -> temp.replace(letter, name) }
+
+private val greekNames = listOf(
+	"\\alpha ",
+	"\\beta ",
+	"\\gamma ",
+	"\\delta ",
+	"\\varepsilon ",
+	"\\zeta ",
+	"\\eta ",
+	"\\theta ",
+	"\\iota ",
+	"\\kappa ",
+	"\\lambda ",
+	"\\mu ",
+	"\\nu ",
+	"\\xi ",
+	"o",
+	"\\pi ",
+	"\\rho ",
+	"\\sigma ",
+	"\\tau ",
+	"\\upsilon ",
+	"\\varphi ",
+	"\\chi ",
+	"\\psi ",
+	"\\omega ",
+	"A",
+	"B",
+	"\\Gamma ",
+	"\\Delta ",
+	"E",
+	"Z",
+	"H",
+	"\\Theta ",
+	"I",
+	"K",
+	"\\Lambda ",
+	"M",
+	"N",
+	"\\Xi ",
+	"O",
+	"\\Pi ",
+	"P",
+	"\\Sigma ",
+	"T",
+	"\\Upsilon ",
+	"\\Phi ",
+	"X",
+	"\\Psi ",
+	"\\Omega "
+)
