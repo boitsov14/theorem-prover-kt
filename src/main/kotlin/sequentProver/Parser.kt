@@ -12,7 +12,7 @@ private fun String.toFormulas(): Set<Formula> {
 			')' -> counter--
 			',' -> {
 				if (counter == 0) {
-					val fml = this.substring(startPos, index).toOneLetter().parseToFormula()
+					val fml = this.substring(startPos, index).parseToFormula()
 					fmls.add(fml)
 					startPos = index + 1
 				}
@@ -20,7 +20,7 @@ private fun String.toFormulas(): Set<Formula> {
 		}
 	}
 	if (counter != 0) throw FormulaParserException("Parenthesis Error.")
-	val lastFml = this.substring(startPos).toOneLetter().parseToFormula()
+	val lastFml = this.substring(startPos).parseToFormula()
 	fmls.add(lastFml)
 	return fmls
 }
@@ -32,6 +32,7 @@ fun String.parseToSequent(): Sequent {
 			val fml = str.parseToFormula()
 			Sequent(emptySet(), setOf(fml))
 		}
+
 		1 -> {
 			val strList = str.split("⊢")
 			val assumptions = if (strList[0].trim().isNotEmpty()) {
@@ -46,6 +47,7 @@ fun String.parseToSequent(): Sequent {
 			}
 			Sequent(assumptions, conclusions)
 		}
+
 		else -> {
 			throw FormulaParserException("⊢ must occur one time.")
 		}
