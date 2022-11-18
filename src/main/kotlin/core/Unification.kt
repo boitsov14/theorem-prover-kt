@@ -1,6 +1,7 @@
 package core
 
-import core.Term.*
+import core.Term.UnificationTerm
+import core.Term.Var
 import kotlinx.coroutines.*
 
 fun unify(pairs: List<Pair<Term, Term>>): Substitution? = emptyMap<UnificationTerm, Term>().unify(pairs)
@@ -14,11 +15,13 @@ private fun Substitution.unify(pairs: List<Pair<Term, Term>>): Substitution? {
 		} else {
 			null
 		}
+
 		first is Term.Function && second is Term.Function -> return if (first.id == second.id && first.terms.size == second.terms.size) {
 			unify(first.terms.zip(second.terms) + pairs.drop(1))
 		} else {
 			null
 		}
+
 		first is Var && second is Term.Function -> return null
 		first is Term.Function && second is Var -> return null
 		first is UnificationTerm -> {
@@ -36,6 +39,7 @@ private fun Substitution.unify(pairs: List<Pair<Term, Term>>): Substitution? {
 			if (!first.availableVars.containsAll(newSecond.replace(unificationTermShrinkMap).freeVars)) return null
 			return (this + (first to newSecond) + unificationTermShrinkMap).unify(pairs.drop(1))
 		}
+
 		second is UnificationTerm -> return unify(listOf(second to first) + pairs.drop(1))
 		else -> throw IllegalArgumentException()
 	}
@@ -71,7 +75,7 @@ private suspend fun Substitution.getSubstitutionAsync1(substitutionsList: List<S
 		}.awaitAll().filterNotNull().firstOrNull()
 	}
 
-// TODO: 2022/07/23 mapvaluesに変える？
+// TODO: 2022/07/23 map valuesに変える？
 fun Substitution.getCompleteSubstitution(): Substitution =
 	this.toList().mapIndexed { index, pair -> pair.first to pair.second.replace(this.toList().drop(index + 1).toMap()) }
 		.toMap()
