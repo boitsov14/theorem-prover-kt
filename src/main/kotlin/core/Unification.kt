@@ -45,35 +45,28 @@ private fun Substitution.unify(pairs: List<Pair<Term, Term>>): Substitution? {
 	}
 }
 
-suspend fun getSubstitution(substitutionsList: List<Substitutions>): Substitution? =
-	emptyMap<UnificationTerm, Term>().getSubstitutionAsync(substitutionsList)
+const val ASYNC_DEPTH = 3
 
-private fun Substitution.getSubstitution(substitutionsList: List<Substitutions>): Substitution? =
+suspend fun getSubstitution(substitutionsList: List<Substitutions>): Substitution? =
+	emptyMap<UnificationTerm, Term>().getSubstitutionAsync(substitutionsList, ASYNC_DEPTH)
+
+private suspend fun Substitution.getSubstitutionAsync(
+	substitutionsList: List<Substitutions>, asyncDepth: Int
+): Substitution? = if (asyncDepth == 0) getSubstitutionSync(substitutionsList)
+else coroutineScope {
+	val substitutions = substitutionsList.firstOrNull() ?: return@coroutineScope this@getSubstitutionAsync
+	substitutions.map {
+		async {
+			val substitution = this@getSubstitutionAsync.unify(it.toList()) ?: return@async null
+			substitution.getSubstitutionAsync(substitutionsList.drop(1), asyncDepth - 1)
+		}
+	}.awaitAll().filterNotNull().firstOrNull()
+}
+
+private fun Substitution.getSubstitutionSync(substitutionsList: List<Substitutions>): Substitution? =
 	if (substitutionsList.isEmpty()) this
 	else substitutionsList.first().asSequence().map { this.unify(it.toList()) }.filterNotNull()
-		.map { it.getSubstitution(substitutionsList.drop(1)) }.filterNotNull().firstOrNull()
-
-private suspend fun Substitution.getSubstitutionAsync(substitutionsList: List<Substitutions>): Substitution? =
-	coroutineScope {
-		val substitutions = substitutionsList.firstOrNull() ?: return@coroutineScope this@getSubstitutionAsync
-		substitutions.map {
-			async {
-				val substitution = this@getSubstitutionAsync.unify(it.toList()) ?: return@async null
-				substitution.getSubstitutionAsync1(substitutionsList.drop(1))
-			}
-		}.awaitAll().filterNotNull().firstOrNull()
-	}
-
-private suspend fun Substitution.getSubstitutionAsync1(substitutionsList: List<Substitutions>): Substitution? =
-	coroutineScope {
-		val substitutions = substitutionsList.firstOrNull() ?: return@coroutineScope this@getSubstitutionAsync1
-		substitutions.map {
-			async {
-				val substitution = this@getSubstitutionAsync1.unify(it.toList()) ?: return@async null
-				substitution.getSubstitution(substitutionsList.drop(1))
-			}
-		}.awaitAll().filterNotNull().firstOrNull()
-	}
+		.map { it.getSubstitutionSync(substitutionsList.drop(1)) }.filterNotNull().firstOrNull()
 
 // TODO: 2022/07/23 map valuesに変える？
 fun Substitution.getCompleteSubstitution(): Substitution =
