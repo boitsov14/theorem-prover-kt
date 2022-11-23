@@ -78,30 +78,35 @@ enum class UnaryTactic : ITactic {
 				assumptions = sequent.assumptions - fml + fml.leftFml + fml.rightFml
 			)
 		}
+
 		OR_RIGHT -> {
 			if (fml !is OR) throw IllegalTacticException()
 			sequent.copy(
 				conclusions = sequent.conclusions - fml + fml.leftFml + fml.rightFml
 			)
 		}
+
 		IMPLIES_RIGHT -> {
 			if (fml !is IMPLIES) throw IllegalTacticException()
 			sequent.copy(
 				assumptions = sequent.assumptions + fml.leftFml, conclusions = sequent.conclusions - fml + fml.rightFml
 			)
 		}
+
 		NOT_LEFT -> {
 			if (fml !is NOT) throw IllegalTacticException()
 			sequent.copy(
 				assumptions = sequent.assumptions - fml, conclusions = sequent.conclusions + fml.operandFml
 			)
 		}
+
 		NOT_RIGHT -> {
 			if (fml !is NOT) throw IllegalTacticException()
 			sequent.copy(
 				assumptions = sequent.assumptions + fml.operandFml, conclusions = sequent.conclusions - fml
 			)
 		}
+
 		IFF_LEFT -> {
 			if (fml !is IFF) throw IllegalTacticException()
 			val toRight = IMPLIES(fml.leftFml, fml.rightFml)
@@ -136,7 +141,10 @@ enum class BinaryTactic : ITactic {
 	}
 
 	fun getAvailableFml(sequent: Sequent): Formula? = when (this) {
-		AND_RIGHT -> sequent.conclusions.firstOrNull { it is AND && it.leftFml !in sequent.conclusions && it.rightFml !in sequent.conclusions }
+		// TODO: 修正？
+		AND_RIGHT -> sequent.conclusions.asSequence().filterIsInstance<AND>()
+			.firstOrNull { it.leftFml !in sequent.conclusions && it.rightFml !in sequent.conclusions }
+		//AND_RIGHT -> sequent.conclusions.firstOrNull { it is AND && it.leftFml !in sequent.conclusions && it.rightFml !in sequent.conclusions }
 		OR_LEFT -> sequent.assumptions.firstOrNull { it is OR && it.leftFml !in sequent.assumptions && it.rightFml !in sequent.assumptions }
 		IMPLIES_LEFT -> sequent.assumptions.firstOrNull { it is IMPLIES && it.leftFml !in sequent.conclusions && it.rightFml !in sequent.assumptions }
 		IFF_RIGHT -> sequent.conclusions.firstOrNull {
@@ -175,6 +183,7 @@ enum class BinaryTactic : ITactic {
 			)
 			leftSequent to rightSequent
 		}
+
 		OR_LEFT -> {
 			if (fml !is OR) throw IllegalTacticException()
 			val leftSequent = sequent.copy(
@@ -185,6 +194,7 @@ enum class BinaryTactic : ITactic {
 			)
 			leftSequent to rightSequent
 		}
+
 		IMPLIES_LEFT -> {
 			if (fml !is IMPLIES) throw IllegalTacticException()
 			val newSequent1 = sequent.copy(
@@ -195,6 +205,7 @@ enum class BinaryTactic : ITactic {
 			)
 			newSequent1 to newSequent2
 		}
+
 		IFF_RIGHT -> {
 			if (fml !is IFF) throw IllegalTacticException()
 			val leftSequent = sequent.copy(
@@ -243,6 +254,7 @@ enum class FreshVarInstantiationTactic : ITactic {
 				conclusions = sequent.conclusions - fml + fml.instantiate(freshVar)
 			)
 		}
+
 		EXISTS_LEFT -> {
 			if (fml !is EXISTS) throw IllegalTacticException()
 			sequent.copy(
@@ -279,6 +291,7 @@ enum class TermInstantiationTactic : ITactic {
 		ALL_LEFT -> sequent.assumptions.filterIsInstance<ALL>()
 			.filter { it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount }
 			.minByOrNull { it.unificationTermInstantiationCount }
+
 		EXISTS_RIGHT -> sequent.conclusions.filterIsInstance<EXISTS>()
 			.filter { it.unificationTermInstantiationCount <= unificationTermInstantiationMaxCount }
 			.minByOrNull { it.unificationTermInstantiationCount }
@@ -294,6 +307,7 @@ enum class TermInstantiationTactic : ITactic {
 				assumptions = sequent.assumptions.map { if (it == fml) newFml else it }.toSet() + newConclusion
 			)
 		}
+
 		EXISTS_RIGHT -> {
 			if (fml !is EXISTS) throw IllegalTacticException()
 			val newConclusion = fml.instantiate(term)
@@ -305,4 +319,5 @@ enum class TermInstantiationTactic : ITactic {
 	}
 }
 
+// TODO: 2022/07/30 何に使うのか
 private fun NOT.getSameFml(fmls: Set<Formula>): NOT? = fmls.filterIsInstance<NOT>().firstOrNull()
