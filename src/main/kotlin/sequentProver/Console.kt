@@ -4,7 +4,9 @@ import core.Formula.*
 import core.Term
 import core.Term.*
 import core.*
+import kotlinx.coroutines.*
 import sequentProver.ProofState.*
+import java.lang.IllegalArgumentException
 import kotlin.system.measureTimeMillis
 
 suspend fun Node.prove(
@@ -25,75 +27,78 @@ suspend fun Node.prove(
 	val allUnificationTerms = mutableSetOf<UnificationTerm>()
 	val proofState: ProofState
 
+	val nodesForUnification = mutableListOf<Node>()
+
 	loop@ while (true) {
 		count++
-		if (printSequents) nodes.forEach { println(it.sequentToBeApplied) }
+		if (printSequents) nodes.asReversed().forEach { println(it.sequentToBeApplied) }
 
 		if (nodes.isEmpty()) {
 			proofState = Provable
 			break
 		}
 
-		for (node in nodes) {
-			if (AXIOM.canApply(node.sequentToBeApplied)) {
-				nodes.remove(node)
-				if (printTacticInfo) println(">>> $AXIOM")
-				continue@loop
-			}
+		val node = nodes.removeLast()
+
+		val sequentToBeApplied = node.sequentToBeApplied
+
+		//AXIOM
+		if (AXIOM.canApply(sequentToBeApplied)) {
+			if (printTacticInfo) println(">>> $AXIOM")
+			continue@loop
 		}
 
-		for ((index, node) in nodes.withIndex()) {
-			val sequentToBeApplied = node.sequentToBeApplied
-			for (tactic in UnaryTactic.values()) {
-				val fml = tactic.getAvailableFml(sequentToBeApplied) ?: continue
-				// TODO: 2022/01/29 二重ループ改善?
-				val applyData = UnaryTactic.ApplyData(tactic, fml)
-				val sequent = applyData.applyTactic(sequentToBeApplied)
-				val newNode = Node(sequent, node.siblingLabel)
-				node.applyData = applyData
-				node.child = newNode
-				nodes[index] = newNode
-				if (printTacticInfo) println(">>> $tactic")
-				continue@loop
-			}
+		//Unary Tactic
+		for (tactic in UnaryTactic.values()) {
+			val fml = tactic.getAvailableFml(sequentToBeApplied) ?: continue
+			val applyData = UnaryTactic.ApplyData(tactic, fml)
+			val sequent = applyData.applyTactic(sequentToBeApplied)
+			val newNode = Node(sequent, node.siblingLabel)
+			node.applyData = applyData
+			node.child = newNode
+			nodes.add(newNode)
+			if (printTacticInfo) println(">>> $tactic")
+			continue@loop
 		}
 
-		for ((index, node) in nodes.withIndex()) {
-			val sequentToBeApplied = node.sequentToBeApplied
-			for (tactic in FreshVarInstantiationTactic.values()) {
-				val fml = tactic.getAvailableFml(sequentToBeApplied) ?: continue
-				val freshVar = fml.bddVar.getFreshVar(sequentToBeApplied.freeVars)
-				val applyData = FreshVarInstantiationTactic.ApplyData(fml, freshVar)
-				val sequent = applyData.applyTactic(sequentToBeApplied)
-				val newNode = Node(sequent, node.siblingLabel)
-				node.applyData = applyData
-				node.child = newNode
-				nodes[index] = newNode
-				if (printTacticInfo) println(">>> $tactic")
-				continue@loop
-			}
+		//Fresh Var Instantiation Tactic
+		for (tactic in FreshVarInstantiationTactic.values()) {
+			val fml = tactic.getAvailableFml(sequentToBeApplied) ?: continue
+			val freshVar = fml.bddVar.getFreshVar(sequentToBeApplied.freeVars)
+			val applyData = FreshVarInstantiationTactic.ApplyData(fml, freshVar)
+			val sequent = applyData.applyTactic(sequentToBeApplied)
+			val newNode = Node(sequent, node.siblingLabel)
+			node.applyData = applyData
+			node.child = newNode
+			nodes.add(newNode)
+			if (printTacticInfo) println(">>> $tactic")
+			continue@loop
 		}
 
-		for ((index, node) in nodes.withIndex()) {
-			val sequentToBeApplied = node.sequentToBeApplied
-			for (tactic in BinaryTactic.values()) {
-				val fml = tactic.getAvailableFml(sequentToBeApplied) ?: continue
-				val applyData = BinaryTactic.ApplyData(tactic, fml)
-				val leftSequent = applyData.applyTactic(sequentToBeApplied).first
-				val rightSequent = applyData.applyTactic(sequentToBeApplied).second
-				val leftNode = Node(leftSequent, node.siblingLabel)
-				val rightNode = Node(rightSequent, node.siblingLabel)
-				node.applyData = applyData
-				node.leftChild = leftNode
-				node.rightChild = rightNode
-				nodes[index] = leftNode
-				nodes.add(index + 1, rightNode)
-				if (printTacticInfo) println(">>> $tactic")
-				continue@loop
-			}
+		//Binary Tactic
+		for (tactic in BinaryTactic.values()) {
+			val fml = tactic.getAvailableFml(sequentToBeApplied) ?: continue
+			val applyData = BinaryTactic.ApplyData(tactic, fml)
+			val leftSequent = applyData.applyTactic(sequentToBeApplied).first
+			val rightSequent = applyData.applyTactic(sequentToBeApplied).second
+			val leftNode = Node(leftSequent, node.siblingLabel)
+			val rightNode = Node(rightSequent, node.siblingLabel)
+			node.applyData = applyData
+			node.leftChild = leftNode
+			node.rightChild = rightNode
+			nodes.add(rightNode)
+			nodes.add(leftNode)
+			if (printTacticInfo) println(">>> $tactic")
+			continue@loop
 		}
 
-		if (nodes.all {
+		nodesForUnification.add(node)
+
+		if (printTacticInfo) println(">>> move")
+
+		if (nodes.isNotEmpty()) continue@loop
+
+		if (unificationTermInstantiationMaxCount == 0 && nodesForUnification.any {
 				it.sequentToBeApplied.assumptions.filterIsInstance<ALL>()
 					.isEmpty() && it.sequentToBeApplied.conclusions.filterIsInstance<EXISTS>().isEmpty()
 			}) {
@@ -101,7 +106,12 @@ suspend fun Node.prove(
 			break
 		}
 
-		val siblingNodesList = nodes.groupBy { it.siblingLabel }.minus(null).values
+		if (nodesForUnification.groupBy { it.sequentToBeApplied }.values.any { it.size > 1 }) {
+			println("duplicated!!!")
+		}
+
+		//try unification
+		val siblingNodesList = nodesForUnification.groupBy { it.siblingLabel }.minus(null).values
 		for (siblingNodes in siblingNodesList) {
 			val siblingSubstitutionsList =
 				siblingNodes.map { it.sequentToBeApplied }.map { it.getSubstitutions() }.sortedBy { it.size }
@@ -113,45 +123,52 @@ suspend fun Node.prove(
 			if (printUnificationInfo) println("Unification try: $unificationTime ms")
 			totalUnificationTime += unificationTime
 			if (siblingSubstitution == null) continue
-			//val siblingSubstitution = getSubstitution(siblingSubstitutionsList) ?: continue
 			substitution.putAll(siblingSubstitution)
-			nodes.removeAll(siblingNodes)
+			nodesForUnification.removeAll(siblingNodes.toSet())
 			if (printUnificationInfo) {
 				println("node size: ${siblingNodes.size}")
-				(siblingSubstitution).forEach { println(it) }
+				siblingSubstitution.forEach { println(it) }
 			}
 		}
 
-		for ((index, node) in nodes.withIndex()) {
-			val sequentToBeApplied = node.sequentToBeApplied
-			val fml = TermInstantiationTactic.ALL_LEFT.getAvailableFml(
-				sequentToBeApplied, unificationTermInstantiationMaxCount
-			) ?: TermInstantiationTactic.EXISTS_RIGHT.getAvailableFml(
-				sequentToBeApplied, unificationTermInstantiationMaxCount
-			) ?: continue
-			val availableVars = sequentToBeApplied.freeVars.ifEmpty { setOf(fml.bddVar) }
-			val unificationTerm = UnificationTerm(unificationTermIndex, availableVars)
-			val applyData = TermInstantiationTactic.ApplyData(fml, unificationTerm)
-			val sequent = applyData.applyTactic(sequentToBeApplied)
-			val siblingLabel = node.siblingLabel ?: unificationTerm.id
-			val newNode = Node(sequent, siblingLabel)
-			node.applyData = applyData
-			node.child = newNode
-			nodes[index] = newNode
-			unificationTermIndex++
-			allUnificationTerms.add(unificationTerm)
-			if (printTacticInfo) println(">>> ${applyData.tactic}")
-			continue@loop
+		//make new unification term
+		while (true) {
+			for (nodeForUnification in nodesForUnification.asReversed()) {
+				val sequentToBeAppliedForUnification = nodeForUnification.sequentToBeApplied
+				val fml = TermInstantiationTactic.ALL_LEFT.getAvailableFml(
+					sequentToBeAppliedForUnification, unificationTermInstantiationMaxCount
+				) ?: TermInstantiationTactic.EXISTS_RIGHT.getAvailableFml(
+					sequentToBeAppliedForUnification, unificationTermInstantiationMaxCount
+				) ?: continue
+				val availableVars = sequentToBeAppliedForUnification.freeVars.ifEmpty { setOf(fml.bddVar) }
+				val unificationTerm = UnificationTerm(unificationTermIndex, availableVars)
+				val applyData = TermInstantiationTactic.ApplyData(fml, unificationTerm)
+				val sequent = applyData.applyTactic(sequentToBeAppliedForUnification)
+				val siblingLabel = nodeForUnification.siblingLabel ?: unificationTerm.id
+				val newNode = Node(sequent, siblingLabel)
+				nodeForUnification.applyData = applyData
+				nodeForUnification.child = newNode
+				nodesForUnification.remove(nodeForUnification)
+				nodes.add(newNode)
+				unificationTermIndex++
+				allUnificationTerms.add(unificationTerm)
+				if (printTacticInfo) println(">>> ${applyData.tactic}")
+				continue@loop
+			}
+
+			if (unificationTermInstantiationMaxCount == unificationTermInstantiationMaxCountMax) {
+				proofState = UnificationTermInstantiationCountFail
+				break@loop
+			}
+
+			if (nodes.isEmpty() && nodesForUnification.isNotEmpty()) {
+				unificationTermInstantiationMaxCount++
+				if (printTacticInfo) println(">>> unificationTermMax: $unificationTermInstantiationMaxCount")
+			} else {
+				break
+			}
+
 		}
-
-		if (unificationTermInstantiationMaxCount == unificationTermInstantiationMaxCountMax) {
-			proofState = UnificationTermInstantiationCountFail
-			break
-		}
-
-		unificationTermInstantiationMaxCount++
-		if (printTacticInfo) println(">>> unificationTermMax: $unificationTermInstantiationMaxCount")
-
 	}
 
 	print(proofState)
