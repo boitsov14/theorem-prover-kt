@@ -2,6 +2,66 @@ package sequentProver
 
 import core.*
 import core.Formula.*
+import core.Term.*
+
+/**
+ * A node to construct a proof tree
+ *
+ * @property sequent the sequent to be applied.
+ * @property tactic the tactic to apply.
+ * @property label the sibling label used when unification.
+ */
+sealed interface INode {
+	val sequent: Sequent
+	val label: Int?
+}
+
+// TODO: 2022/11/27 tacticをもつNodeと持たないNodeで分けて考える？
+// TODO: 2022/11/23 INodeとは別にIHasChildみたいなの用意する？
+data class AxiomNode(
+	override val sequent: Sequent, override val label: Int?
+) : INode {
+	val tactic = AXIOM
+}
+
+data class UnaryTacticNode(
+	override val sequent: Sequent, override val label: Int?, val tactic: UnaryTactic, val fml: Formula, val child: INode
+) : INode
+
+data class BinaryTacticNode(
+	override val sequent: Sequent,
+	override val label: Int?,
+	val tactic: BinaryTactic,
+	val fml: Formula,
+	val leftChild: INode,
+	val rightChild: INode
+) : INode
+
+data class FreshVarInstantiationTacticNode(
+	override val sequent: Sequent,
+	override val label: Int?,
+	val tactic: FreshVarInstantiationTactic,
+	val fml: Quantified,
+	val freshVar: Var,
+	val child: INode
+) : INode
+
+data class TermInstantiationTacticNode(
+	override val sequent: Sequent,
+	override val label: Int?,
+	val tactic: TermInstantiationTactic,
+	val fml: Quantified,
+	val term: Term,
+	val child: INode
+) : INode
+
+data class UnprovableNode(
+	override val sequent: Sequent, override val label: Int?
+) : INode
+
+data class UnificationNode(
+	override val sequent: Sequent, override val label: Int?, var child: INode? = null
+) : INode
 
 data class Node(
 	var sequentToBeApplied: Sequent,
