@@ -10,20 +10,21 @@ import kotlin.system.measureTimeMillis
 
 fun getNode(
 	sequent: Sequent, label: Int?
-): INode {
+): Pair<INode, Set<UnificationNode>> {
 
 	println(sequent)
 
 	// AXIOM
 	if (AXIOM.canApply(sequent)) {
-		return AxiomNode(sequent, label)
+		return AxiomNode(sequent, label) to emptySet()
 	}
 
 	// Unary Tactic
 	for (tactic in UnaryTactic.values()) {
 		val fml = tactic.getAvailableFml(sequent) ?: continue
 		val newSequent = tactic.applyTactic(sequent, fml)
-		return UnaryTacticNode(sequent, label, tactic, fml, getNode(newSequent, label))
+		val (newNode, unificationNodes) = getNode(newSequent, label)
+		return UnaryTacticNode(sequent, label, tactic, fml, newNode) to unificationNodes
 	}
 
 	// Fresh Var Instantiation Tactic
@@ -31,25 +32,31 @@ fun getNode(
 		val fml = tactic.getAvailableFml(sequent) ?: continue
 		val freshVar = fml.bddVar.getFreshVar(sequent.freeVars)
 		val newSequent = tactic.applyTactic(sequent, fml, freshVar)
-		return FreshVarInstantiationTacticNode(sequent, label, tactic, fml, freshVar, getNode(newSequent, label))
+		val (newNode, unificationNodes) = getNode(newSequent, label)
+		return FreshVarInstantiationTacticNode(sequent, label, tactic, fml, freshVar, newNode) to unificationNodes
 	}
 
 	// Binary Tactic
 	for (tactic in BinaryTactic.values()) {
 		val fml = tactic.getAvailableFml(sequent) ?: continue
 		val (leftSequent, rightSequent) = tactic.applyTactic(sequent, fml)
-		return BinaryTacticNode(sequent, label, tactic, fml, getNode(leftSequent, label), getNode(rightSequent, label))
+		val (leftNode, leftUnificationNodes) = getNode(leftSequent, label)
+		val (rightNode, rightUnificationNodes) = getNode(rightSequent, label)
+		return BinaryTacticNode(
+			sequent, label, tactic, fml, leftNode, rightNode
+		) to leftUnificationNodes + rightUnificationNodes
 	}
 
 	// Unprovable
 	if (sequent.assumptions.filterIsInstance<ALL>().isEmpty() && sequent.conclusions.filterIsInstance<EXISTS>()
 			.isEmpty()
 	) {
-		return UnprovableNode(sequent, label)
+		return UnprovableNode(sequent, label) to emptySet()
 	}
 
 	// Wait for unification
-	return UnificationNode(sequent, label)
+	val unificationNode = UnificationNode(sequent, label)
+	return unificationNode to setOf(unificationNode)
 }
 
 suspend fun Node.prove(
