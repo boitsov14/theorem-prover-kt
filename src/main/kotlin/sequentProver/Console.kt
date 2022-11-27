@@ -10,7 +10,7 @@ import kotlin.system.measureTimeMillis
 
 fun getNode(
 	sequent: Sequent, label: Int?
-): Pair<INode, Set<UnificationNode>> {
+): Pair<INode, UnificationNodes> {
 
 	println(sequent)
 
@@ -47,16 +47,43 @@ fun getNode(
 		) to leftUnificationNodes + rightUnificationNodes
 	}
 
-	// Unprovable
-	if (sequent.assumptions.filterIsInstance<ALL>().isEmpty() && sequent.conclusions.filterIsInstance<EXISTS>()
-			.isEmpty()
-	) {
-		return UnprovableNode(sequent, label) to emptySet()
-	}
-
 	// Wait for unification
 	val unificationNode = UnificationNode(sequent, label)
 	return unificationNode to setOf(unificationNode)
+}
+
+suspend fun prove(sequent: Sequent): Pair<INode, ProofState> {
+	val substitution = mutableMapOf<UnificationTerm, Term>()
+
+	val (node, newUnificationNodes) = getNode(sequent, null)
+	if (newUnificationNodes.isEmpty()) {
+		return node to Provable
+	}
+
+	if (newUnificationNodes.any {
+			it.sequent.assumptions.filterIsInstance<ALL>()
+				.isEmpty() && it.sequent.conclusions.filterIsInstance<EXISTS>().isEmpty()
+		}) {
+		return node to Unprovable
+	}
+
+	val unificationNodes = newUnificationNodes.toMutableSet()
+
+	//try unification
+	for (nodes in unificationNodes.groupBy { it.label }.minus(null).values.map { it.toSet() }) {
+		val newSubstitution = nodes.tryUnification() ?: continue
+		substitution.putAll(newSubstitution)
+		unificationNodes.removeAll(nodes)
+	}
+
+	// TODO: 2022/11/27 続き
+
+}
+
+suspend fun UnificationNodes.tryUnification(): Substitution? {
+	val substitutionsList = this.map { it.sequent }.map { it.getSubstitutions() }.sortedBy { it.size }
+	if (substitutionsList.any { it.isEmpty() }) return null
+	return getSubstitution(substitutionsList)
 }
 
 suspend fun Node.prove(

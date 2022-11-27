@@ -55,13 +55,11 @@ data class TermInstantiationTacticNode(
 	val child: INode
 ) : INode
 
-data class UnprovableNode(
-	override val sequent: Sequent, override val label: Int?
-) : INode
-
 data class UnificationNode(
 	override val sequent: Sequent, override val label: Int?, var child: INode? = null
 ) : INode
+
+typealias UnificationNodes = Set<UnificationNode>
 
 data class Node(
 	var sequentToBeApplied: Sequent,
