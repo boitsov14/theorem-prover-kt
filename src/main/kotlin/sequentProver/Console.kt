@@ -6,8 +6,51 @@ import core.Term.*
 import core.*
 import kotlinx.coroutines.*
 import sequentProver.ProofState.*
-import java.lang.IllegalArgumentException
 import kotlin.system.measureTimeMillis
+
+fun getNode(
+	sequent: Sequent, label: Int?
+): INode {
+
+	println(sequent)
+
+	// AXIOM
+	if (AXIOM.canApply(sequent)) {
+		return AxiomNode(sequent, label)
+	}
+
+	// Unary Tactic
+	for (tactic in UnaryTactic.values()) {
+		val fml = tactic.getAvailableFml(sequent) ?: continue
+		val newSequent = tactic.applyTactic(sequent, fml)
+		return UnaryTacticNode(sequent, label, tactic, fml, getNode(newSequent, label))
+	}
+
+	// Fresh Var Instantiation Tactic
+	for (tactic in FreshVarInstantiationTactic.values()) {
+		val fml = tactic.getAvailableFml(sequent) ?: continue
+		val freshVar = fml.bddVar.getFreshVar(sequent.freeVars)
+		val newSequent = tactic.applyTactic(sequent, fml, freshVar)
+		return FreshVarInstantiationTacticNode(sequent, label, tactic, fml, freshVar, getNode(newSequent, label))
+	}
+
+	// Binary Tactic
+	for (tactic in BinaryTactic.values()) {
+		val fml = tactic.getAvailableFml(sequent) ?: continue
+		val (leftSequent, rightSequent) = tactic.applyTactic(sequent, fml)
+		return BinaryTacticNode(sequent, label, tactic, fml, getNode(leftSequent, label), getNode(rightSequent, label))
+	}
+
+	// Unprovable
+	if (sequent.assumptions.filterIsInstance<ALL>().isEmpty() && sequent.conclusions.filterIsInstance<EXISTS>()
+			.isEmpty()
+	) {
+		return UnprovableNode(sequent, label)
+	}
+
+	// Wait for unification
+	return UnificationNode(sequent, label)
+}
 
 suspend fun Node.prove(
 	printTimeInfo: Boolean = false,
