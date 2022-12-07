@@ -4,88 +4,139 @@ import core.Formula.*
 import core.Term
 import core.Term.*
 import core.*
-import kotlinx.coroutines.*
 import sequentProver.ProofState.*
-import kotlin.system.measureTimeMillis
 
-fun getNode(
-	sequent: Sequent, label: Int?
+/**
+ * tries to make a proof tree without unification
+ *
+ * @property sequent the sequent to be proved.
+ * @return the pair of the created node and the nodes waiting for unification
+ */
+fun makeTree(
+	sequent: Sequent
 ): Pair<INode, UnificationNodes> {
 
-	println(sequent)
+	//println(sequent)
+	//println("Tries to make a tree")
 
 	// AXIOM
 	if (AXIOM.canApply(sequent)) {
-		return AxiomNode(sequent, label) to emptySet()
+		return AxiomNode(sequent) to emptyList()
 	}
 
 	// Unary Tactic
 	for (tactic in UnaryTactic.values()) {
-		val fml = tactic.getAvailableFml(sequent) ?: continue
-		val newSequent = tactic.applyTactic(sequent, fml)
-		val (newNode, unificationNodes) = getNode(newSequent, label)
-		return UnaryTacticNode(sequent, label, tactic, fml, newNode) to unificationNodes
+		val fml = tactic.getFml(sequent) ?: continue
+		val newSequent = tactic.apply(sequent, fml)
+		val (child, nodes) = makeTree(newSequent)
+		return UnaryNode(sequent, tactic, fml, child) to nodes
 	}
 
-	// Fresh Var Instantiation Tactic
-	for (tactic in FreshVarInstantiationTactic.values()) {
-		val fml = tactic.getAvailableFml(sequent) ?: continue
+	// Fresh Var Tactic
+	for (tactic in FreshVarTactic.values()) {
+		val fml = tactic.getFml(sequent) ?: continue
 		val freshVar = fml.bddVar.getFreshVar(sequent.freeVars)
-		val newSequent = tactic.applyTactic(sequent, fml, freshVar)
-		val (newNode, unificationNodes) = getNode(newSequent, label)
-		return FreshVarInstantiationTacticNode(sequent, label, tactic, fml, freshVar, newNode) to unificationNodes
+		val newSequent = tactic.apply(sequent, fml, freshVar)
+		val (child, nodes) = makeTree(newSequent)
+		return FreshVarNode(sequent, tactic, fml, freshVar, child) to nodes
 	}
 
 	// Binary Tactic
 	for (tactic in BinaryTactic.values()) {
-		val fml = tactic.getAvailableFml(sequent) ?: continue
-		val (leftSequent, rightSequent) = tactic.applyTactic(sequent, fml)
-		val (leftNode, leftUnificationNodes) = getNode(leftSequent, label)
-		val (rightNode, rightUnificationNodes) = getNode(rightSequent, label)
-		return BinaryTacticNode(
-			sequent, label, tactic, fml, leftNode, rightNode
-		) to leftUnificationNodes + rightUnificationNodes
+		val fml = tactic.getFml(sequent) ?: continue
+		val (leftSequent, rightSequent) = tactic.apply(sequent, fml)
+		val (leftChild, leftNodes) = makeTree(leftSequent)
+		val (rightChild, rightNodes) = makeTree(rightSequent)
+		return BinaryNode(
+			sequent, tactic, fml, leftChild, rightChild
+		) to leftNodes + rightNodes
 	}
 
-	// Wait for unification
-	val unificationNode = UnificationNode(sequent, label)
-	return unificationNode to setOf(unificationNode)
+	// Waits for unification
+	val node = UnificationNode(sequent)
+	return node to listOf(node)
 }
 
-suspend fun prove(sequent: Sequent): Pair<INode, ProofState> {
-	val substitution = mutableMapOf<UnificationTerm, Term>()
+suspend fun UnificationNode.prove(): ProofState {
+	val (node, nodes) = makeTree(this.sequent)
+	this.child = node
 
-	val (node, newUnificationNodes) = getNode(sequent, null)
-	if (newUnificationNodes.isEmpty()) {
-		return node to Provable
-	}
+	if (nodes.isEmpty()) return Provable
 
-	if (newUnificationNodes.any {
+	if (nodes.any {
 			it.sequent.assumptions.filterIsInstance<ALL>()
 				.isEmpty() && it.sequent.conclusions.filterIsInstance<EXISTS>().isEmpty()
-		}) {
-		return node to Unprovable
-	}
+		}) return Unprovable
 
-	val unificationNodes = newUnificationNodes.toMutableSet()
+	val substitution = makeTreeWithUnificationBase(nodes) ?: return TooManyTerms
 
-	//try unification
-	for (nodes in unificationNodes.groupBy { it.label }.minus(null).values.map { it.toSet() }) {
-		val newSubstitution = nodes.tryUnification() ?: continue
-		substitution.putAll(newSubstitution)
-		unificationNodes.removeAll(nodes)
-	}
+	println(substitution)
 
-	// TODO: 2022/11/27 続き
+	// TODO: 2022/12/06 ここでsubstitutionをcompleteし，それをもとにnode全体をcompleteする
 
+	return Provable
 }
 
-suspend fun UnificationNodes.tryUnification(): Substitution? {
-	val substitutionsList = this.map { it.sequent }.map { it.getSubstitutions() }.sortedBy { it.size }
+private suspend fun makeTreeWithUnificationBase(nodes: UnificationNodes): Substitution? =
+	emptyMap<UnificationTerm, Term>().makeTreeWithUnificationBase(nodes.iterator(), 0)
+
+const val LIMIT = 4
+
+private tailrec suspend fun Substitution.makeTreeWithUnificationBase(
+	nodes: Iterator<UnificationNode>,
+	index: Int
+): Substitution? {
+	if (!nodes.hasNext()) return this
+	val substitution = makeTreeWithUnification(listOf(nodes.next()), index to 0, LIMIT) ?: return null
+	return (this + substitution).makeTreeWithUnificationBase(nodes, index + 1)
+}
+
+private tailrec suspend fun makeTreeWithUnification(
+	nodes: UnificationNodes, id: Pair<Int, Int>, limit: Int
+): Substitution? {
+	for (node in nodes) {
+		//println("Tries term tactic")
+		val (tactic, fml, term) = getTermTacticInfo(node.sequent, node.fmls, id) ?: continue
+		val newSequent = tactic.apply(node.sequent, fml, term)
+		val (child, newNodes) = makeTree(newSequent)
+		node.child = TermNode(node.sequent, tactic, fml, term, child)
+		for (newNode in newNodes) {
+			newNode.fmls = node.fmls + fml
+		}
+		val leaves = nodes - node + newNodes
+		//println("Tries unification")
+		return leaves.map { it.sequent }.toSet().tryUnification() ?: return makeTreeWithUnification(
+			leaves, id.first to id.second + 1, limit
+		)
+	}
+	if (limit == 0) return null
+	//println("Cleans fmls")
+	for (node in nodes) {
+		node.fmls = emptySet()
+	}
+	return makeTreeWithUnification(nodes, id, limit - 1)
+}
+
+private suspend fun Set<Sequent>.tryUnification(): Substitution? {
+	val substitutionsList = this.map { it.getSubstitutions() }.sortedBy { it.size }.map { it.asReversed() }
+	// TODO: 2022/12/06 この行は必要なのか
 	if (substitutionsList.any { it.isEmpty() }) return null
 	return getSubstitution(substitutionsList)
 }
 
+private fun getTermTacticInfo(
+	sequent: Sequent, fmls: Set<Quantified>, id: Pair<Int, Int>
+): Triple<TermTactic, Quantified, Term>? {
+	for (tactic in TermTactic.values()) {
+		val fml = tactic.getFml(sequent, fmls) ?: continue
+		val availableVars = sequent.freeVars.ifEmpty { setOf(fml.bddVar) }
+		val term = UnificationTerm(id, availableVars)
+		return Triple(tactic, fml, term)
+	}
+	return null
+}
+
+/*
 suspend fun Node.prove(
 	printTimeInfo: Boolean = false,
 	printUnificationInfo: Boolean = false,
@@ -127,7 +178,7 @@ suspend fun Node.prove(
 
 		//Unary Tactic
 		for (tactic in UnaryTactic.values()) {
-			val fml = tactic.getAvailableFml(sequentToBeApplied) ?: continue
+			val fml = tactic.getFml(sequentToBeApplied) ?: continue
 			val applyData = UnaryTactic.ApplyData(tactic, fml)
 			val sequent = applyData.applyTactic(sequentToBeApplied)
 			val newNode = Node(sequent, node.siblingLabel)
@@ -139,10 +190,10 @@ suspend fun Node.prove(
 		}
 
 		//Fresh Var Instantiation Tactic
-		for (tactic in FreshVarInstantiationTactic.values()) {
-			val fml = tactic.getAvailableFml(sequentToBeApplied) ?: continue
+		for (tactic in FreshVarTactic.values()) {
+			val fml = tactic.getFml(sequentToBeApplied) ?: continue
 			val freshVar = fml.bddVar.getFreshVar(sequentToBeApplied.freeVars)
-			val applyData = FreshVarInstantiationTactic.ApplyData(fml, freshVar)
+			val applyData = FreshVarTactic.ApplyData(fml, freshVar)
 			val sequent = applyData.applyTactic(sequentToBeApplied)
 			val newNode = Node(sequent, node.siblingLabel)
 			node.applyData = applyData
@@ -154,7 +205,7 @@ suspend fun Node.prove(
 
 		//Binary Tactic
 		for (tactic in BinaryTactic.values()) {
-			val fml = tactic.getAvailableFml(sequentToBeApplied) ?: continue
+			val fml = tactic.getFml(sequentToBeApplied) ?: continue
 			val applyData = BinaryTactic.ApplyData(tactic, fml)
 			val leftSequent = applyData.applyTactic(sequentToBeApplied).first
 			val rightSequent = applyData.applyTactic(sequentToBeApplied).second
@@ -212,14 +263,14 @@ suspend fun Node.prove(
 		while (true) {
 			for (nodeForUnification in nodesForUnification.asReversed()) {
 				val sequentToBeAppliedForUnification = nodeForUnification.sequentToBeApplied
-				val fml = TermInstantiationTactic.ALL_LEFT.getAvailableFml(
+				val fml = TermTactic.ALL_LEFT.getAvailableFml(
 					sequentToBeAppliedForUnification, unificationTermInstantiationMaxCount
-				) ?: TermInstantiationTactic.EXISTS_RIGHT.getAvailableFml(
+				) ?: TermTactic.EXISTS_RIGHT.getAvailableFml(
 					sequentToBeAppliedForUnification, unificationTermInstantiationMaxCount
 				) ?: continue
 				val availableVars = sequentToBeAppliedForUnification.freeVars.ifEmpty { setOf(fml.bddVar) }
 				val unificationTerm = UnificationTerm(unificationTermIndex, availableVars)
-				val applyData = TermInstantiationTactic.ApplyData(fml, unificationTerm)
+				val applyData = TermTactic.ApplyData(fml, unificationTerm)
 				val sequent = applyData.applyTactic(sequentToBeAppliedForUnification)
 				val siblingLabel = nodeForUnification.siblingLabel ?: unificationTerm.id
 				val newNode = Node(sequent, siblingLabel)
@@ -292,3 +343,4 @@ suspend fun Node.prove(
 	}
 	 */
 }
+*/

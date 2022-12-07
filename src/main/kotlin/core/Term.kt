@@ -19,13 +19,18 @@ sealed class Term {
 		}
 	}
 
-	data class UnificationTerm(val id: Int, val availableVars: Set<Var>) : Term()
+	data class UnificationTerm(val id: Pair<Int, Int>, val availableVars: Set<Var>) : Term()
 	data class Function(val id: String, val terms: List<Term>) : Term()
 	object Dummy : Term()
 
 	final override fun toString(): String = when (this) {
 		is Var -> id
-		is UnificationTerm -> "t_$id" + availableVars.joinToString(separator = ",", prefix = "(", postfix = ")")
+		is UnificationTerm -> "t_{${id.first},${id.second}}" + availableVars.joinToString(
+			separator = ",",
+			prefix = "(",
+			postfix = ")"
+		)
+
 		is Function -> id + terms.joinToString(separator = ",", prefix = "(", postfix = ")")
 		Dummy -> "\\_"
 	}

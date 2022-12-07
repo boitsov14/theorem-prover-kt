@@ -8,59 +8,44 @@ import core.Term.*
  * A node to construct a proof tree
  *
  * @property sequent the sequent to be applied.
- * @property tactic the tactic to apply.
- * @property label the sibling label used when unification.
  */
 sealed interface INode {
 	val sequent: Sequent
-	val label: Int?
 }
 
 // TODO: 2022/11/27 tacticをもつNodeと持たないNodeで分けて考える？
 // TODO: 2022/11/23 INodeとは別にIHasChildみたいなの用意する？
 data class AxiomNode(
-	override val sequent: Sequent, override val label: Int?
-) : INode {
-	val tactic = AXIOM
-}
-
-data class UnaryTacticNode(
-	override val sequent: Sequent, override val label: Int?, val tactic: UnaryTactic, val fml: Formula, val child: INode
+	override val sequent: Sequent,
 ) : INode
 
-data class BinaryTacticNode(
+data class UnaryNode(
+	override val sequent: Sequent, val tactic: UnaryTactic, val fml: Formula, val child: INode
+) : INode
+
+data class BinaryNode(
 	override val sequent: Sequent,
-	override val label: Int?,
 	val tactic: BinaryTactic,
 	val fml: Formula,
 	val leftChild: INode,
 	val rightChild: INode
 ) : INode
 
-data class FreshVarInstantiationTacticNode(
-	override val sequent: Sequent,
-	override val label: Int?,
-	val tactic: FreshVarInstantiationTactic,
-	val fml: Quantified,
-	val freshVar: Var,
-	val child: INode
+data class FreshVarNode(
+	override val sequent: Sequent, val tactic: FreshVarTactic, val fml: Quantified, val freshVar: Var, val child: INode
 ) : INode
 
-data class TermInstantiationTacticNode(
-	override val sequent: Sequent,
-	override val label: Int?,
-	val tactic: TermInstantiationTactic,
-	val fml: Quantified,
-	val term: Term,
-	val child: INode
+data class TermNode(
+	override val sequent: Sequent, val tactic: TermTactic, val fml: Quantified, val term: Term, var child: INode
 ) : INode
 
 data class UnificationNode(
-	override val sequent: Sequent, override val label: Int?, var child: INode? = null
+	override val sequent: Sequent, var fmls: Set<Quantified> = emptySet(), var child: INode? = null
 ) : INode
 
-typealias UnificationNodes = Set<UnificationNode>
+typealias UnificationNodes = List<UnificationNode>
 
+/*
 data class Node(
 	var sequentToBeApplied: Sequent,
 	val siblingLabel: Int? = null,
@@ -103,7 +88,7 @@ fun Node.completeProof(substitution: Substitution) {
 			rightChild!!.completeProof(substitution)
 		}
 
-		is FreshVarInstantiationTactic.ApplyData -> {
+		is FreshVarTactic.ApplyData -> {
 			val newFml =
 				(sequentToBeApplied.assumptions + sequentToBeApplied.conclusions).filterIsInstance<Quantified>()
 					.firstOrNull { it == oldApplyData.fml.replace(substitution) } ?: throw IllegalTacticException()
@@ -113,13 +98,13 @@ fun Node.completeProof(substitution: Substitution) {
 			child!!.completeProof(substitution)
 		}
 
-		is TermInstantiationTactic.ApplyData -> {
+		is TermTactic.ApplyData -> {
 			val unificationTerm = oldApplyData.term
 			val term = substitution[unificationTerm] ?: unificationTerm
 			val newFml =
 				(sequentToBeApplied.assumptions + sequentToBeApplied.conclusions).filterIsInstance<Quantified>()
 					.firstOrNull { it == oldApplyData.fml.replace(substitution) } ?: throw IllegalTacticException()
-			val newApplyData = TermInstantiationTactic.ApplyData(newFml, term)
+			val newApplyData = TermTactic.ApplyData(newFml, term)
 			applyData = newApplyData
 			child!!.sequentToBeApplied = newApplyData.applyTactic(sequentToBeApplied)
 			child!!.completeProof(substitution)
@@ -157,7 +142,7 @@ fun Node.printProof() {
 
 private fun Node.getReversedProof(): List<IndependentNode> = listOf(toIndependentNode()) + when (applyData) {
 	AXIOM.ApplyData, null -> emptyList()
-	is UnaryTactic.ApplyData, is TermInstantiationTactic.ApplyData, is FreshVarInstantiationTactic.ApplyData -> child!!.getReversedProof()
+	is UnaryTactic.ApplyData, is TermTactic.ApplyData, is FreshVarTactic.ApplyData -> child!!.getReversedProof()
 	is BinaryTactic.ApplyData -> rightChild!!.getReversedProof() + leftChild!!.getReversedProof()
 }
 
@@ -165,7 +150,7 @@ fun Node.getProofTree(): String = getReversedProof().reversed().joinToString(sep
 	when (it.applyData) {
 		null -> "\\Axiom$${it.sequentToBeApplied.toLatex()}$"
 		AXIOM.ApplyData -> "\\AxiomC{}\n\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\UnaryInf$${it.sequentToBeApplied.toLatex()}$"
-		is UnaryTactic.ApplyData, is FreshVarInstantiationTactic.ApplyData, is TermInstantiationTactic.ApplyData -> "\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\UnaryInf$${it.sequentToBeApplied.toLatex()}$"
+		is UnaryTactic.ApplyData, is FreshVarTactic.ApplyData, is TermTactic.ApplyData -> "\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\UnaryInf$${it.sequentToBeApplied.toLatex()}$"
 		is BinaryTactic.ApplyData -> "\\RightLabel{\\scriptsize ${it.applyData.tactic.toLatex()}}\n\\BinaryInf$${it.sequentToBeApplied.toLatex()}$"
 	}
 }
@@ -201,13 +186,14 @@ fun Node.checkCorrectness(): Boolean = try {
 } catch (e: IllegalTacticException) {
 	false
  */
+*/
 
 enum class ProofState {
-	Provable, Unprovable, UnificationTermInstantiationCountFail;
+	Provable, Unprovable, TooManyTerms;
 
 	override fun toString(): String = when (this) {
 		Provable -> "Provable."
 		Unprovable -> "Unprovable."
-		UnificationTermInstantiationCountFail -> "Proof Failed: Too many unification terms."
+		TooManyTerms -> "Proof Failed: Too many unification terms."
 	}
 }
