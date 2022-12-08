@@ -227,6 +227,8 @@ enum class TermTactic : ITactic {
 		EXISTS_RIGHT -> sequent.conclusions.asSequence().filterIsInstance<EXISTS>().minus(fmls).firstOrNull()
 	}
 
-	fun apply(sequent: Sequent, fml: Quantified, term: Term): Sequent =
-		sequent.copy(assumptions = sequent.assumptions + fml.instantiate(term))
+	fun apply(sequent: Sequent, fml: Quantified, term: Term): Sequent = when (this) {
+		ALL_LEFT -> sequent.copy(assumptions = sequent.assumptions + fml.instantiate(term))
+		EXISTS_RIGHT -> sequent.copy(conclusions = sequent.conclusions + fml.instantiate(term))
+	}
 }
