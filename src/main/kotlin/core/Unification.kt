@@ -6,7 +6,7 @@ import kotlinx.coroutines.*
 
 fun unify(pairs: List<Pair<Term, Term>>): Substitution? = emptyMap<UnificationTerm, Term>().unify(pairs)
 
-private fun Substitution.unify(pairs: List<Pair<Term, Term>>): Substitution? {
+private tailrec fun Substitution.unify(pairs: List<Pair<Term, Term>>): Substitution? {
 	if (pairs.isEmpty()) return this
 	val (first, second) = pairs.first()
 	when {
