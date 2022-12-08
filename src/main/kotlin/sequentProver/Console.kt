@@ -4,7 +4,11 @@ import core.Formula.*
 import core.Term
 import core.Term.*
 import core.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import sequentProver.ProofState.*
+
+const val ASYNC_DEPTH = 4
 
 /**
  * tries to make a proof tree without unification
@@ -12,8 +16,8 @@ import sequentProver.ProofState.*
  * @property sequent the sequent to be proved.
  * @return the pair of the created node and the nodes waiting for unification
  */
-fun makeTree(
-	sequent: Sequent
+suspend fun makeTree(
+	sequent: Sequent, asyncDepth: Int = ASYNC_DEPTH
 ): Pair<INode, UnificationNodes> {
 
 	//println(sequent)
@@ -28,7 +32,7 @@ fun makeTree(
 	for (tactic in UnaryTactic.values()) {
 		val fml = tactic.getFml(sequent) ?: continue
 		val newSequent = tactic.apply(sequent, fml)
-		val (child, nodes) = makeTree(newSequent)
+		val (child, nodes) = makeTree(newSequent, asyncDepth)
 		return UnaryNode(sequent, tactic, fml, child) to nodes
 	}
 
@@ -37,7 +41,7 @@ fun makeTree(
 		val fml = tactic.getFml(sequent) ?: continue
 		val freshVar = fml.bddVar.getFreshVar(sequent.freeVars)
 		val newSequent = tactic.apply(sequent, fml, freshVar)
-		val (child, nodes) = makeTree(newSequent)
+		val (child, nodes) = makeTree(newSequent, asyncDepth)
 		return FreshVarNode(sequent, tactic, fml, freshVar, child) to nodes
 	}
 
@@ -45,8 +49,14 @@ fun makeTree(
 	for (tactic in BinaryTactic.values()) {
 		val fml = tactic.getFml(sequent) ?: continue
 		val (leftSequent, rightSequent) = tactic.apply(sequent, fml)
-		val (leftChild, leftNodes) = makeTree(leftSequent)
-		val (rightChild, rightNodes) = makeTree(rightSequent)
+		val (left, right) = if (asyncDepth == 0) makeTree(leftSequent, 0) to makeTree(rightSequent, 0)
+		else coroutineScope {
+			val deferredLeft = async { makeTree(leftSequent, asyncDepth - 1) }
+			val deferredRight = async { makeTree(rightSequent, asyncDepth - 1) }
+			deferredLeft.await() to deferredRight.await()
+		}
+		val (leftChild, leftNodes) = left
+		val (rightChild, rightNodes) = right
 		return BinaryNode(
 			sequent, tactic, fml, leftChild, rightChild
 		) to leftNodes + rightNodes
@@ -83,8 +93,7 @@ private suspend fun makeTreeWithUnificationBase(nodes: UnificationNodes): Substi
 const val LIMIT = 4
 
 private tailrec suspend fun Substitution.makeTreeWithUnificationBase(
-	nodes: Iterator<UnificationNode>,
-	index: Int
+	nodes: Iterator<UnificationNode>, index: Int
 ): Substitution? {
 	if (!nodes.hasNext()) return this
 	val substitution = makeTreeWithUnification(listOf(nodes.next()), index to 0, LIMIT) ?: return null
@@ -118,7 +127,7 @@ private tailrec suspend fun makeTreeWithUnification(
 }
 
 private suspend fun Set<Sequent>.tryUnification(): Substitution? {
-	val substitutionsList = this.map { it.getSubstitutions() }.sortedBy { it.size }.map { it.asReversed() }
+	val substitutionsList = this.map { it.getSubstitutions() }.sortedBy { it.size }
 	// TODO: 2022/12/06 この行は必要なのか
 	if (substitutionsList.any { it.isEmpty() }) return null
 	return getSubstitution(substitutionsList)
