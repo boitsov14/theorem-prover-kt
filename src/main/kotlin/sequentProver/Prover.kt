@@ -36,7 +36,7 @@ data class FreshVarNode(
 ) : INode
 
 data class TermNode(
-	override val sequent: Sequent, val tactic: TermTactic, val fml: Quantified, val term: Term, var child: INode
+	override val sequent: Sequent, val tactic: TermTactic, val fml: Quantified, val term: Term, val child: INode
 ) : INode
 
 data class UnificationNode(
@@ -44,6 +44,52 @@ data class UnificationNode(
 ) : INode
 
 typealias UnificationNodes = List<UnificationNode>
+
+private fun INode.getLatexRec(): String = when (this) {
+	is AxiomNode -> """\AxiomC{}
+		|\RightLabel{\scriptsize Axiom}
+		|\UnaryInf$${sequent.toLatex()}$
+	""".trimMargin()
+
+	is UnaryNode -> """${child.getLatexRec()}
+		|\RightLabel{\scriptsize ${tactic.toLatex()}}
+		|\UnaryInf$${sequent.toLatex()}$
+	""".trimMargin()
+
+	is FreshVarNode -> """${child.getLatexRec()}
+		|\RightLabel{\scriptsize ${tactic.toLatex()}}
+		|\UnaryInf$${sequent.toLatex()}$
+	""".trimMargin()
+
+	is TermNode -> """${child.getLatexRec()}
+		|\RightLabel{\scriptsize ${tactic.toLatex()}}
+		|\UnaryInf$${sequent.toLatex()}$
+	""".trimMargin()
+
+	is BinaryNode -> """${leftChild.getLatexRec()}
+		|${rightChild.getLatexRec()}
+		|\RightLabel{\scriptsize ${tactic.toLatex()}}
+		|\BinaryInf$${sequent.toLatex()}$
+	""".trimMargin()
+
+	is UnificationNode -> child?.getLatexRec() ?: """\Axiom$${sequent.toLatex()}$"""
+}
+
+fun INode.getLatex(proofState: ProofState): String =
+	"""\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
+	|\usepackage{bussproofs}
+	|\begin{document}
+	|$${sequent.toLatex().replace("""\fCenter""", """\vdash""")}$
+	|
+	|$proofState
+	|\begin{prooftree}
+	|\renewcommand{\fCenter}{\ \mbox{$\vdash$}\ }
+	|${getLatexRec()}
+	|\end{prooftree}
+	|\rightline{@sequent\_bot}
+	|\end{document}
+	|
+""".trimMargin()
 
 /*
 data class Node(
