@@ -32,6 +32,7 @@ sealed class Formula {
 		final override fun hashCode(): Int = 31 * javaClass.hashCode() + operandFml.javaClass.hashCode()
 	}
 
+	// TODO: 2022/12/02 Countの削除
 	data class ALL(
 		override val bddVar: Var, override val operandFml: Formula, val unificationTermInstantiationCount: Int = 0
 	) : Quantified() {
@@ -100,7 +101,7 @@ sealed class Formula {
 		get() = when (this) {
 			TRUE -> emptySet()
 			FALSE -> emptySet()
-			is PREDICATE -> terms.map { it.freeVars }.flatten().toSet()
+			is PREDICATE -> terms.flatMap { it.freeVars }.toSet()
 			is NOT -> operandFml.freeVars
 			is AND -> leftFml.freeVars + rightFml.freeVars
 			is OR -> leftFml.freeVars + rightFml.freeVars
@@ -152,7 +153,7 @@ sealed class Formula {
 		get() = when (this) {
 			TRUE -> emptySet()
 			FALSE -> emptySet()
-			is PREDICATE -> terms.map { it.functionIds }.flatten().toSet()
+			is PREDICATE -> terms.flatMap { it.functionIds }.toSet()
 			is NOT -> operandFml.functionIds
 			is AND -> leftFml.functionIds + rightFml.functionIds
 			is OR -> leftFml.functionIds + rightFml.functionIds

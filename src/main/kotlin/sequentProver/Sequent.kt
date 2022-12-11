@@ -13,9 +13,8 @@ data class Sequent(val assumptions: Set<Formula>, val conclusions: Set<Formula>)
 			separator = ", "
 		) { it.toLatex() }
 
-	// TODO: 2022/12/10 reduceとか使う？
 	val freeVars: Set<Var>
-		get() = (assumptions + conclusions).map { it.freeVars }.flatten().toSet()
+		get() = (assumptions + conclusions).flatMap { it.freeVars }.toSet()
 
 	// TODO: 2022/12/01 返値の型はMapではなくListにすべきでは
 	fun getSubstitutions(): Substitutions {

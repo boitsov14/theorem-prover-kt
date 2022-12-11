@@ -26,9 +26,7 @@ sealed class Term {
 	final override fun toString(): String = when (this) {
 		is Var -> id
 		is UnificationTerm -> "t_{${id.first},${id.second}}" + availableVars.joinToString(
-			separator = ",",
-			prefix = "(",
-			postfix = ")"
+			separator = ",", prefix = "(", postfix = ")"
 		)
 
 		is Function -> id + terms.joinToString(separator = ",", prefix = "(", postfix = ")")
@@ -39,21 +37,21 @@ sealed class Term {
 		get() = when (this) {
 			is Var -> setOf(this)
 			is UnificationTerm -> availableVars
-			is Function -> terms.map { it.freeVars }.flatten().toSet()
+			is Function -> terms.flatMap { it.freeVars }.toSet()
 			Dummy -> emptySet()
 		}
 	val unificationTerms: Set<UnificationTerm>
 		get() = when (this) {
 			is Var -> emptySet()
 			is UnificationTerm -> setOf(this)
-			is Function -> terms.map { it.unificationTerms }.flatten().toSet()
+			is Function -> terms.flatMap { it.unificationTerms }.toSet()
 			Dummy -> emptySet()
 		}
 	val functionIds: Set<String>
 		get() = when (this) {
 			is Var -> emptySet()
 			is UnificationTerm -> emptySet()
-			is Function -> setOf(id) + terms.map { it.functionIds }.flatten()
+			is Function -> setOf(id) + terms.flatMap { it.functionIds }
 			Dummy -> emptySet()
 		}
 
