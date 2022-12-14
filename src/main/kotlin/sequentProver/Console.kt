@@ -114,9 +114,10 @@ private tailrec suspend fun makeTreeWithUnification(
 		}
 		val leaves = nodes - node + newNodes
 		//println("Tries unification")
-		return leaves.map { it.sequent }.toSet().tryUnification() ?: return makeTreeWithUnification(
-			leaves, id.first to id.second + 1, limit
-		)
+		return leaves.map { it.sequent }.toSet().map { it.getSubstitutions() }.sortedBy { it.size }.getSubstitution()
+			?: return makeTreeWithUnification(
+				leaves, id.first to id.second + 1, limit
+			)
 	}
 	if (limit == 0) return null
 	//println("Cleans fmls")
@@ -124,13 +125,6 @@ private tailrec suspend fun makeTreeWithUnification(
 		node.fmls = emptySet()
 	}
 	return makeTreeWithUnification(nodes, id, limit - 1)
-}
-
-private suspend fun Set<Sequent>.tryUnification(): Substitution? {
-	val substitutionsList = this.map { it.getSubstitutions() }.sortedBy { it.size }
-	// TODO: 2022/12/06 この行は必要なのか
-	if (substitutionsList.any { it.isEmpty() }) return null
-	return getSubstitution(substitutionsList)
 }
 
 private fun getTermTacticInfo(
