@@ -7,8 +7,7 @@ import java.text.Normalizer.*
 class FormulaParserException(message: String) : Exception(message)
 
 fun String.parseToFormula(): Formula =
-	normalize(this, Form.NFKC).toOneLetter().trimWhiteSpaces().tokenize().toReversePolishNotation()
-		.getFormula()
+	normalize(this, Form.NFKC).toOneLetter().trimWhiteSpaces().tokenize().toReversePolishNotation().getFormula()
 
 /*
 fun String.parseToFormula(): Formula {
@@ -56,40 +55,37 @@ private sealed interface Token {
 	object TRUE : Token
 }
 
-fun String.toOneLetter(): String = oneLetters.fold(this) { tmp, (key, values) ->
-	values.fold(tmp) { tmp0, value ->
-		tmp0.replace(value, "$key", true)
-	}
-}
-
-private val oneLetters = listOf(
-	'⊢' to setOf("\\vdash", "vdash", "proves", "|-", "├", "┣"),
-	'⊤' to setOf("true", "tautology", "top"),
-	'⊥' to setOf("false", "contradiction", "bottom", "bot"),
-	'¬' to setOf("\\lnot", "lnot", "not", "~", "negation", "\\neg", "neg"),
-	'∧' to setOf("\\land", "and", "/\\", "&&", "&", "\\wedge", "wedge"),
-	'∨' to setOf("\\or", "or", "\\/", "||", "|", "\\vee", "vee"),
+fun String.toOneLetter(): String = listOf(
+	'⊢' to setOf("proves", "vdash", """\vdash""", "|-", "├", "┣"),
+	'⊤' to setOf("true", "tautology", "top", """\top"""),
+	'⊥' to setOf("false", "contradiction", "bottom", "bot", """\bot"""),
+	'¬' to setOf("not", "~", "negation", "lnot", """\lnot""", "neg", """\neg"""),
+	'∧' to setOf("and", "land", """\land""", """/\""", "&", "&&", "wedge", """\wedge"""),
+	'∨' to setOf("or", "lor", """\lor""", """\/""", "|", "||", "vee", """\vee"""),
 	'↔' to setOf(
-		"\\iff",
 		"iff",
-		"<-->",
-		"<==>",
+		"""\iff""",
 		"<->",
 		"<=>",
-		"if and only if",
-		"\\leftrightarrow",
-		"leftrightarrow",
-		"equiv",
-		"equivalent",
+		"<-->",
+		"<==>",
 		"⇔",
-		"≡"
+		"≡",
+		"if and only if",
+		"leftrightarrow",
+		"""\leftrightarrow""",
+		"equiv",
+		"equivalent"
 	),
 	'→' to setOf(
-		"\\to", "implies", "-->", "==>", "->", "=>", "to", "imply", "\\rightarrow", "rightarrow", "⇒"
+		"to", """\to""", "implies", "imply", "->", "=>", "-->", "==>", "⇒", "rightarrow", """\rightarrow"""
 	),
-	'∀' to setOf("\\forall ", "forall ", "all "),
-	'∃' to setOf("\\exists ", "exists ", "ex ")
-)
+	'∀' to setOf("forall", """\forall""", "all", "for all"),
+	'∃' to setOf("exists", """\exists""", "ex", "there exists")
+).flatMap { (key, sets) -> sets.map { it to "$key" } }.sortedBy { it.first.length }.asReversed()
+	.fold(this) { tmp, (str, letter) ->
+		tmp.replace(str, letter, true)
+	}
 
 // TODO: すべての空白をTrimすればよいのでは？
 private fun String.trimWhiteSpaces(): String =
