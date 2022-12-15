@@ -6,7 +6,7 @@ sealed class Term {
 			if (this !in oldVars) {
 				return this
 			}
-			val regex = "_\\d+".toRegex()
+			val regex = """_\d+""".toRegex()
 			val preId = regex.replace(id, "")
 			var n = regex.find(id)?.value?.drop(1)?.toInt() ?: 1
 			while (true) {
@@ -21,7 +21,9 @@ sealed class Term {
 
 	data class UnificationTerm(val id: Pair<Int, Int>, val availableVars: Set<Var>) : Term()
 	data class Function(val id: String, val terms: List<Term>) : Term()
-	object Dummy : Term()
+	object Dummy : Term() {
+		override fun equals(other: Any?): Boolean = false
+	}
 
 	final override fun toString(): String = when (this) {
 		is Var -> id
@@ -30,7 +32,7 @@ sealed class Term {
 		)
 
 		is Function -> id + terms.joinToString(separator = ",", prefix = "(", postfix = ")")
-		Dummy -> "\\_"
+		Dummy -> """\_"""
 	}
 
 	val freeVars: Set<Var>
