@@ -21,7 +21,7 @@ data class Sequent(val assumptions: Set<Formula>, val conclusions: Set<Formula>)
 		val substitutions = mutableListOf<Substitution>()
 		for (assumption in assumptions.filterIsInstance<PREDICATE>()) for (conclusion in conclusions.filterIsInstance<PREDICATE>()) {
 			if (assumption.id != conclusion.id || assumption.terms.size != conclusion.terms.size) continue
-			val substitution = unify(assumption.terms.zip(conclusion.terms)) ?: continue
+			val substitution = assumption.terms.zip(conclusion.terms).unify() ?: continue
 			substitutions.add(substitution)
 		}
 		return substitutions

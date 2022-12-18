@@ -1,54 +1,48 @@
 package core
 
-import core.Term.UnificationTerm
 import core.Term.Var
+import core.Term.UnificationTerm
+import core.Term.Function
 import kotlinx.coroutines.*
 
-fun unify(pairs: List<Pair<Term, Term>>): Substitution? = emptyMap<UnificationTerm, Term>().unify(pairs)
+fun List<Pair<Term, Term>>.unify(): Substitution? = emptyMap<UnificationTerm, Term>().unify(this)
 
 private tailrec fun Substitution.unify(pairs: List<Pair<Term, Term>>): Substitution? {
 	if (pairs.isEmpty()) return this
-	val (first, second) = pairs.first()
+	val (left, right) = pairs.first()
+	val substitution = unify(left, right) ?: return null
+	return (this + substitution).unify(pairs.drop(1))
+}
+
+private tailrec fun Substitution.unify(left: Term, right: Term): Substitution? {
 	when {
-		first is Var && second is Var -> return if (first == second) {
-			unify(pairs.drop(1))
-		} else {
-			null
+		left == right -> return emptyMap()
+		left is Var && right is Var -> return null
+		left is Function && right is Function -> return if (left.id == right.id && left.terms.size == right.terms.size) unify(
+			left.terms.zip(right.terms)
+		)
+		else null
+
+		left is UnificationTerm -> {
+			this[left]?.let { return unify(it, right) }
+			val newRight = right.replace(this)
+			if (newRight is Function && left in newRight.unificationTerms) return null
+			val shrinkVars = newRight.unificationTerms.filter { it.availableVars.size > left.availableVars.size }
+				.associateWith { it.copy(availableVars = left.availableVars) }
+			return if (left.availableVars.containsAll(newRight.replace(shrinkVars).freeVars)) mapOf(left to newRight) + shrinkVars else null
 		}
 
-		first is Term.Function && second is Term.Function -> return if (first.id == second.id && first.terms.size == second.terms.size) {
-			unify(first.terms.zip(second.terms) + pairs.drop(1))
-		} else {
-			null
-		}
-
-		first is Var && second is Term.Function -> return null
-		first is Term.Function && second is Var -> return null
-		first is UnificationTerm -> {
-			if (first in this.keys) {
-				// TODO: 2022/02/05 仮に不完全なsubstitutionでもこれで問題ないと思う． 毎回フルでやるのは効率悪い．
-				return unify(listOf(this[first]!! to second) + pairs.drop(1))
-			}
-			val newSecond = second.replace(this)
-			if (first == newSecond) return unify(pairs.drop(1))
-			if (first in newSecond.unificationTerms) return null
-			// TODO: 2022/02/05 本当にこのfilterでよいのかチェック
-			val unificationTermShrinkMap =
-				newSecond.unificationTerms.filter { it.availableVars.size > first.availableVars.size }
-					.associateWith { UnificationTerm(it.id, first.availableVars) }
-			if (!first.availableVars.containsAll(newSecond.replace(unificationTermShrinkMap).freeVars)) return null
-			return (this + (first to newSecond) + unificationTermShrinkMap).unify(pairs.drop(1))
-		}
-
-		second is UnificationTerm -> return unify(listOf(second to first) + pairs.drop(1))
+		right is UnificationTerm -> return unify(right, left)
+		left is Var && right is Function -> return null
+		left is Function && right is Var -> return null
 		else -> throw IllegalArgumentException()
 	}
 }
 
 const val ASYNC_DEPTH = 3
 
-suspend fun getSubstitution(substitutionsList: List<Substitutions>): Substitution? =
-	emptyMap<UnificationTerm, Term>().getSubstitutionAsync(substitutionsList, ASYNC_DEPTH)
+suspend fun List<Substitutions>.getSubstitution(): Substitution? =
+	emptyMap<UnificationTerm, Term>().getSubstitutionAsync(this, ASYNC_DEPTH)
 
 private suspend fun Substitution.getSubstitutionAsync(
 	substitutionsList: List<Substitutions>, asyncDepth: Int
