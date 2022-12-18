@@ -25,11 +25,13 @@ private tailrec fun Substitution.unify(left: Term, right: Term): Substitution? {
 
 		left is UnificationTerm -> {
 			this[left]?.let { return unify(it, right) }
-			val newRight = right.replace(this)
-			if (newRight is Function && left in newRight.unificationTerms) return null
-			val shrinkVars = newRight.unificationTerms.filter { it.availableVars.size > left.availableVars.size }
-				.associateWith { it.copy(availableVars = left.availableVars) }
-			return if (left.availableVars.containsAll(newRight.replace(shrinkVars).freeVars)) mapOf(left to newRight) + shrinkVars else null
+			val substitutedRight = right.replaceLinearly(this)
+			if (substitutedRight is Function && left in substitutedRight.unificationTerms) return null
+			val shrinkVars =
+				substitutedRight.unificationTerms.filter { it.availableVars.size > left.availableVars.size }
+					.associateWith { it.copy(availableVars = left.availableVars) }
+			val shrunkRight = substitutedRight.replace(shrinkVars)
+			return if (left.availableVars.containsAll(shrunkRight.freeVars)) mapOf(left to shrunkRight) + shrinkVars else null
 		}
 
 		right is UnificationTerm -> return unify(right, left)
@@ -62,7 +64,4 @@ private fun Substitution.getSubstitutionSync(substitutionsList: List<Substitutio
 	else substitutionsList.first().asSequence().map { this.unify(it.toList()) }.filterNotNull()
 		.map { it.getSubstitutionSync(substitutionsList.drop(1)) }.filterNotNull().firstOrNull()
 
-// TODO: 2022/07/23 map valuesに変える？
-fun Substitution.getCompleteSubstitution(): Substitution =
-	this.toList().mapIndexed { index, pair -> pair.first to pair.second.replace(this.toList().drop(index + 1).toMap()) }
-		.toMap()
+fun Substitution.normalize(): Substitution = mapValues { it.value.replaceLinearly(this) }

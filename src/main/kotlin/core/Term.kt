@@ -19,6 +19,7 @@ sealed class Term {
 		}
 	}
 
+	// TODO: 2022/12/18 ちゃんとdoc comment付ければvarsでよくない？
 	data class UnificationTerm(val id: Pair<Int, Int>, val availableVars: Set<Var>) : Term()
 	data class Function(val id: String, val terms: List<Term>) : Term()
 	object Dummy : Term() {
@@ -70,6 +71,9 @@ sealed class Term {
 		is Function -> Function(id, terms.map { it.replace(oldUnificationTerm, newTerm) })
 		Dummy -> this
 	}
+
+	fun replaceLinearly(substitution: Substitution): Term =
+		substitution.asIterable().fold(this) { tmp, (key, value) -> tmp.replace(key, value) }
 
 	fun replace(substitution: Substitution): Term = when (this) {
 		is Var -> this
