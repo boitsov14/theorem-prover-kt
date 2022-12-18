@@ -65,37 +65,34 @@ sealed class Formula {
 		}
 	}
 
-	private fun recToString(): String = when (this) {
+	private fun toStringRec(): String = when (this) {
 		TRUE -> "true"
 		FALSE -> "false"
 		is PREDICATE -> id + if (terms.isNotEmpty()) terms.joinToString(
 			separator = ",", prefix = "(", postfix = ")"
 		) else ""
 
-		is NOT -> "¬${operandFml.recToString()}"
-		is AND -> {
-			val rightFmlStr =
-				if (rightFml is AND) rightFml.recToString().removeSurrounding("(", ")") else rightFml.recToString()
-			"(${leftFml.recToString()} ∧ $rightFmlStr)"
-		}
+		is NOT -> "¬${operandFml.toStringRec()}"
+		is AND -> "(${leftFml.toStringRec()} ∧ ${
+			if (rightFml is AND) rightFml.toStringRec().removeSurrounding("(", ")") else rightFml.toStringRec()
+		})"
 
-		is OR -> {
-			val rightFmlStr =
-				if (rightFml is OR) rightFml.recToString().removeSurrounding("(", ")") else rightFml.recToString()
-			"(${leftFml.recToString()} ∨ $rightFmlStr)"
-		}
+		is OR -> "(${leftFml.toStringRec()} ∨ ${
+			if (rightFml is OR) rightFml.toStringRec().removeSurrounding("(", ")") else rightFml.toStringRec()
+		})"
 
-		is IMPLIES -> "(${leftFml.recToString()} → ${rightFml.recToString()})"
-		is IFF -> "(${leftFml.recToString()} ↔ ${rightFml.recToString()})"
-		is ALL -> "∀$bddVar${operandFml.recToString()}"
-		is EXISTS -> "∃$bddVar${operandFml.recToString()}"
+		is IMPLIES -> "(${leftFml.toStringRec()} → ${rightFml.toStringRec()})"
+		is IFF -> "(${leftFml.toStringRec()} ↔ ${rightFml.toStringRec()})"
+		is ALL -> "∀$bddVar${operandFml.toStringRec()}"
+		is EXISTS -> "∃$bddVar${operandFml.toStringRec()}"
 	}
 
-	final override fun toString(): String = recToString().removeSurrounding("(", ")")
+	final override fun toString(): String = toStringRec().removeSurrounding("(", ")")
+
 	fun toLatex(): String =
-		toString().replace("true", "\\top ").replace("false", "\\bot ").replace("¬", "\\lnot ").replace("∧", "\\land")
-			.replace("∨", "\\lor").replace("→", "\\rightarrow").replace("↔", "\\leftrightarrow")
-			.replace("∀", "\\forall ").replace("∃", "\\exists ").toGreekName()
+		toString().replace("true", """\top""").replace("false", """\bot""").replace("¬", """\lnot """)
+			.replace("∧", """\land""").replace("∨", """\lor""").replace("→", """\rightarrow""")
+			.replace("↔", """\leftrightarrow""").replace("∀", """\forall """).replace("∃", """\exists """).toGreekName()
 
 	val freeVars: Set<Var>
 		get() = when (this) {
@@ -202,6 +199,7 @@ sealed class Formula {
 		}
 	}
 
+	/*
 	private fun replace(oldUnificationTerm: UnificationTerm, newTerm: Term): Formula = when (this) {
 		TRUE -> this
 		FALSE -> this
@@ -241,8 +239,10 @@ sealed class Formula {
 		}
 	}
 
+	// TODO: 2022/12/15 未使用？
 	fun replace(substitution: Substitution): Formula =
 		substitution.asIterable().fold(this) { tmp, (key, value) -> tmp.replace(key, value) }
+	*/
 
 	// TODO: 2022/07/21 check the errata!
 	internal fun simplify0(): Formula = when (this) {
@@ -471,52 +471,52 @@ private fun String.toGreekName(): String =
 		.fold(this) { temp, (letter, name) -> temp.replace(letter, name) }
 
 private val greekNames = listOf(
-	"\\alpha ",
-	"\\beta ",
-	"\\gamma ",
-	"\\delta ",
-	"\\varepsilon ",
-	"\\zeta ",
-	"\\eta ",
-	"\\theta ",
-	"\\iota ",
-	"\\kappa ",
-	"\\lambda ",
-	"\\mu ",
-	"\\nu ",
-	"\\xi ",
+	"""\alpha """,
+	"""\beta """,
+	"""\gamma """,
+	"""\delta """,
+	"""\varepsilon """,
+	"""\zeta """,
+	"""\eta """,
+	"""\theta """,
+	"""\iota """,
+	"""\kappa """,
+	"""\lambda """,
+	"""\mu """,
+	"""\nu """,
+	"""\xi """,
 	"o",
-	"\\pi ",
-	"\\rho ",
-	"\\sigma ",
-	"\\tau ",
-	"\\upsilon ",
-	"\\varphi ",
-	"\\chi ",
-	"\\psi ",
-	"\\omega ",
+	"""\pi """,
+	"""\rho """,
+	"""\sigma """,
+	"""\tau """,
+	"""\upsilon """,
+	"""\varphi """,
+	"""\chi """,
+	"""\psi """,
+	"""\omega """,
 	"A",
 	"B",
-	"\\Gamma ",
-	"\\Delta ",
+	"""\Gamma """,
+	"""\Delta """,
 	"E",
 	"Z",
 	"H",
-	"\\Theta ",
+	"""\Theta """,
 	"I",
 	"K",
-	"\\Lambda ",
+	"""\Lambda """,
 	"M",
 	"N",
-	"\\Xi ",
+	"""\Xi """,
 	"O",
-	"\\Pi ",
+	"""\Pi """,
 	"P",
-	"\\Sigma ",
+	"""\Sigma """,
 	"T",
-	"\\Upsilon ",
-	"\\Phi ",
+	"""\Upsilon """,
+	"""\Phi """,
 	"X",
-	"\\Psi ",
-	"\\Omega "
+	"""\Psi """,
+	"""\Omega """
 )
