@@ -192,20 +192,9 @@ enum class FreshVarTactic : ITactic {
 		EXISTS_LEFT -> sequent.assumptions.asSequence().filterIsInstance<EXISTS>().firstOrNull()
 	}
 
-	fun apply(sequent: Sequent, fml: Formula, freshVar: Var): Sequent = when (this) {
-		ALL_RIGHT -> {
-			fml as ALL
-			sequent.copy(
-				conclusions = sequent.conclusions - fml + fml.instantiate(freshVar)
-			)
-		}
-
-		EXISTS_LEFT -> {
-			fml as EXISTS
-			sequent.copy(
-				assumptions = sequent.assumptions - fml + fml.instantiate(freshVar)
-			)
-		}
+	fun apply(sequent: Sequent, fml: Quantified, freshVar: Var): Sequent = when (this) {
+		ALL_RIGHT -> sequent.copy(conclusions = sequent.conclusions - fml + fml.instantiate(freshVar))
+		EXISTS_LEFT -> sequent.copy(assumptions = sequent.assumptions - fml + fml.instantiate(freshVar))
 	}
 }
 
