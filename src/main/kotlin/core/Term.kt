@@ -33,7 +33,7 @@ sealed class Term {
 		)
 
 		is Function -> id + terms.joinToString(separator = ",", prefix = "(", postfix = ")")
-		Dummy -> """\_"""
+		is Dummy -> """\_"""
 	}
 
 	val freeVars: Set<Var>
@@ -41,35 +41,35 @@ sealed class Term {
 			is Var -> setOf(this)
 			is UnificationTerm -> availableVars
 			is Function -> terms.flatMap { it.freeVars }.toSet()
-			Dummy -> emptySet()
+			is Dummy -> emptySet()
 		}
 	val unificationTerms: Set<UnificationTerm>
 		get() = when (this) {
 			is Var -> emptySet()
 			is UnificationTerm -> setOf(this)
 			is Function -> terms.flatMap { it.unificationTerms }.toSet()
-			Dummy -> emptySet()
+			is Dummy -> emptySet()
 		}
 	val functionIds: Set<String>
 		get() = when (this) {
 			is Var -> emptySet()
 			is UnificationTerm -> emptySet()
 			is Function -> setOf(id) + terms.flatMap { it.functionIds }
-			Dummy -> emptySet()
+			is Dummy -> emptySet()
 		}
 
 	fun replace(oldVar: Var, newTerm: Term): Term = when (this) {
 		is Var -> if (this == oldVar) newTerm else this
 		is UnificationTerm -> this
 		is Function -> Function(id, terms.map { it.replace(oldVar, newTerm) })
-		Dummy -> this
+		is Dummy -> this
 	}
 
 	fun replace(oldUnificationTerm: UnificationTerm, newTerm: Term): Term = when (this) {
 		is Var -> this
 		is UnificationTerm -> if (this == oldUnificationTerm) newTerm else this
 		is Function -> Function(id, terms.map { it.replace(oldUnificationTerm, newTerm) })
-		Dummy -> this
+		is Dummy -> this
 	}
 
 	fun replaceLinearly(substitution: Substitution): Term =
@@ -79,7 +79,7 @@ sealed class Term {
 		is Var -> this
 		is UnificationTerm -> substitution[this] ?: this
 		is Function -> Function(id, terms.map { it.replace(substitution) })
-		Dummy -> this
+		is Dummy -> this
 	}
 }
 
