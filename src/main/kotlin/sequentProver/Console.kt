@@ -67,24 +67,15 @@ suspend fun makeTree(
 	return node to listOf(node)
 }
 
-suspend fun UnificationNode.prove(): ProofState {
-	val (node, nodes) = makeTree(this.sequent)
-	this.child = node
-
-	if (nodes.isEmpty()) return Provable
-
+suspend fun Sequent.prove(): Pair<ProofState, INode> {
+	val (node, nodes) = makeTree(this)
+	if (nodes.isEmpty()) return Provable to node
 	if (nodes.any {
 			it.sequent.assumptions.filterIsInstance<ALL>()
 				.isEmpty() && it.sequent.conclusions.filterIsInstance<EXISTS>().isEmpty()
-		}) return Unprovable
-
-	val substitution = makeTreeWithUnificationBase(nodes) ?: return TooManyTerms
-
-	println(substitution)
-
-	// TODO: 2022/12/06 ここでsubstitutionをcompleteし，それをもとにnode全体をcompleteする
-
-	return Provable
+		}) return Unprovable to node
+	val substitution = makeTreeWithUnificationBase(nodes) ?: return TooManyTerms to node
+	return Provable to node.complete(substitution.normalize(), this)
 }
 
 private suspend fun makeTreeWithUnificationBase(nodes: UnificationNodes): Substitution? =
