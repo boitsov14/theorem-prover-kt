@@ -64,4 +64,8 @@ private fun Substitution.getSubstitutionSync(substitutionsList: List<Substitutio
 	else substitutionsList.first().asSequence().map { this.unify(it.toList()) }.filterNotNull()
 		.map { it.getSubstitutionSync(substitutionsList.drop(1)) }.filterNotNull().firstOrNull()
 
-fun Substitution.normalize(): Substitution = mapValues { it.value.replaceLinearly(this) }
+fun Substitution.normalize(): Substitution {
+	val substitution =
+		this + (this.values.flatMap { it.unificationTerms } - this.keys).associateWith { it.availableVars.first() }
+	return substitution.mapValues { it.value.replaceLinearly(substitution) }
+}
