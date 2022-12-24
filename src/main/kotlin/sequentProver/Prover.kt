@@ -45,6 +45,53 @@ data class UnificationNode(
 
 typealias UnificationNodes = List<UnificationNode>
 
+fun INode.complete(substitution: Substitution, newSequent: Sequent): INode = if (AXIOM.canApply(newSequent)) {
+	AxiomNode(newSequent)
+} else when (this) {
+	is AxiomNode -> AxiomNode(newSequent)
+	is UnaryNode -> {
+		val newFml = (newSequent.assumptions + newSequent.conclusions).first { it == fml.replace(substitution) }
+		val newChildSequent = tactic.apply(newSequent, newFml)
+		UnaryNode(newSequent, tactic, newFml, child.complete(substitution, newChildSequent))
+	}
+
+	is BinaryNode -> {
+		val newFml = (newSequent.assumptions + newSequent.conclusions).first { it == fml.replace(substitution) }
+		val (newLeftSequent, newRightSequent) = tactic.apply(newSequent, newFml)
+		BinaryNode(
+			newSequent,
+			tactic,
+			newFml,
+			leftChild.complete(substitution, newLeftSequent),
+			rightChild.complete(substitution, newRightSequent)
+		)
+	}
+
+	is FreshVarNode -> {
+		val newFml =
+			(newSequent.assumptions + newSequent.conclusions).first { it == fml.replace(substitution) } as Quantified
+		// TODO: 2022/12/24 FreshVarを取り直すとうれしい具体例がほしい
+		val newFreshVar = newFml.bddVar.getFreshVar(newSequent.freeVars)
+		val newChildSequent = tactic.apply(newSequent, newFml, newFreshVar)
+		val newSubstitution = substitution.mapValues { it.value.replace(freshVar, newFreshVar) }
+		FreshVarNode(newSequent, tactic, newFml, newFreshVar, child.complete(newSubstitution, newChildSequent))
+	}
+
+	is TermNode -> {
+		term as UnificationTerm
+		val newTerm = substitution[term] ?: Dummy
+		val newFml =
+			(newSequent.assumptions + newSequent.conclusions).first { it == fml.replace(substitution) } as Quantified
+		val newChildSequent = tactic.apply(newSequent, newFml, newTerm)
+		val newSubstitution = if (newTerm is Dummy) substitution + mapOf(term to newTerm) else substitution
+		TermNode(newSequent, tactic, newFml, newTerm, child.complete(newSubstitution, newChildSequent))
+	}
+
+	is UnificationNode -> {
+		child!!.complete(substitution, newSequent)
+	}
+}
+
 private fun INode.getLatexRec(): String = when (this) {
 	is AxiomNode -> """\AxiomC{}
 		|\RightLabel{\scriptsize Axiom}
