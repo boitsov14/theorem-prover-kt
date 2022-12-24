@@ -138,6 +138,43 @@ fun INode.getLatex(proofState: ProofState): String =
 	|
 """.trimMargin()
 
+tailrec fun List<INode>.printProof() {
+	println("-----------------------")
+	if (this.isEmpty()) {
+		println("Proof is completed!")
+		return
+	}
+	this.map { it.sequent }.forEach { println(it) }
+	when (val node = this.first()) {
+		is AxiomNode -> {
+			println("Axiom")
+			this.drop(1).printProof()
+		}
+
+		is UnaryNode -> {
+			println(node.tactic)
+			(listOf(node.child) + this.drop(1)).printProof()
+		}
+
+		is BinaryNode -> {
+			println(node.tactic)
+			(listOf(node.leftChild, node.rightChild) + this.drop(1)).printProof()
+		}
+
+		is FreshVarNode -> {
+			println(node.tactic)
+			(listOf(node.child) + this.drop(1)).printProof()
+		}
+
+		is TermNode -> {
+			println(node.tactic)
+			(listOf(node.child) + this.drop(1)).printProof()
+		}
+
+		is UnificationNode -> throw IllegalArgumentException()
+	}
+}
+
 /*
 data class Node(
 	var sequentToBeApplied: Sequent,
