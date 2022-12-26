@@ -3,8 +3,6 @@ package core
 import core.Term.*
 
 class DuplicateBddVarException : Exception()
-class CannotQuantifyPredicateException : Exception()
-class CannotQuantifyFunctionException : Exception()
 
 sealed class Formula {
 	object TRUE : Formula()
@@ -32,36 +30,15 @@ sealed class Formula {
 		final override fun hashCode(): Int = 31 * javaClass.hashCode() + operandFml.javaClass.hashCode()
 	}
 
-	// TODO: 2022/12/02 Countの削除
-	data class ALL(
-		override val bddVar: Var, override val operandFml: Formula, val unificationTermInstantiationCount: Int = 0
-	) : Quantified() {
+	data class ALL(override val bddVar: Var, override val operandFml: Formula) : Quantified() {
 		init {
-			if (bddVar in operandFml.bddVars) {
-				throw DuplicateBddVarException()
-			}
-			if (bddVar.id in operandFml.predicateIds) {
-				throw CannotQuantifyPredicateException()
-			}
-			if (bddVar.id in operandFml.functionIds) {
-				throw CannotQuantifyFunctionException()
-			}
+			if (bddVar in operandFml.bddVars) throw DuplicateBddVarException()
 		}
 	}
 
-	data class EXISTS(
-		override val bddVar: Var, override val operandFml: Formula, val unificationTermInstantiationCount: Int = 0
-	) : Quantified() {
+	data class EXISTS(override val bddVar: Var, override val operandFml: Formula) : Quantified() {
 		init {
-			if (bddVar in operandFml.bddVars) {
-				throw DuplicateBddVarException()
-			}
-			if (bddVar.id in operandFml.predicateIds) {
-				throw CannotQuantifyPredicateException()
-			}
-			if (bddVar.id in operandFml.functionIds) {
-				throw CannotQuantifyFunctionException()
-			}
+			if (bddVar in operandFml.bddVars) throw DuplicateBddVarException()
 		}
 	}
 
@@ -94,10 +71,65 @@ sealed class Formula {
 			.replace("∧", """\land""").replace("∨", """\lor""").replace("→", """\rightarrow""")
 			.replace("↔", """\leftrightarrow""").replace("∀", """\forall """).replace("∃", """\exists """).toGreekName()
 
+	private fun String.toGreekName(): String =
+		greekLetters.zip(greekNames).fold(this) { temp, (letter, name) -> temp.replace(letter, name) }
+
+	private val greekLetters = "αβγδεζηθικλμνξοπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ".map { it.toString() }
+
+	private val greekNames = listOf(
+		"""\alpha """,
+		"""\beta """,
+		"""\gamma """,
+		"""\delta """,
+		"""\varepsilon """,
+		"""\zeta """,
+		"""\eta """,
+		"""\theta """,
+		"""\iota """,
+		"""\kappa """,
+		"""\lambda """,
+		"""\mu """,
+		"""\nu """,
+		"""\xi """,
+		"o",
+		"""\pi """,
+		"""\rho """,
+		"""\sigma """,
+		"""\tau """,
+		"""\upsilon """,
+		"""\varphi """,
+		"""\chi """,
+		"""\psi """,
+		"""\omega """,
+		"A",
+		"B",
+		"""\Gamma """,
+		"""\Delta """,
+		"E",
+		"Z",
+		"H",
+		"""\Theta """,
+		"I",
+		"K",
+		"""\Lambda """,
+		"M",
+		"N",
+		"""\Xi """,
+		"O",
+		"""\Pi """,
+		"P",
+		"""\Sigma """,
+		"T",
+		"""\Upsilon """,
+		"""\Phi """,
+		"X",
+		"""\Psi """,
+		"""\Omega """
+	)
+
 	val freeVars: Set<Var>
 		get() = when (this) {
-			TRUE -> emptySet()
-			FALSE -> emptySet()
+			TRUE, FALSE -> emptySet()
 			is PREDICATE -> terms.flatMap { it.freeVars }.toSet()
 			is NOT -> operandFml.freeVars
 			is AND -> leftFml.freeVars + rightFml.freeVars
@@ -108,9 +140,7 @@ sealed class Formula {
 		}
 	val bddVars: Set<Var>
 		get() = when (this) {
-			TRUE -> emptySet()
-			FALSE -> emptySet()
-			is PREDICATE -> emptySet()
+			TRUE, FALSE, is PREDICATE -> emptySet()
 			is NOT -> operandFml.bddVars
 			is AND -> leftFml.bddVars + rightFml.bddVars
 			is OR -> leftFml.bddVars + rightFml.bddVars
@@ -118,26 +148,9 @@ sealed class Formula {
 			is IFF -> leftFml.bddVars + rightFml.bddVars
 			is Quantified -> operandFml.bddVars + bddVar
 		}
-
-	/*
-	val unificationTerms: Set<UnificationTerm>
+	val predicateIds: Set<String>
 		get() = when (this) {
-			TRUE 			-> emptySet()
-			FALSE 			-> emptySet()
-			is PREDICATE 	-> terms.map { it.unificationTerms }.flatten().toSet()
-			is NOT 			-> operandFml.unificationTerms
-			is AND 			-> leftFml.unificationTerms + rightFml.unificationTerms
-			is OR 			-> leftFml.unificationTerms + rightFml.unificationTerms
-			is IMPLIES 		-> leftFml.unificationTerms + rightFml.unificationTerms
-			is IFF 			-> leftFml.unificationTerms + rightFml.unificationTerms
-			is ALL 			-> operandFml.unificationTerms
-			is EXISTS 		-> operandFml.unificationTerms
-		}
-	 */
-	private val predicateIds: Set<String>
-		get() = when (this) {
-			TRUE -> emptySet()
-			FALSE -> emptySet()
+			TRUE, FALSE -> emptySet()
 			is PREDICATE -> setOf(id)
 			is NOT -> operandFml.predicateIds
 			is AND -> leftFml.predicateIds + rightFml.predicateIds
@@ -146,7 +159,7 @@ sealed class Formula {
 			is IFF -> leftFml.predicateIds + rightFml.predicateIds
 			is Quantified -> operandFml.predicateIds
 		}
-	private val functionIds: Set<String>
+	val functionIds: Set<String>
 		get() = when (this) {
 			TRUE -> emptySet()
 			FALSE -> emptySet()
@@ -160,89 +173,49 @@ sealed class Formula {
 		}
 
 	fun replace(oldVar: Var, newTerm: Term): Formula = when (this) {
-		TRUE -> this
-		FALSE -> this
+		TRUE, FALSE -> this
 		is PREDICATE -> PREDICATE(id, terms.map { it.replace(oldVar, newTerm) })
 		is NOT -> NOT(operandFml.replace(oldVar, newTerm))
 		is AND -> AND(leftFml.replace(oldVar, newTerm), rightFml.replace(oldVar, newTerm))
 		is OR -> OR(leftFml.replace(oldVar, newTerm), rightFml.replace(oldVar, newTerm))
 		is IMPLIES -> IMPLIES(leftFml.replace(oldVar, newTerm), rightFml.replace(oldVar, newTerm))
 		is IFF -> IFF(leftFml.replace(oldVar, newTerm), rightFml.replace(oldVar, newTerm))
-		is ALL -> {
+		is Quantified -> {
 			if (oldVar == bddVar) {
 				this
-			} else if (bddVar in newTerm.freeVars && oldVar in freeVars) {
+			} else if (bddVar in newTerm.freeVars) {
 				val newBddVar = bddVar.getFreshVar(operandFml.bddVars + operandFml.freeVars + newTerm.freeVars)
-				this.copy(
-					bddVar = newBddVar, operandFml = operandFml.replace(bddVar, newBddVar).replace(oldVar, newTerm)
-				)
+				when (this) {
+					is ALL -> ALL(newBddVar, operandFml.replace(bddVar, newBddVar).replace(oldVar, newTerm))
+					is EXISTS -> EXISTS(newBddVar, operandFml.replace(bddVar, newBddVar).replace(oldVar, newTerm))
+				}
 			} else {
-				this.copy(
-					operandFml = operandFml.replace(oldVar, newTerm)
-				)
-			}
-		}
-
-		is EXISTS -> {
-			if (oldVar == bddVar) {
-				this
-			} else if (bddVar in newTerm.freeVars && oldVar in freeVars) {
-				val newBddVar = bddVar.getFreshVar(operandFml.bddVars + operandFml.freeVars + newTerm.freeVars)
-				this.copy(
-					bddVar = newBddVar, operandFml = operandFml.replace(bddVar, newBddVar).replace(oldVar, newTerm)
-				)
-			} else {
-				this.copy(
-					operandFml = operandFml.replace(oldVar, newTerm)
-				)
+				when (this) {
+					is ALL -> ALL(bddVar, operandFml.replace(oldVar, newTerm))
+					is EXISTS -> EXISTS(bddVar, operandFml.replace(oldVar, newTerm))
+				}
 			}
 		}
 	}
 
-	/*
-	private fun replace(oldUnificationTerm: UnificationTerm, newTerm: Term): Formula = when (this) {
-		TRUE -> this
-		FALSE -> this
-		is PREDICATE -> PREDICATE(id, terms.map { it.replace(oldUnificationTerm, newTerm) })
-		is NOT -> NOT(operandFml.replace(oldUnificationTerm, newTerm))
-		is AND -> AND(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
-		is OR -> OR(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
+	fun replace(substitution: Substitution): Formula = when (this) {
+		TRUE, FALSE -> this
+		is PREDICATE -> PREDICATE(id, terms.map { it.replace(substitution) })
+		is NOT -> NOT(operandFml.replace(substitution))
+		is AND -> AND(leftFml.replace(substitution), rightFml.replace(substitution))
+		is OR -> OR(leftFml.replace(substitution), rightFml.replace(substitution))
 		is IMPLIES -> IMPLIES(
-			leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm)
+			leftFml.replace(substitution), rightFml.replace(substitution)
 		)
 
-		is IFF -> IFF(leftFml.replace(oldUnificationTerm, newTerm), rightFml.replace(oldUnificationTerm, newTerm))
-		is ALL -> {
-			if (!(oldUnificationTerm.availableVars.containsAll(newTerm.freeVars))) {
-				throw IllegalArgumentException()
-			}
-			if (bddVar in oldUnificationTerm.availableVars) {
-				this
-			} else {
-				this.copy(
-					operandFml = operandFml.replace(oldUnificationTerm, newTerm)
-				)
-			}
-		}
-
-		is EXISTS -> {
-			if (!(oldUnificationTerm.availableVars.containsAll(newTerm.freeVars))) {
-				throw IllegalArgumentException()
-			}
-			if (bddVar in oldUnificationTerm.availableVars) {
-				this
-			} else {
-				this.copy(
-					operandFml = operandFml.replace(oldUnificationTerm, newTerm)
-				)
+		is IFF -> IFF(leftFml.replace(substitution), rightFml.replace(substitution))
+		is Quantified -> {
+			when (this) {
+				is ALL -> ALL(bddVar, operandFml.replace(substitution))
+				is EXISTS -> EXISTS(bddVar, operandFml.replace(substitution))
 			}
 		}
 	}
-
-	// TODO: 2022/12/15 未使用？
-	fun replace(substitution: Substitution): Formula =
-		substitution.asIterable().fold(this) { tmp, (key, value) -> tmp.replace(key, value) }
-	*/
 
 	// TODO: 2022/07/21 check the errata!
 	internal fun simplify0(): Formula = when (this) {
@@ -465,58 +438,3 @@ internal fun Iterable<Formula>.makeConjunction(): Formula =
 
 internal fun Iterable<Formula>.makeDisjunction(): Formula =
 	reversed().reduceOrNull { disj, fml -> Formula.OR(fml, disj) } ?: Formula.FALSE
-
-private fun String.toGreekName(): String =
-	"αβγδεζηθικλμνξοπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ".map { "$it" }.zip(greekNames)
-		.fold(this) { temp, (letter, name) -> temp.replace(letter, name) }
-
-private val greekNames = listOf(
-	"""\alpha """,
-	"""\beta """,
-	"""\gamma """,
-	"""\delta """,
-	"""\varepsilon """,
-	"""\zeta """,
-	"""\eta """,
-	"""\theta """,
-	"""\iota """,
-	"""\kappa """,
-	"""\lambda """,
-	"""\mu """,
-	"""\nu """,
-	"""\xi """,
-	"o",
-	"""\pi """,
-	"""\rho """,
-	"""\sigma """,
-	"""\tau """,
-	"""\upsilon """,
-	"""\varphi """,
-	"""\chi """,
-	"""\psi """,
-	"""\omega """,
-	"A",
-	"B",
-	"""\Gamma """,
-	"""\Delta """,
-	"E",
-	"Z",
-	"H",
-	"""\Theta """,
-	"I",
-	"K",
-	"""\Lambda """,
-	"M",
-	"N",
-	"""\Xi """,
-	"O",
-	"""\Pi """,
-	"P",
-	"""\Sigma """,
-	"T",
-	"""\Upsilon """,
-	"""\Phi """,
-	"X",
-	"""\Psi """,
-	"""\Omega """
-)

@@ -257,26 +257,22 @@ private fun List<Token>.getFormula(): Formula {
 				when (token) {
 					Token.Operator.Unary.NOT -> stack.add(NOT(fml))
 					is Token.Operator.Unary.ALL -> {
+						if (token.bddVar.id in fml.predicateIds) throw FormulaParserException("Cannot Quantify Predicate: ${token.bddVar}")
+						if (token.bddVar.id in fml.functionIds) throw FormulaParserException("Cannot Quantify Function: ${token.bddVar}")
 						try {
 							stack.add(ALL(token.bddVar, fml))
 						} catch (e: DuplicateBddVarException) {
 							throw FormulaParserException("Duplicated Bounded Variables: ${token.bddVar}")
-						} catch (e: CannotQuantifyPredicateException) {
-							throw FormulaParserException("Cannot Quantify Predicate: ${token.bddVar}")
-						} catch (e: CannotQuantifyFunctionException) {
-							throw FormulaParserException("Cannot Quantify Function: ${token.bddVar}")
 						}
 					}
 
 					is Token.Operator.Unary.EXISTS -> {
+						if (token.bddVar.id in fml.predicateIds) throw FormulaParserException("Cannot Quantify Predicate: ${token.bddVar}")
+						if (token.bddVar.id in fml.functionIds) throw FormulaParserException("Cannot Quantify Function: ${token.bddVar}")
 						try {
 							stack.add(EXISTS(token.bddVar, fml))
 						} catch (e: DuplicateBddVarException) {
 							throw FormulaParserException("Duplicated Bounded Variables: ${token.bddVar}")
-						} catch (e: CannotQuantifyPredicateException) {
-							throw FormulaParserException("Cannot Quantify Predicate: ${token.bddVar}")
-						} catch (e: CannotQuantifyFunctionException) {
-							throw FormulaParserException("Cannot Quantify Function: ${token.bddVar}")
 						}
 					}
 				}
