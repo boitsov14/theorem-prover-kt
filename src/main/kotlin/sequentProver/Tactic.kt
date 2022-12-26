@@ -31,12 +31,12 @@ enum class UnaryTactic : ITactic {
 	}
 
 	override fun toLatex(): String = when (this) {
-		AND_LEFT -> "$\\land$: Left"
-		OR_RIGHT -> "$\\lor$: Right"
-		IMPLIES_RIGHT -> "$\\rightarrow$: Right"
-		NOT_LEFT -> "$\\neg$: Left"
-		NOT_RIGHT -> "$\\neg$: Right"
-		IFF_LEFT -> "$\\leftrightarrow$: Left"
+		AND_LEFT -> """$\land$: Left"""
+		OR_RIGHT -> """$\lor$: Right"""
+		IMPLIES_RIGHT -> """$\rightarrow$: Right"""
+		NOT_LEFT -> """$\neg$: Left"""
+		NOT_RIGHT -> """$\neg$: Right"""
+		IFF_LEFT -> """$\leftrightarrow$: Left"""
 	}
 
 	fun getFml(sequent: Sequent): Formula? = when (this) {
@@ -106,10 +106,10 @@ enum class BinaryTactic : ITactic {
 	}
 
 	override fun toLatex(): String = when (this) {
-		AND_RIGHT -> "$\\land$: Right"
-		OR_LEFT -> "$\\lor$: Left"
-		IMPLIES_LEFT -> "$\\rightarrow$: Left"
-		IFF_RIGHT -> "$\\leftrightarrow$: Right"
+		AND_RIGHT -> """$\land$: Right"""
+		OR_LEFT -> """$\lor$: Left"""
+		IMPLIES_LEFT -> """$\rightarrow$: Left"""
+		IFF_RIGHT -> """$\leftrightarrow$: Right"""
 	}
 
 	fun getFml(sequent: Sequent): Formula? = when (this) {
@@ -183,8 +183,8 @@ enum class FreshVarTactic : ITactic {
 	}
 
 	override fun toLatex(): String = when (this) {
-		ALL_RIGHT -> "$\\forall$: Right"
-		EXISTS_LEFT -> "$\\exists$: Left"
+		ALL_RIGHT -> """$\forall$: Right"""
+		EXISTS_LEFT -> """$\exists$: Left"""
 	}
 
 	fun getFml(sequent: Sequent): Quantified? = when (this) {
@@ -207,8 +207,8 @@ enum class TermTactic : ITactic {
 	}
 
 	override fun toLatex(): String = when (this) {
-		ALL_LEFT -> "$\\forall$: Left"
-		EXISTS_RIGHT -> "$\\exists$: Right"
+		ALL_LEFT -> """$\forall$: Left"""
+		EXISTS_RIGHT -> """$\exists$: Right"""
 	}
 
 	fun getFml(sequent: Sequent, fmls: Set<Quantified>): Quantified? = when (this) {

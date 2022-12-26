@@ -89,20 +89,20 @@ fun String.toOneLetter(): String = listOf(
 
 // TODO: すべての空白をTrimすればよいのでは？
 private fun String.trimWhiteSpaces(): String =
-	this.replace("\\s*[(]\\s*".toRegex(), "(").replace("\\s*[)]\\s*".toRegex(), ")").replace("\\s*,\\s*".toRegex(), ",")
-		.replace("∀\\s*".toRegex(), "∀").replace("∃\\s*".toRegex(), "∃")
+	this.replace("""\s*[(]\s*""".toRegex(), "(").replace("""\s*[)]\s*""".toRegex(), ")")
+		.replace("""\s*,\s*""".toRegex(), ",").replace("""∀\s*""".toRegex(), "∀").replace("""∃\s*""".toRegex(), "∃")
 
 // TODO: EndPosはendの位置のひとつ手前に変更する？
 @OptIn(ExperimentalStdlibApi::class)
 private fun String.getIdEndPos(startPos: Int): Int {
-	val regex = "[a-zA-Zα-ωΑ-Ω\\d]+".toRegex()
+	val regex = """[a-zA-Zα-ωΑ-Ω\d]+""".toRegex()
 	val str = regex.matchAt(this, startPos)!!.value
 	return startPos + str.length - 1
 }
 
 @OptIn(ExperimentalStdlibApi::class)
 private fun String.getBddVarIdEndPos(startPos: Int): Int {
-	val regex = "[a-zA-Zα-ωΑ-Ω]\\d*".toRegex()
+	val regex = """[a-zA-Zα-ωΑ-Ω]\d*""".toRegex()
 	val str = regex.matchAt(this, startPos)!!.value
 	return startPos + str.length - 1
 }
