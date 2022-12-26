@@ -3,17 +3,13 @@ package core
 sealed class Term {
 	data class Var(internal val id: String) : Term() {
 		fun getFreshVar(oldVars: Set<Var>): Var {
-			if (this !in oldVars) {
-				return this
-			}
+			if (this !in oldVars) return this
 			val regex = """_\d+""".toRegex()
 			val preId = regex.replace(id, "")
 			var n = regex.find(id)?.value?.drop(1)?.toInt() ?: 1
 			while (true) {
 				val newVar = Var(preId + "_$n")
-				if (newVar !in oldVars) {
-					return newVar
-				}
+				if (newVar !in oldVars) return newVar
 				n++
 			}
 		}
@@ -52,10 +48,8 @@ sealed class Term {
 		}
 	val functionIds: Set<String>
 		get() = when (this) {
-			is Var -> emptySet()
-			is UnificationTerm -> emptySet()
+			is Var, is UnificationTerm, is Dummy -> emptySet()
 			is Function -> setOf(id) + terms.flatMap { it.functionIds }
-			is Dummy -> emptySet()
 		}
 
 	fun replace(oldVar: Var, newTerm: Term): Term = when (this) {
