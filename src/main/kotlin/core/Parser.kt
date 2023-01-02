@@ -7,7 +7,7 @@ import java.text.Normalizer.*
 class FormulaParserException(message: String) : Exception(message)
 
 fun String.parseToFormula(): Formula =
-	normalize(this, Form.NFKC).toOneLetter().trimWhiteSpaces().tokenize().toReversePolishNotation().getFormula()
+	normalize(this, Form.NFKC).toOneLetter().trimSpace().tokenize().toReversePolishNotation().getFormula()
 
 /*
 fun String.parseToFormula(): Formula {
@@ -51,10 +51,11 @@ private sealed interface Token {
 	}
 
 	data class PREDICATE(val id: String, val terms: List<Term>) : Token
-	object FALSE : Token
 	object TRUE : Token
+	object FALSE : Token
 }
 
+// TODO: 2023/01/02 privateにする？
 fun String.toOneLetter(): String = listOf(
 	'⊢' to setOf("proves", "vdash", """\vdash""", "|-", "├", "┣"),
 	'⊤' to setOf("true", "tautology", "top", """\top"""),
@@ -83,14 +84,9 @@ fun String.toOneLetter(): String = listOf(
 	'∀' to setOf("forall", """\forall""", "all", "for all"),
 	'∃' to setOf("exists", """\exists""", "ex", "there exists")
 ).flatMap { (key, sets) -> sets.map { it to "$key" } }.sortedBy { it.first.length }.asReversed()
-	.fold(this) { tmp, (str, letter) ->
-		tmp.replace(str, letter, true)
-	}
+	.fold(this) { tmp, (str, letter) -> tmp.replace(str, letter, true) }
 
-// TODO: すべての空白をTrimすればよいのでは？
-private fun String.trimWhiteSpaces(): String =
-	this.replace("""\s*[(]\s*""".toRegex(), "(").replace("""\s*[)]\s*""".toRegex(), ")")
-		.replace("""\s*,\s*""".toRegex(), ",").replace("""∀\s*""".toRegex(), "∀").replace("""∃\s*""".toRegex(), "∃")
+private fun String.trimSpace(): String = replace("""[\t\n\v\f\r\s]+""".toRegex(), "")
 
 // TODO: EndPosはendの位置のひとつ手前に変更する？
 @OptIn(ExperimentalStdlibApi::class)
@@ -154,7 +150,6 @@ private fun String.tokenize(): List<Token> {
 	var index = 0
 	while (index < this.length) {
 		when (this[index]) {
-			' ' -> {}
 			'(' -> tokens.add(Token.LP)
 			')' -> tokens.add(Token.RP)
 			'¬' -> tokens.add(Token.Operator.Unary.NOT)
