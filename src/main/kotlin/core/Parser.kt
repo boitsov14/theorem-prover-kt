@@ -9,22 +9,6 @@ class FormulaParserException(message: String) : Exception(message)
 fun String.parseToFormula(): Formula =
 	normalize(this, Form.NFKC).toOneLetter().trimSpace().tokenize().toReversePolishNotation().getFormula()
 
-/*
-fun String.parseToFormula(): Formula {
-	println(this)
-	val str = this.toOneLetter().trimWhiteSpaces()
-	println(str)
-	val tokens = str.tokenize()
-	println(tokens)
-	val reversePolishNotation = tokens.toReversePolishNotation()
-	println(reversePolishNotation)
-	println(reversePolishNotation.getFormula())
-	return reversePolishNotation.getFormula()
-}
-*/
-
-val letters = ('A'..'Z') + ('a'..'z') + ('Α'..'Ω') + ('α'..'ω')
-
 private sealed interface Token {
 	object LP : Token
 	object RP : Token
@@ -82,124 +66,80 @@ fun String.toOneLetter(): String = listOf(
 		"to", """\to""", "implies", "imply", "->", "=>", "-->", "==>", "⇒", "rightarrow", """\rightarrow"""
 	),
 	'∀' to setOf("forall", """\forall""", "all", "for all"),
-	'∃' to setOf("exists", """\exists""", "ex", "there exists")
+	'∃' to setOf("exists", """\exists""", "ex", "there exists"),
+	'(' to setOf("{", "["),
+	')' to setOf("}", "]")
 ).flatMap { (key, sets) -> sets.map { it to "$key" } }.sortedBy { it.first.length }.asReversed()
 	.fold(this) { tmp, (str, letter) -> tmp.replace(str, letter, true) }
 
-private fun String.trimSpace(): String = replace("""[\t\n\v\f\r\s]+""".toRegex(), "")
+private fun String.trimSpace(): String = replace("""\s""".toRegex(), "")
 
-// TODO: EndPosはendの位置のひとつ手前に変更する？
-@OptIn(ExperimentalStdlibApi::class)
-private fun String.getIdEndPos(startPos: Int): Int {
-	val regex = """[a-zA-Zα-ωΑ-Ω\d]+""".toRegex()
-	val str = regex.matchAt(this, startPos)!!.value
-	return startPos + str.length - 1
-}
-
-@OptIn(ExperimentalStdlibApi::class)
-private fun String.getBddVarIdEndPos(startPos: Int): Int {
-	val regex = """[a-zA-Zα-ωΑ-Ω]\d*""".toRegex()
-	val str = regex.matchAt(this, startPos)!!.value
-	return startPos + str.length - 1
-}
-
-private fun String.getParenthesisEndPos(startPos: Int): Int? {
-	if (this[startPos] != '(') throw IllegalArgumentException()
-	var counter = 0
-	var pos = startPos
-	while (pos < this.length) {
-		when (this[pos]) {
-			'(' -> counter++
-			')' -> counter--
+private fun String.getParenthesisEndPos(): Int? {
+	var cnt = 0
+	for ((pos, chr) in this.withIndex()) {
+		when (chr) {
+			'(' -> cnt++
+			')' -> cnt--
 		}
-		if (counter == 0) return pos
-		pos++
+		if (cnt == 0) return pos
 	}
 	return null
 }
 
+@OptIn(ExperimentalStdlibApi::class)
 private fun String.toTerms(): List<Term> {
-	if (this.isEmpty()) return emptyList()
-	if (this.first() !in letters) throw FormulaParserException("Illegal Argument: '${this.first()}'")
-	val firstTerm: Term
-	val firstTermEndPos: Int
-	val idEndPos = this.getIdEndPos(0)
-	val id = this.substring(0, idEndPos + 1)
-	if (idEndPos + 1 < this.length && this[idEndPos + 1] == '(') {
-		val parenthesisEndPos =
-			this.getParenthesisEndPos(idEndPos + 1) ?: throw FormulaParserException("Parenthesis Error.")
-		val operandTermsStr = this.substring(idEndPos + 2, parenthesisEndPos)
-		val operandTerms = operandTermsStr.toTerms()
-		firstTerm = Function(id, operandTerms)
-		firstTermEndPos = parenthesisEndPos
+	if (isEmpty()) return emptyList()
+	val id = """[a-zA-Zα-ωΑ-Ω\d]+""".toRegex().matchAt(this, 0)?.value
+		?: throw FormulaParserException("Illegal Argument: '${first()}'")
+	val remained0 = drop(id.length)
+	val (remained1, term) = if (remained0.firstOrNull() == '(') {
+		val pos = remained0.getParenthesisEndPos() ?: throw FormulaParserException("Parenthesis Error.")
+		val terms = remained0.substring(1 until pos).toTerms()
+		remained0.substring(pos + 1) to Function(id, terms)
 	} else {
-		firstTerm = Var(id)
-		firstTermEndPos = idEndPos
+		remained0 to Var(id)
 	}
-	if (firstTermEndPos + 2 < this.length && this[firstTermEndPos + 1] == ',') {
-		return listOf(firstTerm) + this.drop(firstTermEndPos + 2).toTerms()
-	}
-	if (firstTermEndPos == this.lastIndex) {
-		return listOf(firstTerm)
-	}
-	throw FormulaParserException("Illegal Argument: '${this[firstTermEndPos + 1]}'")
+	return if (remained1.isEmpty()) listOf(term)
+	else if (remained1.first() == ',') listOf(term) + remained1.drop(1).toTerms()
+	else throw FormulaParserException("Illegal Argument: '${remained1.first()}'")
 }
 
-private fun String.tokenize(): List<Token> {
-	val tokens = mutableListOf<Token>()
-	var index = 0
-	while (index < this.length) {
-		when (this[index]) {
-			'(' -> tokens.add(Token.LP)
-			')' -> tokens.add(Token.RP)
-			'¬' -> tokens.add(Token.Operator.Unary.NOT)
-			'∧' -> tokens.add(Token.Operator.Binary.AND)
-			'∨' -> tokens.add(Token.Operator.Binary.OR)
-			'→' -> tokens.add(Token.Operator.Binary.IMPLIES)
-			'↔' -> tokens.add(Token.Operator.Binary.IFF)
-			'⊥' -> tokens.add(Token.FALSE)
-			'⊤' -> tokens.add(Token.TRUE)
-			'∀' -> {
-				if (!(index < this.lastIndex && this[index + 1] in letters)) {
-					throw FormulaParserException("The quantifier must be used in the form '∀x'")
-				}
-				val endPos = this.getBddVarIdEndPos(index + 1)
-				val bddVar = Var(this.substring(index + 1, endPos + 1))
-				tokens.add(Token.Operator.Unary.ALL(bddVar))
-				index = endPos
-			}
-
-			'∃' -> {
-				if (!(index < this.lastIndex && this[index + 1] in letters)) {
-					throw FormulaParserException("The quantifier must be used in the form '∃x'")
-				}
-				val endPos = this.getBddVarIdEndPos(index + 1)
-				val bddVar = Var(this.substring(index + 1, endPos + 1))
-				tokens.add(Token.Operator.Unary.EXISTS(bddVar))
-				index = endPos
-			}
-
-			in letters -> {
-				val idEndPos = this.getIdEndPos(index)
-				val id = this.substring(index, idEndPos + 1)
-				index = idEndPos
-				if (index + 1 < this.length && this[index + 1] == '(') {
-					val parenthesisEndPos =
-						this.getParenthesisEndPos(index + 1) ?: throw FormulaParserException("Parenthesis Error.")
-					val termsStr = this.substring(index + 2, parenthesisEndPos)
-					val terms = termsStr.toTerms()
-					tokens.add(Token.PREDICATE(id, terms))
-					index = parenthesisEndPos
-				} else {
-					tokens.add(Token.PREDICATE(id, emptyList()))
-				}
-			}
-
-			else -> throw FormulaParserException("Illegal Argument: '${this[index]}'")
-		}
-		index++
+@OptIn(ExperimentalStdlibApi::class)
+private tailrec fun String.tokenize(tokens: List<Token> = emptyList()): List<Token> = if (isEmpty()) tokens
+else when (first()) {
+	'(' -> drop(1).tokenize(tokens + Token.LP)
+	')' -> drop(1).tokenize(tokens + Token.RP)
+	'¬' -> drop(1).tokenize(tokens + Token.Operator.Unary.NOT)
+	'∧' -> drop(1).tokenize(tokens + Token.Operator.Binary.AND)
+	'∨' -> drop(1).tokenize(tokens + Token.Operator.Binary.OR)
+	'→' -> drop(1).tokenize(tokens + Token.Operator.Binary.IMPLIES)
+	'↔' -> drop(1).tokenize(tokens + Token.Operator.Binary.IFF)
+	'⊤' -> drop(1).tokenize(tokens + Token.TRUE)
+	'⊥' -> drop(1).tokenize(tokens + Token.FALSE)
+	'∀' -> {
+		val str = """[a-zA-Zα-ωΑ-Ω]\d*(,[a-zA-Zα-ωΑ-Ω]\d*)*""".toRegex().matchAt(this, 1)?.value
+			?: throw FormulaParserException("The quantifier must be used in the form '∀x'")
+		drop(str.length + 1).tokenize(tokens + str.split(',').map(::Var).map(Token.Operator.Unary::ALL))
 	}
-	return tokens
+
+	'∃' -> {
+		val str = """[a-zA-Zα-ωΑ-Ω]\d*(,[a-zA-Zα-ωΑ-Ω]\d*)*""".toRegex().matchAt(this, 1)?.value
+			?: throw FormulaParserException("The quantifier must be used in the form '∃x'")
+		drop(str.length + 1).tokenize(tokens + str.split(',').map(::Var).map(Token.Operator.Unary::EXISTS))
+	}
+
+	else -> {
+		val id = """[a-zA-Zα-ωΑ-Ω\d]+""".toRegex().matchAt(this, 0)?.value
+			?: throw FormulaParserException("Illegal Argument: '${first()}'")
+		val remained = drop(id.length)
+		if (remained.firstOrNull() == '(') {
+			val pos = remained.getParenthesisEndPos() ?: throw FormulaParserException("Parenthesis Error.")
+			val terms = remained.substring(1 until pos).toTerms()
+			remained.substring(pos + 1).tokenize(tokens + Token.PREDICATE(id, terms))
+		} else {
+			remained.tokenize(tokens + Token.PREDICATE(id, emptyList()))
+		}
+	}
 }
 
 private fun List<Token>.toReversePolishNotation(): List<Token> {
