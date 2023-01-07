@@ -7,7 +7,7 @@ import java.text.Normalizer.*
 class FormulaParserException(message: String) : Exception(message)
 
 fun String.parseToFormula(): Formula =
-	normalize(this, Form.NFKC).toOneLetter().trimSpace().tokenize().toRPN().getFormula()
+	normalize(this, Form.NFKC).toOneLetter().trimSpace().tokenize().toRPN().makeFormula()
 
 private sealed interface Token {
 	object LP : Token
@@ -168,60 +168,52 @@ private fun List<Token>.toRPN(): List<Token> {
 	return tokens
 }
 
-private fun List<Token>.getFormula(): Formula {
+private fun List<Token>.makeFormula(): Formula {
 	val stack = mutableListOf<Formula>()
-	for (token in this) {
-		when (token) {
-			Token.FALSE -> stack.add(FALSE)
-			Token.TRUE -> stack.add(TRUE)
-			is Token.PREDICATE -> stack.add(PREDICATE(token.id, token.terms))
-			is Token.Operator.Unary -> {
-				if (stack.isEmpty()) {
-					throw FormulaParserException("Parse Error.")
-				}
-				val fml = stack.removeLast()
-				when (token) {
-					Token.Operator.Unary.NOT -> stack.add(NOT(fml))
-					is Token.Operator.Unary.ALL -> {
-						if (token.bddVar.id in fml.predicateIds) throw FormulaParserException("Cannot Quantify Predicate: ${token.bddVar}")
-						if (token.bddVar.id in fml.functionIds) throw FormulaParserException("Cannot Quantify Function: ${token.bddVar}")
-						try {
-							stack.add(ALL(token.bddVar, fml))
-						} catch (e: DuplicateBddVarException) {
-							throw FormulaParserException("Duplicated Bounded Variables: ${token.bddVar}")
-						}
+	for (token in this) when (token) {
+		Token.TRUE -> stack += TRUE
+		Token.FALSE -> stack += FALSE
+		is Token.PREDICATE -> stack += PREDICATE(token.id, token.terms)
+		is Token.Operator.Unary -> {
+			if (stack.isEmpty()) throw FormulaParserException("Parse Error.")
+			val fml = stack.removeLast()
+			when (token) {
+				Token.Operator.Unary.NOT -> stack += NOT(fml)
+				is Token.Operator.Unary.ALL -> {
+					if (token.bddVar.id in fml.predicateIds) throw FormulaParserException("Cannot Quantify Predicate: ${token.bddVar}")
+					if (token.bddVar.id in fml.functionIds) throw FormulaParserException("Cannot Quantify Function: ${token.bddVar}")
+					try {
+						stack += ALL(token.bddVar, fml)
+					} catch (e: DuplicateBddVarException) {
+						throw FormulaParserException("Duplicated Bounded Variables: ${token.bddVar}")
 					}
+				}
 
-					is Token.Operator.Unary.EXISTS -> {
-						if (token.bddVar.id in fml.predicateIds) throw FormulaParserException("Cannot Quantify Predicate: ${token.bddVar}")
-						if (token.bddVar.id in fml.functionIds) throw FormulaParserException("Cannot Quantify Function: ${token.bddVar}")
-						try {
-							stack.add(EXISTS(token.bddVar, fml))
-						} catch (e: DuplicateBddVarException) {
-							throw FormulaParserException("Duplicated Bounded Variables: ${token.bddVar}")
-						}
+				is Token.Operator.Unary.EXISTS -> {
+					if (token.bddVar.id in fml.predicateIds) throw FormulaParserException("Cannot Quantify Predicate: ${token.bddVar}")
+					if (token.bddVar.id in fml.functionIds) throw FormulaParserException("Cannot Quantify Function: ${token.bddVar}")
+					try {
+						stack += EXISTS(token.bddVar, fml)
+					} catch (e: DuplicateBddVarException) {
+						throw FormulaParserException("Duplicated Bounded Variables: ${token.bddVar}")
 					}
 				}
 			}
-
-			is Token.Operator.Binary -> {
-				if (stack.size < 2) {
-					throw FormulaParserException("Parse Error.")
-				}
-				val rightFml = stack.removeLast()
-				val leftFml = stack.removeLast()
-				stack.add(
-					when (token) {
-						Token.Operator.Binary.AND -> AND(leftFml, rightFml)
-						Token.Operator.Binary.OR -> OR(leftFml, rightFml)
-						Token.Operator.Binary.IMPLIES -> IMPLIES(leftFml, rightFml)
-						Token.Operator.Binary.IFF -> IFF(leftFml, rightFml)
-					}
-				)
-			}
-
-			Token.LP, Token.RP -> throw IllegalArgumentException()
 		}
+
+		is Token.Operator.Binary -> {
+			if (stack.size < 2) throw FormulaParserException("Parse Error.")
+			val rightFml = stack.removeLast()
+			val leftFml = stack.removeLast()
+			stack += when (token) {
+				Token.Operator.Binary.AND -> AND(leftFml, rightFml)
+				Token.Operator.Binary.OR -> OR(leftFml, rightFml)
+				Token.Operator.Binary.IMPLIES -> IMPLIES(leftFml, rightFml)
+				Token.Operator.Binary.IFF -> IFF(leftFml, rightFml)
+			}
+		}
+
+		Token.LP, Token.RP -> throw IllegalArgumentException()
 	}
 	return stack.singleOrNull() ?: throw FormulaParserException("Parse Error.")
 }
