@@ -7,7 +7,7 @@ import java.text.Normalizer.*
 class FormulaParserException(message: String) : Exception(message)
 
 fun String.parseToFormula(): Formula =
-	normalize(this, Form.NFKC).toOneLetter().trimSpace().tokenize().toReversePolishNotation().getFormula()
+	normalize(this, Form.NFKC).toOneLetter().trimSpace().tokenize().toRPN().getFormula()
 
 private sealed interface Token {
 	object LP : Token
@@ -142,39 +142,30 @@ else when (first()) {
 	}
 }
 
-private fun List<Token>.toReversePolishNotation(): List<Token> {
-	val outputTokens = ArrayDeque<Token>()
+private fun List<Token>.toRPN(): List<Token> {
+	val tokens = mutableListOf<Token>()
 	val stack = mutableListOf<Token>()
-	for (token in this) {
-		when (token) {
-			Token.FALSE -> outputTokens.add(token)
-			Token.TRUE -> outputTokens.add(token)
-			is Token.PREDICATE -> outputTokens.add(token)
-			Token.LP -> stack.add(token)
-			Token.RP -> {
-				while (stack.isNotEmpty() && stack.last() != Token.LP) {
-					outputTokens.add(stack.removeLast())
-				}
-				if (stack.isEmpty()) {
-					throw FormulaParserException("Parenthesis Error.")
-				}
-				stack.removeLast()
+	for (token in this) when (token) {
+		Token.TRUE, Token.FALSE, is Token.PREDICATE -> tokens += token
+		Token.LP -> stack += token
+		Token.RP -> {
+			while (stack.isNotEmpty() && stack.last() != Token.LP) {
+				tokens += stack.removeLast()
 			}
+			if (stack.isEmpty()) throw FormulaParserException("Parenthesis Error.")
+			stack.removeLast()
+		}
 
-			is Token.Operator.Unary -> stack.add(token)
-			is Token.Operator.Binary -> {
-				while (stack.isNotEmpty() && stack.last() is Token.Operator && token.precedence < (stack.last() as Token.Operator).precedence) {
-					outputTokens.add(stack.removeLast())
-				}
-				stack.add(token)
+		is Token.Operator -> {
+			while (stack.lastOrNull() is Token.Operator && token.precedence < (stack.last() as Token.Operator).precedence) {
+				tokens += stack.removeLast()
 			}
+			stack += token
 		}
 	}
-	if (Token.LP in stack) {
-		throw FormulaParserException("Parenthesis Error.")
-	}
-	outputTokens.addAll(stack.reversed())
-	return outputTokens
+	if (Token.LP in stack) throw FormulaParserException("Parenthesis Error.")
+	tokens.addAll(stack.asReversed())
+	return tokens
 }
 
 private fun List<Token>.getFormula(): Formula {
