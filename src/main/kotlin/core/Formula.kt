@@ -60,8 +60,13 @@ sealed class Formula {
 
 		is IMPLIES -> "(${leftFml.toStringRec()} → ${rightFml.toStringRec()})"
 		is IFF -> "(${leftFml.toStringRec()} ↔ ${rightFml.toStringRec()})"
-		is ALL -> "∀$bddVar${operandFml.toStringRec()}"
-		is EXISTS -> "∃$bddVar${operandFml.toStringRec()}"
+		is ALL -> "∀$bddVar${
+			if (operandFml is ALL) ',' + operandFml.toStringRec().drop(1) else operandFml.toStringRec()
+		}"
+
+		is EXISTS -> "∃$bddVar${
+			if (operandFml is EXISTS) ',' + operandFml.toStringRec().drop(1) else operandFml.toStringRec()
+		}"
 	}
 
 	final override fun toString(): String = toStringRec().removeSurrounding("(", ")")
