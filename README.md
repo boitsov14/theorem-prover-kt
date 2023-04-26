@@ -4,6 +4,8 @@
 
 A sequent-style automated theorem prover for first-order predicate logic implemented in kotlin. For any provable formula, it will find the proof. This project is still in progress.
 
+## [Demo site](https://boitsov14.github.io/web-prover/)
+
 ## Twitter bot
 
 [@sequent_bot](https://twitter.com/sequent_bot)
