@@ -71,10 +71,11 @@ fun INode.complete(substitution: Substitution, newSequent: Sequent): INode = if 
 		val newFml =
 			(newSequent.assumptions + newSequent.conclusions).first { it == fml.replace(substitution) } as Quantified
 		// TODO: 2022/12/24 FreshVarを取り直すとうれしい具体例がほしい
-		val newFreshVar = newFml.bddVar.getFreshVar(newSequent.freeVars)
-		val newChildSequent = tactic.apply(newSequent, newFml, newFreshVar)
-		val newSubstitution = substitution.mapValues { it.value.replace(freshVar, newFreshVar) }
-		FreshVarNode(newSequent, tactic, newFml, newFreshVar, child.complete(newSubstitution, newChildSequent))
+		// TODO: 2023/06/04 "∀x∃y(P(x) ∧ Q(y)) → ∃y∀x(P(x) ∧ Q(y))"の証明がバグるので一旦FreshVarを変えないようにする
+		// val newFreshVar = newFml.bddVar.getFreshVar(newSequent.freeVars)
+		val newChildSequent = tactic.apply(newSequent, newFml, freshVar)
+		// val newSubstitution = substitution.mapValues { it.value.replace(freshVar, newFreshVar) }
+		FreshVarNode(newSequent, tactic, newFml, freshVar, child.complete(substitution, newChildSequent))
 	}
 
 	is TermNode -> {
