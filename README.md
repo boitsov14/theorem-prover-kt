@@ -16,6 +16,10 @@ A sequent-style automated theorem prover for first-order predicate logic impleme
 
 [@sequent_bot](https://twitter.com/sequent_bot)
 
+## APIs
+
+[api-for-theorem-prover](https://github.com/boitsov14/api-for-theorem-prover)
+
 ## Special Thanks
 
 - [Build Your Own First-Order Prover](http://jens-otten.de/tutorial_cade19)
