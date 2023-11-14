@@ -1,9 +1,11 @@
 package sequentProver
 
 import core.Formula.*
+import core.Substitution
 import core.Term
-import core.Term.*
-import core.*
+import core.Term.UnificationTerm
+import core.getSubstitution
+import core.normalize
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import sequentProver.ProofState.*
@@ -29,7 +31,7 @@ suspend fun makeTree(
 	}
 
 	// Unary Tactic
-	for (tactic in UnaryTactic.values()) {
+	for (tactic in UnaryTactic.entries) {
 		val fml = tactic.getFml(sequent) ?: continue
 		val newSequent = tactic.apply(sequent, fml)
 		val (child, nodes) = makeTree(newSequent, asyncDepth)
@@ -37,7 +39,7 @@ suspend fun makeTree(
 	}
 
 	// Fresh Var Tactic
-	for (tactic in FreshVarTactic.values()) {
+	for (tactic in FreshVarTactic.entries) {
 		val fml = tactic.getFml(sequent) ?: continue
 		val freshVar = fml.bddVar.getFreshVar(sequent.freeVars)
 		val newSequent = tactic.apply(sequent, fml, freshVar)
@@ -46,7 +48,7 @@ suspend fun makeTree(
 	}
 
 	// Binary Tactic
-	for (tactic in BinaryTactic.values()) {
+	for (tactic in BinaryTactic.entries) {
 		val fml = tactic.getFml(sequent) ?: continue
 		val (leftSequent, rightSequent) = tactic.apply(sequent, fml)
 		val (left, right) = if (asyncDepth == 0) makeTree(leftSequent, 0) to makeTree(rightSequent, 0)
@@ -121,7 +123,7 @@ private tailrec suspend fun makeTreeWithUnification(
 private fun getTermTacticInfo(
 	sequent: Sequent, fmls: Set<Quantified>, id: Pair<Int, Int>
 ): Triple<TermTactic, Quantified, Term>? {
-	for (tactic in TermTactic.values()) {
+	for (tactic in TermTactic.entries) {
 		val fml = tactic.getFml(sequent, fmls) ?: continue
 		val availableVars = sequent.freeVars.ifEmpty { setOf(fml.bddVar) }
 		val term = UnificationTerm(id, availableVars)
