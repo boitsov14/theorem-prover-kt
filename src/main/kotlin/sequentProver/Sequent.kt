@@ -1,8 +1,11 @@
 package sequentProver
 
-import core.*
-import core.Term.*
-import core.Formula.*
+import core.Formula
+import core.Formula.PREDICATE
+import core.Substitution
+import core.Substitutions
+import core.Term.Var
+import core.unify
 
 data class Sequent(val assumptions: Set<Formula>, val conclusions: Set<Formula>) {
 	override fun toString() =
@@ -16,7 +19,7 @@ data class Sequent(val assumptions: Set<Formula>, val conclusions: Set<Formula>)
 	val freeVars: Set<Var>
 		get() = (assumptions + conclusions).flatMap { it.freeVars }.toSet()
 
-	// TODO: 2022/12/01 返値の型はMapではなくListにすべきでは
+	// TODO: 2022/12/25 unificationのファイルに移動
 	fun getSubstitutions(): Substitutions {
 		val substitutions = mutableListOf<Substitution>()
 		for (assumption in assumptions.filterIsInstance<PREDICATE>()) for (conclusion in conclusions.filterIsInstance<PREDICATE>()) {
