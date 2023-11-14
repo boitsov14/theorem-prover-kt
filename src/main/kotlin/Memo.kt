@@ -1,99 +1,4 @@
-//import tacticGame.*
-import core.*
-import core.makeConjunction
-import kotlinx.coroutines.*
-import kotlin.system.measureTimeMillis
-import sequentProver.*
-
-suspend fun mainForConsole() {
-	print("INPUT A FORMULA >>> ")
-	val sequent = readln().parseToSequent()
-	val rootNode = Node(sequent)
-	val proofState = rootNode.prove(
-		printSequents = false, printTacticInfo = false, printTimeInfo = true, printUnificationInfo = true
-	)
-	//val output = File("src/main/resources/Output.tex")
-	//output.writeText(rootNode.getLatexOutput(proofState))
-	/*
-	val time = measureTimeMillis {
-		try {
-			val output = File("src/main/resources/Output.tex")
-			output.writeText(rootNode.getLatexOutput(proofState))
-		} catch (e: OutOfMemoryError) {
-			println(e)
-		}
-	}
-	println("Latex produced in $time ms")
-	*/
-}
-
-fun mainForTest() {
-	TODO()
-}
-
-fun temp() {
-	/*
-	while (true) {
-		print("INPUT A FORMULA >>> ")
-		val fml = readLine()!!.parse()
-	}
-	 */
-	/*
-	println("all x P(x, x)".parseToFormula() == "all y P(x, y)".parseToFormula())
-	println("all x P(x)".parseToFormula() == "all y P(y)".parseToFormula())
-	println("all x P(x)".parseToFormula() == "ex x P(x)".parseToFormula())
-	println("all x P(x)".parseToFormula() == "all y P(c)".parseToFormula())
-	 */
-	/*
-	val firstGoals = Goal(fml).toGoals()
-	prove(firstGoals)
-	letMeProve(firstGoals)
-	 */
-
-	/*
-	val testFile = File("src/main/resources/Test.txt")
-	val lines = testFile.readLines()
-	val time = measureTimeMillis {
-		for ((idx, line) in lines.withIndex()) {
-			val sequent = try {
-				line.drop(1).replace("\t", " ").parseToSequent()
-			} catch (e: Exception) {
-				println("ParseErr: $idx: $line")
-				throw e
-			}
-
-			val rootNode = Node(sequent, null)
-			val proofState = rootNode.prove()
-		}
-	}
-	println(time)
-	return
-	 */
-
-	val veryLong =
-		"((o11 ∨ o12 ∨ o13) ∧ (o21 ∨ o22 ∨ o23) ∧ (o31 ∨ o32 ∨ o33) ∧ (o41 ∨ o42 ∨ o43)) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o11 ∧ o41) ∨ (o21 ∧ o31) ∨ (o21 ∧ o41) ∨ (o31 ∧ o41) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o12 ∧ o42) ∨ (o22 ∧ o32) ∨ (o22 ∧ o42) ∨ (o32 ∧ o42) ∨ (o13 ∧ o23) ∨ (o13 ∧ o33) ∨ (o13 ∧ o43) ∨ (o23 ∧ o33) ∨ (o23 ∧ o43) ∨ (o33 ∧ o43))"
-	val tooLong =
-		"((o11 ∨ o12 ∨ o13 ∨ o14) ∧ (o21 ∨ o22 ∨ o23 ∨ o24) ∧ (o31 ∨ o32 ∨ o33 ∨ o34) ∧ (o41 ∨ o42 ∨ o43 ∨ o44) ∧ (o51 ∨ o52 ∨ o53 ∨ o54)) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o11 ∧ o41) ∨ (o11 ∧ o51) ∨ (o21 ∧ o31) ∨ (o21 ∧ o41) ∨ (o21 ∧ o51) ∨ (o31 ∧ o41) ∨ (o31 ∧ o51) ∨ (o41 ∧ o51) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o12 ∧ o42) ∨ (o12 ∧ o52) ∨ (o22 ∧ o32) ∨ (o22 ∧ o42) ∨ (o22 ∧ o52) ∨ (o32 ∧ o42) ∨ (o32 ∧ o52) ∨ (o42 ∧ o52) ∨ (o13 ∧ o23) ∨ (o13 ∧ o33) ∨ (o13 ∧ o43) ∨ (o13 ∧ o53) ∨ (o23 ∧ o33) ∨ (o23 ∧ o43) ∨ (o23 ∧ o53) ∨ (o33 ∧ o43) ∨ (o33 ∧ o53) ∨ (o43 ∧ o53) ∨ (o14 ∧ o24) ∨ (o14 ∧ o34) ∨ (o14 ∧ o44) ∨ (o14 ∧ o54) ∨ (o24 ∧ o34) ∨ (o24 ∧ o44) ∨ (o24 ∧ o54) ∨ (o34 ∧ o44) ∨ (o34 ∧ o54) ∨ (o44 ∧ o54))"
-	val veryLongIff = "((((((((a⇔b)⇔c)⇔d)⇔e)⇔f)⇔g)⇔h)⇔(a⇔(b⇔(c⇔(d⇔(e⇔(f⇔(g⇔h))))))))"
-	val tooLongIff =
-		"((((((((((((((((a⇔b)⇔c)⇔d)⇔e)⇔f)⇔g)⇔h)⇔i)⇔j)⇔k)⇔l)⇔m)⇔n)⇔o)⇔p)⇔(a⇔(b⇔(c⇔(d⇔(e⇔(f⇔(g⇔(h⇔(i⇔(j⇔(k⇔(l⇔(m⇔(n⇔(o⇔p))))))))))))))))"
-	val tooLongIff2 =
-		"(((((((((((((((((((((a⇔b)⇔c)⇔d)⇔e)⇔f)⇔g)⇔h)⇔i)⇔j)⇔k)⇔l)⇔m)⇔n)⇔o)⇔p) iff q ) iff r) iff s)iff t)iff u)⇔(a⇔(b⇔(c⇔(d⇔(e⇔(f⇔(g⇔(h⇔(i⇔(j⇔(k⇔(l⇔(m⇔(n⇔(o⇔p iff q iff r iff s iff t iff u))))))))))))))))"
-	val example = "(p or (q and not r)) and s"
-	val example2 = "(((p or q) or r) and s) and t"
-
-	val long =
-		"((o11 ∨ o12 ∨ o13 ∨ o14) ∧ (o21 ∨ o22 ∨ o23 ∨ o24) ∧ (o31 ∨ o32 ∨ o33 ∨ o34) ∧ (o41 ∨ o42 ∨ o43 ∨ o44) ∧ (o51 ∨ o52 ∨ o53 ∨ o54))"
-	val long2 = "(o11 ∨ o12 ∨ o13) ∧ (o21 ∨ o22 ∨ o23) ∧ (o31 ∨ o32 ∨ o33) ∧ (o41 ∨ o42 ∨ o43)"
-	//println(long2.parseToFormula().pureDNF().map { it.makeConjunction() }.makeDisjunction())
-	/*
-	println(
-		"(o11 ∨ o12) ∧ (o21 ∨ o22) ∧ (o31 ∨ o32) ∧ (o41 ∨ o42)".parseToFormula().simpleDNF()
-			.map { it.makeConjunction() }.makeDisjunction()
-	)
-	*/
-
-}
+package memo
 
 /*
 ((o11 ∨ o12 ∨ o13) ∧ (o21 ∨ o22 ∨ o23) ∧ (o31 ∨ o32 ∨ o33) ∧ (o41 ∨ o42 ∨ o43)) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o11 ∧ o41) ∨ (o21 ∧ o31) ∨ (o21 ∧ o41) ∨ (o31 ∧ o41) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o12 ∧ o42) ∨ (o22 ∧ o32) ∨ (o22 ∧ o42) ∨ (o32 ∧ o42) ∨ (o13 ∧ o23) ∨ (o13 ∧ o33) ∨ (o13 ∧ o43) ∨ (o23 ∧ o33) ∨ (o23 ∧ o43) ∨ (o33 ∧ o43))
@@ -105,6 +10,9 @@ loop count: 8669
 Complete Proof Start... Completed in 133 ms
 Latex Start...Completed in 250 ms
 
+//modification
+Completed in 264 ms
+
 (o11 ∨ o12 ∨ o13) ∧ (o21 ∨ o22 ∨ o23) ∧ (o31 ∨ o32 ∨ o33) -> (o11 ∧ o21 ∧ o31) ∨ (o11 ∧ o21 ∧ o32) ∨ (o11 ∧ o21 ∧ o33) ∨ (o11 ∧ o22 ∧ o31) ∨ (o11 ∧ o22 ∧ o32) ∨ (o11 ∧ o22 ∧ o33) ∨ (o11 ∧ o23 ∧ o31) ∨ (o11 ∧ o23 ∧ o32) ∨ (o11 ∧ o23 ∧ o33) ∨ (o12 ∧ o21 ∧ o31) ∨ (o12 ∧ o21 ∧ o32) ∨ (o12 ∧ o21 ∧ o33) ∨ (o12 ∧ o22 ∧ o31) ∨ (o12 ∧ o22 ∧ o32) ∨ (o12 ∧ o22 ∧ o33) ∨ (o12 ∧ o23 ∧ o31) ∨ (o12 ∧ o23 ∧ o32) ∨ (o12 ∧ o23 ∧ o33) ∨ (o13 ∧ o21 ∧ o31) ∨ (o13 ∧ o21 ∧ o32) ∨ (o13 ∧ o21 ∧ o33) ∨ (o13 ∧ o22 ∧ o31) ∨ (o13 ∧ o22 ∧ o32) ∨ (o13 ∧ o22 ∧ o33) ∨ (o13 ∧ o23 ∧ o31) ∨ (o13 ∧ o23 ∧ o32) ∨ (o13 ∧ o23 ∧ o33)
 Completed in 2375 ms
 unification time: 0 ms
@@ -112,6 +20,18 @@ other time: 2375 ms
 loop count: 90771
 Proof formatted in 1983 ms
 Provable.
+
+//modification
+Completed in 2069 ms
+
+//recursion
+Completed in 863 ms
+
+//async
+Completed in 777 ms
+
+//get()
+Completed in 386 ms - 429 ms
 
 (o11 ∨ o12) ∧ (o21 ∨ o22) ∧ (o31 ∨ o32) ∧ (o41 ∨ o42) -> (o11 ∧ o21 ∧ o31 ∧ o41) ∨ (o11 ∧ o21 ∧ o31 ∧ o42) ∨ (o11 ∧ o21 ∧ o32 ∧ o41) ∨ (o11 ∧ o21 ∧ o32 ∧ o42) ∨ (o11 ∧ o22 ∧ o31 ∧ o41) ∨ (o11 ∧ o22 ∧ o31 ∧ o42) ∨ (o11 ∧ o22 ∧ o32 ∧ o41) ∨ (o11 ∧ o22 ∧ o32 ∧ o42) ∨ (o12 ∧ o21 ∧ o31 ∧ o41) ∨ (o12 ∧ o21 ∧ o31 ∧ o42) ∨ (o12 ∧ o21 ∧ o32 ∧ o41) ∨ (o12 ∧ o21 ∧ o32 ∧ o42) ∨ (o12 ∧ o22 ∧ o31 ∧ o41) ∨ (o12 ∧ o22 ∧ o31 ∧ o42) ∨ (o12 ∧ o22 ∧ o32 ∧ o41) ∨ (o12 ∧ o22 ∧ o32 ∧ o42)
 Completed in 828 ms
@@ -142,6 +62,21 @@ other time: 75636 ms
 loop count: 2820140
 Proof formatted in 73075 ms
 Provable.
+
+//for loop modification
+Completed in 62018 ms
+
+//radical modification
+Completed in 59438 ms
+
+//recursion
+Completed in 22692 ms
+
+//async
+Completed in 17132 ms
+
+//get()
+Completed in 2969 ms
 
 ((((((E → B) ∨ (D ∨ B)) → ((E ∨ D) → (C ∧ C))) ∧ ((C ∧ (⊥)) → (E → B))) → ((((A ∨ D) → (E → B)) ∨ ((E → B) ∧ C)) → (((B ∨ D) → (E → B)) ∧ E))) → ((((D ∨ D) ∨ (A → C)) ∨ ((B ∨ D) → C)) ∨ (((D → C) → D) → (E ∨ (E → D))))) → ((((D → E → B) ∨ ((B ∨ D) → C)) → (((C ∧ (⊥)) → (E → B)) → ((E → B) ∧ (E → A)))) ∧ (((A ∧ (E → D)) → (((E → B) ∧ C) → (E ∨ (E → D)))) ∨ (((E ∨ D) → (A ∨ D)) ∨ ((E ∨ B) ∧ (E → D)))))
 Completed in 103 ms
@@ -187,7 +122,38 @@ unification time: 1341 ms
 other time: 33 ms
 loop count: 27
 
+//modification
+Completed in 1242 ms
+
+P(a), all x (P(x) to Q(f(x))), all x (Q(x) to P(f(x))) |- P(f(f(f(f(f(f(f(f(f(f(a)))))))))))
+
+P(a), all x (P(x) or Q(x) to Q(f(x))), all x (Q(x) to P(g(x))) |- P(g(f(f(g(f(f(f(g(f(f(a)))))))))))
+
+P(a), all x (P(x) or Q(x) to Q(f(x))), all x (Q(x) to P(g(x))) |- P(g(f(f(f(g(f(f(a))))))))
+Completed in 8093 ms
+
+P(a), all x (P(x) or Q(x) to Q(f(x))), all x (Q(x) to P(g(x))) |- P(g(f(f(g(f(f(a)))))))
+Completed in 4757 ms
+
+//modify
+Completed in 26820 ms
+
+all X ( f(a) & ( f(X) => f(f(X)) ) => f(f(f(X))) )  <=> ( all X ( ( ~ f(a) | f(X) | f(f(f(X))) ) & ( ~ f(a) | ~ f(f(X)) | f(f(f(X))) ) ) )
+
+all A all B all X ( in(X, union(A, B)) <=> ( in(X, A) | in(X, B) ) ), all A all B ( ( all X ( in(X, A) <=> in(X, B) ) ) => eq(A, B) ) |- all A all B eq( union(A, B), union(B, A) )
+
+all X ( ( f(X) | g(X) ) => ~ h(X) ), all X ( ( g(X) => ~ i(X) ) => ( f(X) & h(X) ) ) |- all X i(X)
+
+ex X ex Y all Z ( ( f(X, Y) => ( f(Y, Z) & f(Z, Z) ) ) & ( ( f(X, Y) & g(X, Y) ) => ( g(X, Z) & g(Z, Z) ) ) )
+
 P(a) to all x (P(x) to P(f(x))) to P(f(f(f(f(f(f(f(f(f(f(f(a))))))))))))
+4515 ms - 5155 ms
+//recursive
+6300ms(reverse sync 3200ms)
+mod 4613 ms (reverse sync 1905ms)
+mod 2838 ms
+fix 3114 ms
+
 PROOF SUCCEED!
 Completed in 42568 ms
 unification time: 42544 ms
@@ -223,6 +189,23 @@ unification time: 6592 ms
 other time: 28 ms
 loop count: 29
 
+//modification
+Completed in 5431 ms
+
+//modification + reverse
+Completed in 2677 ms
+
+//reverse
+Completed in 3109 ms
+
+//followings are mod
+
+//sync
+Completed in 16353 ms
+
+//sync + rev
+Completed in 2716 ms
+
 //async * 3 + ord
 PROOF SUCCEED!
 Completed in 6161 ms
@@ -251,12 +234,27 @@ unification time: 38703 ms
 other time: 131 ms
 loop count: 31
 
+//reverse
+Completed in 18578 ms
+
+//mod + rev
+Completed in 14909 ms
+
 P(a) to all x (P(x) to P(f(x))) to P(f(f(f(f(f(f(f(f(f(f(f(f(f(a))))))))))))))
 PROOF SUCCEED!
 Completed in 289192 ms
 unification time: 289148 ms
 other time: 44 ms
 loop count: 33
+
+//reverse
+Completed in 107294 ms
+
+//mod + rev
+Completed in 248230 ms
+
+P(a) to all x (P(x) to P(f(x))) to P(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(a))))))))))))))))
+
 
 P(a) to all x (P(x) to P(f(x))) to P(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(a)))))))))))))))))))))
 PROOF FAILED: PROOF IS TOO LONG OR UNPROVABLE
@@ -334,9 +332,6 @@ loop count: 130
 
 ∀x∀y∀z((R(x,y)∧R(x,z))→∃u(R(y,u)∧R(z,u))) ┣ ∀x∀s∀t(∃y∃z(R(x,y)∧R(y,s)∧R(x,z)∧R(z,t))→∃r∃q∃w(R(s,r)∧R(r,w)∧R(t,q)∧R(q,w)))
 
-*/
-
-/*
 (all x, P x) to (ex x, P x)
 (ex y, all x, P x y) to (all x, ex y, P x y)
 not (P and Q) to (not P or not Q)
@@ -406,9 +401,19 @@ P(a) to all x (P(x) to P(f(x))) to P(f(f(a)))
 ∃y∀x∃z∀u∃v∀w ((F (x, y, z) ∧ G (u, v, w)) → H (x, y, z, u, v, w)) → ∀x∃y∀u∃z∀w∃v ((￢F (x, y, z) ∨ ￢G (u, v, w)) ∨ H (x, y, z, u, v, w))
 ∃y∀x∃z∀u∃v∀w P(x,y,z,u,v,w) → ∀x∃y∀u∃z∀w∃v P(x,y,z,u,v,w)
 P(a), ∀x(P(x) -> P(f(x))) |- P(f(f(f(a))))
+P(a), ∀x(P(x) -> P(f(x))) |- P(f(a))
 P(a), ∀x(P(x) -> P(f(x))) |- P(f(f(f(f(f(f(f(f(f(f(f(f(a)))))))))))))
 ∀xP(x) -> ∃y00P(y00)
 ∃a∀b∃c∀d∃e∀f(P(a,d,f)→P(b,c,e))
 ∃a∀b∃c∀d∃e∀f(P(a,c,e)→P(b,d,f))
 (∀y(p(y)→∀x p(x))→ ∀x p(x))→ ∀x p(x)
- */
+
+// shrinkVarsが必要な例
+all x ( P(x) and ex y Q(y)) |- ex x P(f(x))
+all x ( P(x) and ex y Q(y)) |- ex x (P(f(x)) and Q(x)) // shrinkがないと誤った証明になる
+
+// TODO: 2023/10/09 最新バグ情報
+ex x (P(x) to P(x)) <--_でAxiomしてる!!
+∃t((Q ∧ R(t)) → (((P(a) ∨ A ∨ Q) ∨ P(t) ∨ A ∨ Q) ∧ R(a))) <---- crash!!
+
+*/
