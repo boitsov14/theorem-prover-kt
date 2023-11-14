@@ -59,7 +59,7 @@ sealed class Term {
 		is Dummy -> this
 	}
 
-	fun replace(oldUnificationTerm: UnificationTerm, newTerm: Term): Term = when (this) {
+	private fun replace(oldUnificationTerm: UnificationTerm, newTerm: Term): Term = when (this) {
 		is Var -> this
 		is UnificationTerm -> if (this == oldUnificationTerm) newTerm else this
 		is Function -> Function(id, terms.map { it.replace(oldUnificationTerm, newTerm) })

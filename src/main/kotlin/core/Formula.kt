@@ -1,6 +1,6 @@
 package core
 
-import core.Term.*
+import core.Term.Var
 
 class DuplicateBddVarException : Exception()
 

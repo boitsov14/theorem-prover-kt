@@ -1,9 +1,10 @@
 package core
 
-import core.Term.Var
-import core.Term.UnificationTerm
+import core.Term.*
 import core.Term.Function
-import kotlinx.coroutines.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 fun List<Pair<Term, Term>>.unify(): Substitution? = emptyMap<UnificationTerm, Term>().unify(this)
 
