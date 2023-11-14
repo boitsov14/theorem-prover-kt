@@ -1,15 +1,13 @@
 package sequentProver
 
-import core.*
+import core.Formula
 import core.Formula.*
-import core.Term.*
+import core.Term
+import core.Term.Var
 
 sealed interface ITactic {
 	fun toLatex(): String
 }
-
-// TODO: 2022/11/23 catchしないならいらないのでは
-class IllegalTacticException : Exception()
 
 object AXIOM : ITactic {
 	override fun toString(): String = "Axiom"
