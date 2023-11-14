@@ -1,7 +1,4 @@
-/.idea/
-/libs/
-/out/
-/src/main/kotlin/META-INF/
-/src/main/resources/
-/.gitattributes
-/LogicGame.iml
+.idea
+.gradle
+/build
+/src/main/resources/*.tex
