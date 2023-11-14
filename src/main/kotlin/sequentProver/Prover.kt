@@ -1,7 +1,9 @@
 package sequentProver
 
-import core.*
-import core.Formula.*
+import core.Formula
+import core.Formula.Quantified
+import core.Substitution
+import core.Term
 import core.Term.*
 
 /**
@@ -123,18 +125,46 @@ private fun INode.getLatexRec(): String = when (this) {
 	is UnificationNode -> child?.getLatexRec() ?: """\Axiom$${sequent.toLatex()}$"""
 }
 
-fun INode.getLatex(proofState: ProofState): String =
-	"""\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
+private fun INode.getLatexRec2(): String = when (this) {
+	is AxiomNode -> """\infer0[\scriptsize Axiom]{ ${sequent.toLatex()} }"""
+
+	is UnaryNode -> """${child.getLatexRec2()}
+		|\infer1[\scriptsize ${tactic.toLatex()}]{ ${sequent.toLatex()} }
+	""".trimMargin()
+
+	is FreshVarNode -> """${child.getLatexRec2()}
+		|\infer1[\scriptsize ${tactic.toLatex()}]{ ${sequent.toLatex()} }
+	""".trimMargin()
+
+	is TermNode -> """${child.getLatexRec2()}
+		|\infer1[\scriptsize ${tactic.toLatex()}]{ ${sequent.toLatex()} }
+	""".trimMargin()
+
+	is BinaryNode -> """${leftChild.getLatexRec2()}
+		|${rightChild.getLatexRec2()}
+		|\infer2[\scriptsize ${tactic.toLatex()}]{ ${sequent.toLatex()} }
+	""".trimMargin()
+
+	is UnificationNode -> child?.getLatexRec2() ?: """\hypo{ ${sequent.toLatex()} }"""
+}
+
+fun INode.getLatex(): String = """\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
 	|\usepackage{bussproofs}
 	|\begin{document}
-	|$${sequent.toLatex().replace("""\fCenter""", """\vdash""")}$
-	|
-	|$proofState
 	|\begin{prooftree}
 	|\renewcommand{\fCenter}{\ \mbox{$\vdash$}\ }
 	|${getLatexRec()}
 	|\end{prooftree}
-	|\rightline{@sequent\_bot}
+	|\end{document}
+	|
+""".trimMargin()
+
+fun INode.getLatex2(): String = """\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
+	|\usepackage{ebproof}
+	|\begin{document}
+	|\begin{prooftree}
+	|${getLatexRec2().replace("""\fCenter""", """ &\vdash""")}
+	|\end{prooftree}
 	|\end{document}
 	|
 """.trimMargin()
@@ -172,7 +202,10 @@ tailrec fun List<INode>.printProof() {
 			(listOf(node.child) + this.drop(1)).printProof()
 		}
 
-		is UnificationNode -> throw IllegalArgumentException()
+		is UnificationNode -> {
+			println("UnProvable")
+			this.drop(1).printProof()
+		}
 	}
 }
 
