@@ -1,8 +1,10 @@
 package core
 
 import core.Formula.*
-import core.Term.*
-import java.text.Normalizer.*
+import core.Term.Function
+import core.Term.Var
+import java.text.Normalizer.Form
+import java.text.Normalizer.normalize
 
 class FormulaParserException(message: String) : Exception(message)
 
@@ -10,8 +12,8 @@ fun String.parseToFormula(): Formula =
 	normalize(this, Form.NFKC).toOneLetter().trimSpace().tokenize().toRPN().makeFormula()
 
 private sealed interface Token {
-	object LP : Token
-	object RP : Token
+	data object LP : Token
+	data object RP : Token
 	sealed interface Operator : Token {
 		val precedence: Int
 
@@ -20,7 +22,7 @@ private sealed interface Token {
 		}
 
 		sealed interface Unary : Operator {
-			object NOT : Unary {
+			data object NOT : Unary {
 				override val precedence = 4
 			}
 
@@ -35,8 +37,8 @@ private sealed interface Token {
 	}
 
 	data class PREDICATE(val id: String, val terms: List<Term>) : Token
-	object TRUE : Token
-	object FALSE : Token
+	data object TRUE : Token
+	data object FALSE : Token
 }
 
 // TODO: 2023/01/02 privateにする？
@@ -47,6 +49,21 @@ fun String.toOneLetter(): String = listOf(
 	'¬' to setOf("not", "~", "negation", "lnot", """\lnot""", "neg", """\neg"""),
 	'∧' to setOf("and", "land", """\land""", """/\""", "&", "&&", "wedge", """\wedge"""),
 	'∨' to setOf("or", "lor", """\lor""", """\/""", "|", "||", "vee", """\vee"""),
+	'→' to setOf(
+		"to",
+		"""\to""",
+		"imp",
+		"""\imp""",
+		"implies",
+		"imply",
+		"->",
+		"=>",
+		"-->",
+		"==>",
+		"⇒",
+		"rightarrow",
+		"""\rightarrow"""
+	),
 	'↔' to setOf(
 		"iff",
 		"""\iff""",
@@ -62,17 +79,14 @@ fun String.toOneLetter(): String = listOf(
 		"equiv",
 		"equivalent"
 	),
-	'→' to setOf(
-		"to", """\to""", "implies", "imply", "->", "=>", "-->", "==>", "⇒", "rightarrow", """\rightarrow"""
-	),
-	'∀' to setOf("forall", """\forall""", "all", "for all"),
-	'∃' to setOf("exists", """\exists""", "ex", "there exists"),
+	'∀' to setOf("forall", """\forall""", "all", "for all", "!"),
+	'∃' to setOf("exists", """\exists""", "ex", "there exists", "?"),
 	'(' to setOf("{", "["),
 	')' to setOf("}", "]")
 ).flatMap { (key, sets) -> sets.map { it to "$key" } }.sortedBy { it.first.length }.asReversed()
 	.fold(this) { tmp, (str, letter) -> tmp.replace(str, letter, true) }
 
-private fun String.trimSpace(): String = replace("""\s""".toRegex(), "")
+fun String.trimSpace(): String = replace("""\s""".toRegex(), "")
 
 private fun String.getParenthesisEndPos(): Int? {
 	var cnt = 0
@@ -86,7 +100,6 @@ private fun String.getParenthesisEndPos(): Int? {
 	return null
 }
 
-@OptIn(ExperimentalStdlibApi::class)
 private fun String.toTerms(): List<Term> {
 	if (isEmpty()) return emptyList()
 	val id = """[a-zA-Zα-ωΑ-Ω\d]+""".toRegex().matchAt(this, 0)?.value
@@ -94,7 +107,7 @@ private fun String.toTerms(): List<Term> {
 	val remained0 = drop(id.length)
 	val (remained1, term) = if (remained0.firstOrNull() == '(') {
 		val pos = remained0.getParenthesisEndPos() ?: throw FormulaParserException("Parenthesis Error.")
-		val terms = remained0.substring(1 until pos).toTerms()
+		val terms = remained0.substring(1..<pos).toTerms()
 		remained0.substring(pos + 1) to Function(id, terms)
 	} else {
 		remained0 to Var(id)
@@ -104,7 +117,6 @@ private fun String.toTerms(): List<Term> {
 	else throw FormulaParserException("Illegal Argument: '${remained1.first()}'")
 }
 
-@OptIn(ExperimentalStdlibApi::class)
 private tailrec fun String.tokenize(tokens: List<Token> = emptyList()): List<Token> = if (isEmpty()) tokens
 else when (first()) {
 	'(' -> drop(1).tokenize(tokens + Token.LP)
@@ -134,7 +146,7 @@ else when (first()) {
 		val remained = drop(id.length)
 		if (remained.firstOrNull() == '(') {
 			val pos = remained.getParenthesisEndPos() ?: throw FormulaParserException("Parenthesis Error.")
-			val terms = remained.substring(1 until pos).toTerms()
+			val terms = remained.substring(1..<pos).toTerms()
 			remained.substring(pos + 1).tokenize(tokens + Token.PREDICATE(id, terms))
 		} else {
 			remained.tokenize(tokens + Token.PREDICATE(id, emptyList()))
