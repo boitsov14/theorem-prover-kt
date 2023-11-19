@@ -1,12 +1,9 @@
 import core.Formula
 import core.FormulaParserException
 import core.parseToFormula
+import sequentProver.*
 import sequentProver.ProofState.Provable
 import sequentProver.ProofState.Unprovable
-import sequentProver.Sequent
-import sequentProver.getLatex
-import sequentProver.parseToSequent
-import sequentProver.prove
 import java.io.File
 
 suspend fun main(args: Array<String>) {
@@ -47,8 +44,8 @@ suspend fun prover() {
 	val end = System.currentTimeMillis()
 	println(proofState)
 	println("Completed in ${end - start} ms")
-	// File("src/main/resources/Output.tex").writeText(node.getLatex2())
-	// listOf(node).printProof()
+	File("src/main/resources/Output.tex").writeText(node.getLatex2())
+	listOf(node).printProof()
 }
 
 suspend fun example() {
