@@ -1,4 +1,4 @@
 .idea
 .gradle
 /build
-/src/main/resources/*.tex
+out.tex

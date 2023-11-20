@@ -8,14 +8,14 @@ import java.io.File
 
 suspend fun main(args: Array<String>) {
 	if (args.isNotEmpty()) {
-		prover(args[0], args[1])
+		prover(args.first())
 	} else {
 		//example()
 		prover()
 	}
 }
 
-suspend fun prover(id: String, sequentString: String) {
+suspend fun prover(sequentString: String) {
 	// Parse
 	val sequent = try {
 		sequentString.parseToSequent()
@@ -32,7 +32,7 @@ suspend fun prover(id: String, sequentString: String) {
 		print(" Completed in ${(end - start) / 1000.0} seconds.")
 	}
 	// TeX
-	File("${id}.tex").writeText(node.getLatex())
+	File("out.tex").writeText(node.getLatex())
 }
 
 suspend fun prover() {
@@ -44,7 +44,7 @@ suspend fun prover() {
 	val end = System.currentTimeMillis()
 	println(proofState)
 	println("Completed in ${end - start} ms")
-	File("src/main/resources/Output.tex").writeText(node.getLatex2())
+	File("out.tex").writeText(node.getLatex2())
 	listOf(node).printProof()
 }
 
