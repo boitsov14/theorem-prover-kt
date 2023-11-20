@@ -2,11 +2,12 @@
 
 ## Description
 
-A sequent-style automated theorem prover for first-order predicate logic implemented in kotlin. For any provable formula, it will find the proof. This project is still in progress.
+A sequent-style theorem prover for first-order logic implemented in Kotlin.
 
-## Demo site
+## Rust rewrite
+I am rewriting this project in Rust. See [theorem-prover-rs](https://github.com/boitsov14/theorem-prover-rs).
 
-[here](https://boitsov14.github.io/web-prover/)
+## [Demo site](https://boitsov14.github.io/web-prover/)
 
 ## Misskey bot
 
@@ -15,6 +16,18 @@ A sequent-style automated theorem prover for first-order predicate logic impleme
 ## Twitter bot
 
 [@sequent_bot](https://twitter.com/sequent_bot)
+
+## How to use
+
+```
+git clone https://github.com/boitsov14/theorem-prover-kt.git
+cd theorem-prover-kt
+chmod +x gradlew
+./gradlew shadowJar
+java -jar build/libs/theorem-prover-kt-all.jar "∃x∀yP(x,y) → ∀y∃xP(x,y)"
+latex out.tex
+dvipng out.dvi
+```
 
 ## APIs
 
