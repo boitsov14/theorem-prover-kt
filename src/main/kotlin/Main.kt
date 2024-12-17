@@ -7,32 +7,58 @@ import sequentProver.ProofState.Unprovable
 import java.io.File
 
 suspend fun main(args: Array<String>) {
-	if (args.isNotEmpty()) {
-		prover(args.first())
-	} else {
-		//example()
-		prover()
+	when (args.size) {
+		0 -> {
+			//example()
+			prover()
+		}
+
+		1 -> prover(args.first())
+		2 -> {
+			when (args[1]) {
+				"--out=bussproofs,ebproof" -> prover(args.first())
+				"--out=bussproofs" -> prover(args.first(), ebproof = false)
+				"--out=ebproof" -> prover(args.first(), bussproofs = false)
+				else -> {
+					println("Invalid arguments.")
+				}
+			}
+		}
+
+		else -> {
+			println("Invalid arguments.")
+		}
 	}
 }
 
-suspend fun prover(sequentString: String) {
+suspend fun prover(sequentString: String, bussproofs: Boolean = true, ebproof: Boolean = true) {
 	// Parse
 	val sequent = try {
 		sequentString.parseToSequent()
 	} catch (e: FormulaParserException) {
-		print(e.message)
+		println(e.message)
 		return
 	}
 	// Prove
+	println("Proving...")
 	val start = System.currentTimeMillis()
 	val (proofState, node) = sequent.prove()
 	val end = System.currentTimeMillis()
-	print(proofState)
+	println(proofState)
 	if (proofState == Provable || proofState == Unprovable) {
-		print(" Completed in ${(end - start) / 1000.0} seconds.")
+		println("Completed in ${end - start} ms.")
 	}
 	// TeX
-	File("out.tex").writeText(node.getLatex())
+	if (bussproofs) {
+		println("Generating bussproofs TeX...")
+		File("out-bussproofs.tex").writeText(node.getBussproofsLatex())
+		println("Done!")
+	}
+	if (ebproof) {
+		println("Generating ebproof TeX...")
+		File("out-ebproof.tex").writeText(node.getEbproofLatex())
+		println("Done!")
+	}
 }
 
 suspend fun prover() {
@@ -44,7 +70,7 @@ suspend fun prover() {
 	val end = System.currentTimeMillis()
 	println(proofState)
 	println("Completed in ${end - start} ms")
-	File("out.tex").writeText(node.getLatex2())
+	File("out.tex").writeText(node.getBussproofsLatex())
 	listOf(node).printProof()
 }
 

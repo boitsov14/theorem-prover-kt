@@ -148,7 +148,7 @@ private fun INode.getLatexRec2(): String = when (this) {
 	is UnificationNode -> child?.getLatexRec2() ?: """\hypo{ ${sequent.toLatex()} }"""
 }
 
-fun INode.getLatex(): String = """\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
+fun INode.getBussproofsLatex(): String = """\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
 	|\usepackage{bussproofs}
 	|\begin{document}
 	|\begin{prooftree}
@@ -159,7 +159,7 @@ fun INode.getLatex(): String = """\documentclass[preview,varwidth=\maxdimen,bord
 	|
 """.trimMargin()
 
-fun INode.getLatex2(): String = """\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
+fun INode.getEbproofLatex(): String = """\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
 	|\usepackage{ebproof}
 	|\begin{document}
 	|\begin{prooftree}
