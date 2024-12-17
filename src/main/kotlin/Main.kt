@@ -70,7 +70,8 @@ suspend fun prover() {
 	val end = System.currentTimeMillis()
 	println(proofState)
 	println("Completed in ${end - start} ms")
-	File("out.tex").writeText(node.getBussproofsLatex())
+	File("out-bussproofs.tex").writeText(node.getBussproofsLatex())
+	File("out-ebproof.tex").writeText(node.getEbproofLatex())
 	listOf(node).printProof()
 }
 
