@@ -13,13 +13,14 @@ suspend fun main(args: Array<String>) {
 			prover()
 		}
 
-		1 -> prover(args.first(), true, true)
-		2 -> {
-			when (args[1]) {
-				"--out=bussproofs,ebproof", "--out=ebproof,bussproofs" -> prover(args.first(), true, true)
-				"--out=bussproofs" -> prover(args.first(), true, false)
-				"--out=ebproof" -> prover(args.first(), false, true)
-				"--out=" -> prover(args.first(), false, false)
+		1 -> prover(args[0], null, true, true)
+		3 -> {
+			val out = args[1]
+			when (args[2]) {
+				"--format=bussproofs,ebproof", "--format=ebproof,bussproofs" -> prover(args[0], out, true, true)
+				"--format=bussproofs" -> prover(args[0], out, true, false)
+				"--format=ebproof" -> prover(args[0], out, false, true)
+				"--format=" -> prover(args[0], out, false, false)
 				else -> {
 					println("Invalid arguments.")
 				}
@@ -32,7 +33,7 @@ suspend fun main(args: Array<String>) {
 	}
 }
 
-suspend fun prover(sequentString: String, bussproofs: Boolean, ebproof: Boolean) {
+suspend fun prover(sequentString: String, out: String?, bussproofs: Boolean, ebproof: Boolean) {
 	// Parse
 	val sequent = try {
 		sequentString.parseToSequent()
@@ -52,12 +53,12 @@ suspend fun prover(sequentString: String, bussproofs: Boolean, ebproof: Boolean)
 	// TeX
 	if (bussproofs) {
 		println("Generating bussproofs TeX...")
-		File("out-bussproofs.tex").writeText(node.getBussproofsLatex())
+		File(out, "out-bussproofs.tex").writeText(node.getBussproofsLatex())
 		println("Done!")
 	}
 	if (ebproof) {
 		println("Generating ebproof TeX...")
-		File("out-ebproof.tex").writeText(node.getEbproofLatex())
+		File(out, "out-ebproof.tex").writeText(node.getEbproofLatex())
 		println("Done!")
 	}
 }
