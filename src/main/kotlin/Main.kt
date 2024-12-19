@@ -13,12 +13,13 @@ suspend fun main(args: Array<String>) {
 			prover()
 		}
 
-		1 -> prover(args.first())
+		1 -> prover(args.first(), true, true)
 		2 -> {
 			when (args[1]) {
-				"--out=bussproofs,ebproof" -> prover(args.first())
-				"--out=bussproofs" -> prover(args.first(), ebproof = false)
-				"--out=ebproof" -> prover(args.first(), bussproofs = false)
+				"--out=bussproofs,ebproof", "--out=ebproof,bussproofs" -> prover(args.first(), true, true)
+				"--out=bussproofs" -> prover(args.first(), true, false)
+				"--out=ebproof" -> prover(args.first(), false, true)
+				"--out=" -> prover(args.first(), false, false)
 				else -> {
 					println("Invalid arguments.")
 				}
@@ -31,7 +32,7 @@ suspend fun main(args: Array<String>) {
 	}
 }
 
-suspend fun prover(sequentString: String, bussproofs: Boolean = true, ebproof: Boolean = true) {
+suspend fun prover(sequentString: String, bussproofs: Boolean, ebproof: Boolean) {
 	// Parse
 	val sequent = try {
 		sequentString.parseToSequent()
