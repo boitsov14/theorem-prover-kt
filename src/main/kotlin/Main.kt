@@ -7,33 +7,28 @@ import sequentProver.ProofState.Unprovable
 import java.io.File
 
 suspend fun main(args: Array<String>) {
+	// check the number of args
 	when (args.size) {
+		// interactively
 		0 -> {
-			//example()
+			// example()
 			prover()
 		}
-
-		1 -> prover(args[0], null, true, true)
-		3 -> {
-			val out = args[1]
-			when (args[2]) {
-				"--format=bussproofs,ebproof", "--format=ebproof,bussproofs" -> prover(args[0], out, true, true)
-				"--format=bussproofs" -> prover(args[0], out, true, false)
-				"--format=ebproof" -> prover(args[0], out, false, true)
-				"--format=" -> prover(args[0], out, false, false)
-				else -> {
-					println("Invalid arguments.")
-				}
-			}
-		}
-
+		// args: sequent string
+		1 -> prover(args[0], null, null, true, true)
+		// args: sequent string, output directory, memory limit in MB, formats
 		else -> {
-			println("Invalid arguments.")
+			val sequentString = args[0]
+			val out = args[1]
+			val memory = args[2].toInt()
+			val bussproofs = "--bussproofs" in args
+			val ebproof = "--ebproof" in args
+			prover(sequentString, out, memory, bussproofs, ebproof)
 		}
 	}
 }
 
-suspend fun prover(sequentString: String, out: String?, bussproofs: Boolean, ebproof: Boolean) {
+suspend fun prover(sequentString: String, out: String?, memory: Int?, bussproofs: Boolean, ebproof: Boolean) {
 	// Parse
 	val sequent = try {
 		sequentString.parseToSequent()
