@@ -16,7 +16,7 @@ suspend fun main(args: Array<String>) {
 		}
 		// args: sequent string
 		1 -> prover(args[0], null, null, true, true)
-		// args: sequent string, output directory, memory limit in MB, formats
+		// args: sequent string, output directory, memory limit in bytes, bussproofs, ebproof
 		else -> {
 			val sequentString = args[0]
 			val out = args[1]
@@ -30,31 +30,43 @@ suspend fun main(args: Array<String>) {
 
 suspend fun prover(sequentString: String, out: String?, memory: Int?, bussproofs: Boolean, ebproof: Boolean) {
 	// Parse
+	File(out, "prover-log.txt").writeText("Parsing...\n")
 	val sequent = try {
 		sequentString.parseToSequent()
 	} catch (e: FormulaParserException) {
-		println(e.message)
+		File(out, "prover-log.txt").appendText("Failed: ${e.message}\n")
 		return
 	}
+	File(out, "prover-log.txt").appendText("Done!\n")
 	// Prove
-	println("Proving...")
+	File(out, "prover-log.txt").appendText("Proving...\n")
 	val start = System.currentTimeMillis()
 	val (proofState, node) = sequent.prove()
 	val end = System.currentTimeMillis()
-	println(proofState)
+	File(out, "prover-log.txt").appendText("$proofState\n")
 	if (proofState == Provable || proofState == Unprovable) {
-		println("Completed in ${end - start} ms.")
+		File(out, "prover-log.txt").appendText("Completed in ${end - start} ms.\n")
 	}
 	// TeX
 	if (bussproofs) {
-		println("Generating bussproofs TeX...")
-		File(out, "out-bussproofs.tex").writeText(node.getBussproofsLatex())
-		println("Done!")
+		File(out, "prover-log.txt").appendText("Generating bussproofs LaTeX...\n")
+		val latex = node.getBussproofsLatex()
+		if (memory != null && latex.toByteArray().size > memory) {
+			File(out, "prover-log.txt").appendText("Failed: LaTeX Too Large\n")
+		} else {
+			File(out, "out-bussproofs.tex").writeText(latex)
+			File(out, "prover-log.txt").appendText("Done!\n")
+		}
 	}
 	if (ebproof) {
-		println("Generating ebproof TeX...")
-		File(out, "out-ebproof.tex").writeText(node.getEbproofLatex())
-		println("Done!")
+		File(out, "prover-log.txt").appendText("Generating ebproof LaTeX...\n")
+		val latex = node.getEbproofLatex()
+		if (memory != null && latex.toByteArray().size > memory) {
+			File(out, "prover-log.txt").appendText("Failed: LaTeX Too Large\n")
+		} else {
+			File(out, "out-ebproof.tex").writeText(latex)
+			File(out, "prover-log.txt").appendText("Done!\n")
+		}
 	}
 }
 
