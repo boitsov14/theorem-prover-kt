@@ -21,8 +21,8 @@ suspend fun main(args: Array<String>) {
 			val sequentString = args[0]
 			val out = args[1]
 			val memory = args[2].toInt()
-			val bussproofs = "--bussproofs" in args
-			val ebproof = "--ebproof" in args
+			val bussproofs = "--format=bussproofs" in args
+			val ebproof = "--format=ebproof" in args
 			prover(sequentString, out, memory, bussproofs, ebproof)
 		}
 	}
