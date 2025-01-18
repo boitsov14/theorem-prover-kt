@@ -16,56 +16,58 @@ suspend fun main(args: Array<String>) {
 		}
 		// args: sequent string
 		1 -> prover(args[0], null, null, true, true)
-		// args: sequent string, output directory, memory limit in bytes, bussproofs, ebproof
+		// args: output directory, memory limit in bytes, bussproofs, ebproof
 		else -> {
-			val sequentString = args[0]
-			val out = args[1]
-			val memory = args[2].toInt()
+			val out = args[0]
+			val memory = args[1].toInt()
 			val bussproofs = "--format=bussproofs" in args
 			val ebproof = "--format=ebproof" in args
+			val sequentString = File(out, "formula.txt").readText()
 			prover(sequentString, out, memory, bussproofs, ebproof)
 		}
 	}
 }
 
 suspend fun prover(sequentString: String, out: String?, memory: Int?, bussproofs: Boolean, ebproof: Boolean) {
+	val log = File(out, "prover-log.txt")
 	// Parse
-	File(out, "prover-log.txt").writeText("Parsing...\n")
+	log.writeText("Parsing...\n")
 	val sequent = try {
 		sequentString.parseToSequent()
 	} catch (e: FormulaParserException) {
-		File(out, "prover-log.txt").appendText("Failed: ${e.message}\n")
+		log.appendText("Failed: ${e.message}\n")
 		return
 	}
-	File(out, "prover-log.txt").appendText("Done!\n")
+	log.appendText("Done!\n")
+	File(out, "formula.tex").writeText(sequent.toLatex())
 	// Prove
-	File(out, "prover-log.txt").appendText("Proving...\n")
+	log.appendText("Proving...\n")
 	val start = System.currentTimeMillis()
 	val (proofState, node) = sequent.prove()
 	val end = System.currentTimeMillis()
-	File(out, "prover-log.txt").appendText("$proofState\n")
+	log.appendText("$proofState\n")
 	if (proofState == Provable || proofState == Unprovable) {
-		File(out, "prover-log.txt").appendText("Completed in ${end - start} ms.\n")
+		log.appendText("Completed in ${end - start} ms.\n")
 	}
 	// TeX
 	if (bussproofs) {
-		File(out, "prover-log.txt").appendText("Generating bussproofs LaTeX...\n")
+		log.appendText("Generating bussproofs LaTeX...\n")
 		val latex = node.getBussproofsLatex()
 		if (memory != null && latex.toByteArray().size > memory) {
-			File(out, "prover-log.txt").appendText("Failed: LaTeX Too Large\n")
+			log.appendText("Failed: LaTeX Too Large\n")
 		} else {
 			File(out, "out-bussproofs.tex").writeText(latex)
-			File(out, "prover-log.txt").appendText("Done!\n")
+			log.appendText("Done!\n")
 		}
 	}
 	if (ebproof) {
-		File(out, "prover-log.txt").appendText("Generating ebproof LaTeX...\n")
+		log.appendText("Generating ebproof LaTeX...\n")
 		val latex = node.getEbproofLatex()
 		if (memory != null && latex.toByteArray().size > memory) {
-			File(out, "prover-log.txt").appendText("Failed: LaTeX Too Large\n")
+			log.appendText("Failed: LaTeX Too Large\n")
 		} else {
 			File(out, "out-ebproof.tex").writeText(latex)
-			File(out, "prover-log.txt").appendText("Done!\n")
+			log.appendText("Done!\n")
 		}
 	}
 }
